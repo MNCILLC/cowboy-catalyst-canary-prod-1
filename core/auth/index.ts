@@ -349,20 +349,20 @@ async function patchSessionTokenCookies() {
 
   cookieJar.getAll().forEach(({ name, value }) => {
     if (SESSION_TOKEN_NAME_RE.test(name) && value) {
-      cookieJar.set(name, value, {
-        httpOnly: true,
-        sameSite: 'lax' as const,
-        path: '/',
-        secure: name.startsWith('__Secure-'),
-      });
-
       // cookieJar.set(name, value, {
       //   httpOnly: true,
-      //   secure: true,
-      //   sameSite: 'none',
-      //   partitioned: true,
+      //   sameSite: 'lax' as const,
       //   path: '/',
+      //   secure: name.startsWith('__Secure-'),
       // });
+
+      cookieJar.set(name, value, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        partitioned: true,
+        path: '/',
+      });
     }
   });
 }
