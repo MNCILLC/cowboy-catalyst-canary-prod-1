@@ -349,6 +349,9 @@ async function patchSessionTokenCookies() {
 
   cookieJar.getAll().forEach(({ name, value }) => {
     if (SESSION_TOKEN_NAME_RE.test(name) && value) {
+      // commenting out base code from @bigcommerce/catalyst-makeswift@1.10.0
+      // see https://github.com/bigcommerce/catalyst/issues/3186
+      //
       // cookieJar.set(name, value, {
       //   httpOnly: true,
       //   sameSite: 'lax' as const,
