@@ -355,6 +355,14 @@ async function patchSessionTokenCookies() {
         path: '/',
         secure: name.startsWith('__Secure-'),
       });
+
+      // cookieJar.set(name, value, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: 'none',
+      //   partitioned: true,
+      //   path: '/',
+      // });
     }
   });
 }
