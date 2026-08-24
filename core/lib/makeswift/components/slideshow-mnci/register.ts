@@ -16,8 +16,8 @@ import { runtime } from '~/lib/makeswift/runtime';
 import { MSSlideshow } from './client';
 
 runtime.registerComponent(MSSlideshow, {
-  type: 'section-slideshow-mnci',
-  label: 'Sections / Slideshow',
+  type: 'section-slideshow',
+  label: 'Sections / Slideshow MNCI',
   icon: 'carousel',
   props: {
     className: Style(),
@@ -51,5 +51,6 @@ runtime.registerComponent(MSSlideshow, {
     }),
     autoplay: Checkbox({ label: 'Autoplay', defaultValue: true }),
     interval: Number({ label: 'Duration', defaultValue: 5, suffix: 's' }),
+    height: TextInput({ label: 'Height', defaultValue: '80vh' }),
   },
 });

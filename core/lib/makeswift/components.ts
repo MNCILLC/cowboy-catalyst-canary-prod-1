@@ -13,4 +13,5 @@ import './components/site-footer/register';
 import './components/site-header/register';
 import './components/site-theme/register';
 import './components/slideshow/register';
+import './components/slideshow-mnci/register';
 import './components/sticky-sidebar/register';
