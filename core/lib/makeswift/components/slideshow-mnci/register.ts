@@ -30,6 +30,14 @@ runtime.registerComponent(MSSlideshow, {
           description: TextArea({ label: 'Description', defaultValue: 'Slide description' }),
           imageSrc: Image(),
           imageAlt: TextInput({ label: 'Image alt', defaultValue: 'Slide image' }),
+          imageAlign: Select({
+            label: 'Image alignment',
+            options: [
+              { value: 'left', label: 'Left' },
+              { value: 'center', label: 'Center' },
+            ],
+            defaultValue: 'center',
+          }),
           showButton: Checkbox({ label: 'Show button', defaultValue: true }),
           buttonText: TextInput({ label: 'Button text', defaultValue: 'Shop all' }),
           buttonLink: Link({ label: 'Button link' }),
@@ -52,5 +60,7 @@ runtime.registerComponent(MSSlideshow, {
     autoplay: Checkbox({ label: 'Autoplay', defaultValue: true }),
     interval: Number({ label: 'Duration', defaultValue: 5, suffix: 's' }),
     height: TextInput({ label: 'Height', defaultValue: '80vh' }),
+    minHeight: TextInput({ label: 'Min Height' }),
+    aspectRatio: TextInput({ label: 'Aspect Ratio' }),
   },
 });

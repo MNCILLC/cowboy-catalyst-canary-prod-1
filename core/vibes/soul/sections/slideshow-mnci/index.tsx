@@ -18,6 +18,8 @@ interface Slide {
   description?: string;
   showDescription?: boolean;
   image?: { alt: string; blurDataUrl?: string; src: string };
+  imageAlign: 'left' | 'center';
+
   cta?: {
     label: string;
     href: string;
@@ -34,6 +36,8 @@ interface Props {
   interval?: number;
   className?: string;
   height?: string;
+  minHeight?: string;
+  aspectRatio?: string;
 }
 
 interface UseProgressButtonType {
@@ -105,7 +109,7 @@ const useProgressButton = (
  * }
  * ```
  */
-export function Slideshow({ slides, playOnInit = true, interval = 5000, className, height = "80vh" }: Props) {
+export function Slideshow({ slides, playOnInit = true, interval = 5000, className, height, minHeight, aspectRatio }: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 20 }, [
     Autoplay({ delay: interval, active: playOnInit }),
     Fade(),
@@ -150,22 +154,21 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
         setIsPlaying(autoplay.isPlaying());
       });
   }, [emblaApi, playCount]);
+  
+  const isEmpty = (value: string | undefined) => value === null || value === '';
+
+  const style: React.CSSProperties =
+    isEmpty(height) && isEmpty(minHeight) && isEmpty(aspectRatio)
+      ? { height: '80vh' }
+      : {
+          ...(!isEmpty(height) && { height }),
+          ...(!isEmpty(minHeight) && { minHeight }),
+          ...(!isEmpty(aspectRatio) && { aspectRatio }),
+        };
 
   return (
-    // <section
-    //   className={clsx(
-    //     'relative h-[80vh] bg-[var(--slideshow-background,color-mix(in_oklab,hsl(var(--primary)),black_75%))] @container',
-    //     className,
-    //   )}
-    // >
-    // <section
-    //   className={clsx(
-    //     `relative h-[${viewHeight}vh] bg-[var(--slideshow-background,color-mix(in_oklab,hsl(var(--primary)),black_75%))] @container`,
-    //     className,
-    //   )}
-    // >
     <section
-      style={{height:`${height}`}}
+      style={style}
       className={clsx(
         `relative bg-[var(--slideshow-background,color-mix(in_oklab,hsl(var(--primary)),black_75%))] @container`,
         className,
@@ -174,7 +177,7 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
       <div className="h-full overflow-hidden" ref={emblaRef}>
         <div className="flex h-full">
           {slides.map(
-            ({ title, description, showDescription = true, image, cta, showCta = true }, idx) => {
+            ({ title, description, showDescription = true, image, imageAlign = 'center', cta, showCta = true }, idx) => {
               return (
                 <div
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
@@ -208,7 +211,8 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
                     <Image
                       alt={image.alt}
                       blurDataURL={image.blurDataUrl}
-                      className="block h-20 w-full object-cover"
+                      // className="block h-20 w-full object-cover"
+                      className={`block h-20 w-full object-cover object-${imageAlign}`}
                       fill
                       placeholder={
                         image.blurDataUrl != null && image.blurDataUrl !== '' ? 'blur' : 'empty'
