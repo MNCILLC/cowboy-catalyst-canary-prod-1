@@ -7,6 +7,7 @@ import { Button } from '@/vibes/soul/primitives/button';
 interface Props {
   variant: 'success' | 'warning' | 'error' | 'info';
   message: ReactNode;
+  className?: string;
   description?: string;
   dismissLabel?: string;
   action?: {
@@ -19,6 +20,7 @@ interface Props {
 export function Alert({
   variant,
   message,
+  className,
   description,
   action,
   dismissLabel = 'Dismiss',
@@ -34,6 +36,7 @@ export function Alert({
           error: 'bg-error-highlight',
           info: 'bg-background',
         }[variant],
+        className,
       )}
       role="alert"
     >
@@ -51,15 +54,17 @@ export function Alert({
           </Button>
         )}
 
-        <Button
-          aria-label={dismissLabel}
-          onClick={onDismiss}
-          shape="circle"
-          size="x-small"
-          variant="ghost"
-        >
-          <X size={20} strokeWidth={1} />
-        </Button>
+        {onDismiss && (
+          <Button
+            aria-label={dismissLabel}
+            onClick={onDismiss}
+            shape="circle"
+            size="x-small"
+            variant="ghost"
+          >
+            <X size={20} strokeWidth={1} />
+          </Button>
+        )}
       </div>
     </div>
   );

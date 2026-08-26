@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { useFormStatus } from 'react-dom';
 
+import { Alert } from '@/vibes/soul/primitives/alert';
 import { Button } from '@/vibes/soul/primitives/button';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
@@ -544,22 +545,34 @@ export function CartClient<LineItem extends CartLineItem>({
               )}
             </div>
           </dl>
-          {/* Support for minimum order amount */}
           {!minimumOrderMet && (
-            <div className="mt-4 text-sm">
-              Minimum order amount is{' '}
-              {minimumOrderSubtotal.toLocaleString('en-US', {
-                style: 'currency',
-                currency: cart.currencyCode,
-              })}
-              . Add{' '}
-              <strong>
-                {amountRemaining.toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: cart.currencyCode,
-                })}
-              </strong>{' '}
-              more to checkout.
+            <div className="mt-4">
+              <Alert
+                className="w-full !min-w-0 !max-w-none"
+                message={
+                  <>
+                    <span className="block">
+                      Minimum order amount is{' '}
+                      {minimumOrderSubtotal.toLocaleString('en-US', {
+                        style: 'currency',
+                        currency: cart.currencyCode,
+                      })}
+                      .
+                    </span>
+                    <span className="block">
+                      Add{' '}
+                      <strong>
+                        {amountRemaining.toLocaleString('en-US', {
+                          style: 'currency',
+                          currency: cart.currencyCode,
+                        })}
+                      </strong>{' '}
+                      more to checkout.
+                    </span>
+                  </>
+                }
+                variant="error"
+              />
             </div>
           )}
           <CheckoutButton
