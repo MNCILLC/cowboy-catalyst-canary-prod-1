@@ -484,7 +484,8 @@
             "cartNotFound": "Se ha producido un error al recuperar tu carrito",
             "lineItemNotFound": "No se ha encontrado el elemento.",
             "failedToUpdateQuantity": "No se pudo actualizar la cantidad.",
-            "somethingWentWrong": "Algo salió mal. Vuelva a intentarlo más tarde."
+            "somethingWentWrong": "Algo salió mal. Vuelva a intentarlo más tarde.",
+            "minimumOrderNotMet": "Se requiere un subtotal mínimo de {minimum} para continuar con el pago."
         }
     },
     "Compare": {

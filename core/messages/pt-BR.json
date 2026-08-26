@@ -484,7 +484,8 @@
             "cartNotFound": "An error occurred when retrieving your cart",
             "lineItemNotFound": "Item de linha não encontrado.",
             "failedToUpdateQuantity": "Não foi possível atualizar a quantidade.",
-            "somethingWentWrong": "Ocorreu um erro. Tente novamente mais tarde."
+            "somethingWentWrong": "Ocorreu um erro. Tente novamente mais tarde.",
+            "minimumOrderNotMet": "É necessário um subtotal mínimo de {minimum} para prosseguir para o checkout."
         }
     },
     "Compare": {

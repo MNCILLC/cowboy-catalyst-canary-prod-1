@@ -173,6 +173,7 @@ export interface CartProps<LineItem extends CartLineItem> {
   giftCertificate?: GiftCertificate;
   shipping?: Shipping;
   lineItemActionPendingLabel?: string;
+  minimumOrderSubtotal: number;
 }
 
 const defaultEmptyState = {
@@ -218,6 +219,7 @@ export function CartClient<LineItem extends CartLineItem>({
   deleteLineItemLabel,
   lineItemAction,
   lineItemActionPendingLabel = 'You have a cart update in progress. Are you sure you want to leave this page? Your changes may be lost.',
+  minimumOrderSubtotal,
   checkoutAction,
   checkoutLabel = 'Checkout',
   emptyState = defaultEmptyState,
@@ -226,12 +228,8 @@ export function CartClient<LineItem extends CartLineItem>({
 }: CartProps<LineItem>) {
   const events = useEvents();
 
-  //Minimum order amount
-  //TODO make this a storefront setting
-  const MINIMUM_ORDER_AMOUNT = 2000;
-
-  const amountRemaining = Math.max(MINIMUM_ORDER_AMOUNT - cart.subtotal, 0);
-  const minimumOrderMet = cart.subtotal >= MINIMUM_ORDER_AMOUNT;
+  const amountRemaining = Math.max(minimumOrderSubtotal - cart.subtotal, 0);
+  const minimumOrderMet = cart.subtotal >= minimumOrderSubtotal;
 
   const [state, formAction, isLineItemActionPending] = useActionState(lineItemAction, {
     lineItems: cart.lineItems,
@@ -550,9 +548,9 @@ export function CartClient<LineItem extends CartLineItem>({
           {!minimumOrderMet && (
             <div className="mt-4 text-sm">
               Minimum order amount is{' '}
-              {MINIMUM_ORDER_AMOUNT.toLocaleString('en-US', {
+              {minimumOrderSubtotal.toLocaleString('en-US', {
                 style: 'currency',
-                currency: 'USD',
+                currency: cart.currencyCode,
               })}
               . Add{' '}
               <strong>

@@ -484,7 +484,8 @@
             "cartNotFound": "Si è verificato un errore durante il recupero del carrello",
             "lineItemNotFound": "Voce di riga non trovata.",
             "failedToUpdateQuantity": "Impossibile aggiornare la quantità.",
-            "somethingWentWrong": "Si è verificato un errore. Riprova più tardi."
+            "somethingWentWrong": "Si è verificato un errore. Riprova più tardi.",
+            "minimumOrderNotMet": "Per procedere al pagamento è richiesto un subtotale minimo di {minimum}."
         }
     },
     "Compare": {

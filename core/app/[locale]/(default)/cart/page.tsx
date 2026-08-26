@@ -7,6 +7,7 @@ import { Cart as CartComponent, CartEmptyState } from '@/vibes/soul/sections/car
 import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components/cart-analytics-provider';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { getCartId } from '~/lib/cart';
+import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
@@ -376,6 +377,7 @@ export default async function Cart({ params }: Props) {
           key={cart.entityId}
           lineItemAction={updateLineItem}
           lineItemActionPendingLabel={t('cartUpdateInProgress')}
+          minimumOrderSubtotal={getMinimumOrderSubtotal()}
           shipping={{
             action: updateShippingInfo,
             countries,
