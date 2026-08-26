@@ -282,6 +282,8 @@ export default async function Cart({ params }: Props) {
         <CartComponent
           cart={{
             lineItems: formattedLineItems,
+            subtotal: checkout?.subtotal?.value ?? 0,
+            currencyCode: cart.currencyCode,
             total: format.number(checkout?.grandTotal?.value || 0, {
               style: 'currency',
               currency: cart.currencyCode,
@@ -438,6 +440,7 @@ export default async function Cart({ params }: Props) {
           title={t('title')}
         />
       </CartAnalyticsProvider>
+
       <Slot label="Cart bottom content" snapshotId="cart-bottom-content" />
       <CartViewed
         currencyCode={cart.currencyCode}

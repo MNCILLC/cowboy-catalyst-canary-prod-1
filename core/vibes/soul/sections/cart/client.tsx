@@ -80,6 +80,8 @@ export interface CartState<LineItem extends CartLineItem> {
 export interface Cart<LineItem extends CartLineItem> {
   lineItems: LineItem[];
   summaryItems: CartSummaryItem[];
+  subtotal: number;
+  currencyCode: string;
   total: string;
   totalLabel?: string;
   totalSubtitle?: string;
@@ -223,6 +225,14 @@ export function CartClient<LineItem extends CartLineItem>({
   shipping,
 }: CartProps<LineItem>) {
   const events = useEvents();
+
+  //Minimum order amount
+  //TODO make this a storefront setting
+  const MINIMUM_ORDER_AMOUNT = 2000;
+
+  const amountRemaining = Math.max(MINIMUM_ORDER_AMOUNT - cart.subtotal, 0);
+  const minimumOrderMet = cart.subtotal >= MINIMUM_ORDER_AMOUNT;
+
   const [state, formAction, isLineItemActionPending] = useActionState(lineItemAction, {
     lineItems: cart.lineItems,
     lastResult: null,
@@ -536,9 +546,28 @@ export function CartClient<LineItem extends CartLineItem>({
               )}
             </div>
           </dl>
+          {/* Support for minimum order amount */}
+          {!minimumOrderMet && (
+            <div className="mt-4 text-sm">
+              Minimum order amount is{' '}
+              {MINIMUM_ORDER_AMOUNT.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              })}
+              . Add{' '}
+              <strong>
+                {amountRemaining.toLocaleString('en-US', {
+                  style: 'currency',
+                  currency: cart.currencyCode,
+                })}
+              </strong>{' '}
+              more to checkout.
+            </div>
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
+            disabled={!minimumOrderMet}
             isCartUpdatePending={isCartMutationPending}
           >
             {checkoutLabel}
@@ -844,6 +873,7 @@ function CheckoutButton({
 
 function SubmitButton({
   isCartUpdatePending,
+  disabled,
   ...props
 }: { isCartUpdatePending: boolean } & ComponentPropsWithoutRef<typeof Button>) {
   const { pending } = useFormStatus();
@@ -851,7 +881,7 @@ function SubmitButton({
   return (
     <Button
       {...props}
-      disabled={pending || isCartUpdatePending}
+      disabled={disabled || pending || isCartUpdatePending}
       loading={pending || isCartUpdatePending}
       type="submit"
     />
