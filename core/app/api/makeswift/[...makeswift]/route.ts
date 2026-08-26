@@ -41,6 +41,22 @@ const handler = MakeswiftApiHandler(process.env.MAKESWIFT_SITE_API_KEY, {
         label: 'Roboto Mono',
         variants: defaultVariants,
       },
+      {
+        family: 'var(--font-family-roboto)',
+        label: 'Roboto',
+        variants: [
+          { weight: '400', style: 'normal' },
+          { weight: '500', style: 'normal' },
+        ],
+      },
+      {
+        family: 'var(--font-family-roboto-condensed)',
+        label: 'Roboto Condensed',
+        variants: [
+          { weight: '500', style: 'normal' },
+          { weight: '600', style: 'normal' },
+        ],
+      },
     ];
   },
 });

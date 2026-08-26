@@ -1,10 +1,15 @@
 import { Font, Select } from '@makeswift/runtime/controls';
 
 export const fontFamilyTokens = {
+  // heading: Font({
+  //   label: 'Heading',
+  //   variant: false,
+  //   defaultValue: { fontFamily: 'var(--font-family-dm-serif-text)' },
+  // }),
   heading: Font({
     label: 'Heading',
     variant: false,
-    defaultValue: { fontFamily: 'var(--font-family-dm-serif-text)' },
+    defaultValue: { fontFamily: 'var(--font-family-roboto)' },
   }),
   body: Font({
     label: 'Body',
