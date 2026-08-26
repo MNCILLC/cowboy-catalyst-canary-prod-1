@@ -10,8 +10,22 @@ import { graphql } from '~/client/graphql';
 import { redirect } from '~/i18n/routing';
 import { getVisitIdCookie, getVisitorIdCookie } from '~/lib/analytics/bigcommerce';
 import { getCartId } from '~/lib/cart';
+import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
 import { serverToast } from '~/lib/server-toast';
+
+const CheckoutEligibilityQuery = graphql(`
+  query CheckoutEligibilityQuery($cartId: String) {
+    site {
+      checkout(entityId: $cartId) {
+        subtotal {
+          value
+          currencyCode
+        }
+      }
+    }
+  }
+`);
 
 const CheckoutRedirectMutation = graphql(`
   mutation CheckoutRedirectMutation(
@@ -70,6 +84,29 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   const consent = await getConsentCookie();
 
   try {
+    const minimumOrderSubtotal = getMinimumOrderSubtotal();
+    const { data: eligibilityData } = await client.fetch({
+      document: CheckoutEligibilityQuery,
+      variables: { cartId },
+      fetchOptions: { cache: 'no-store' },
+      customerAccessToken,
+      channelId,
+    });
+    const subtotal = eligibilityData.site.checkout?.subtotal;
+
+    if (!subtotal || subtotal.value < minimumOrderSubtotal) {
+      await serverToast.error(
+        t('minimumOrderNotMet', {
+          minimum: new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: subtotal?.currencyCode ?? 'USD',
+          }).format(minimumOrderSubtotal),
+        }),
+      );
+
+      return redirect({ href: '/cart', locale });
+    }
+
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
       variables: {

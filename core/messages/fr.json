@@ -484,7 +484,8 @@
             "cartNotFound": "Une erreur s’est produite lors de la récupération de votre panier",
             "lineItemNotFound": "Ligne introuvable.",
             "failedToUpdateQuantity": "Échec de la mise à jour de la quantité.",
-            "somethingWentWrong": "Une erreur s'est produite. Veuillez réessayer plus tard."
+            "somethingWentWrong": "Une erreur s'est produite. Veuillez réessayer plus tard.",
+            "minimumOrderNotMet": "Un sous-total minimum de {minimum} est requis pour passer au paiement."
         }
     },
     "Compare": {

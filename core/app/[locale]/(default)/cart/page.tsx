@@ -7,6 +7,7 @@ import { Cart as CartComponent, CartEmptyState } from '@/vibes/soul/sections/car
 import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components/cart-analytics-provider';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { getCartId } from '~/lib/cart';
+import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
@@ -282,6 +283,8 @@ export default async function Cart({ params }: Props) {
         <CartComponent
           cart={{
             lineItems: formattedLineItems,
+            subtotal: checkout?.subtotal?.value ?? 0,
+            currencyCode: cart.currencyCode,
             total: format.number(checkout?.grandTotal?.value || 0, {
               style: 'currency',
               currency: cart.currencyCode,
@@ -374,6 +377,7 @@ export default async function Cart({ params }: Props) {
           key={cart.entityId}
           lineItemAction={updateLineItem}
           lineItemActionPendingLabel={t('cartUpdateInProgress')}
+          minimumOrderSubtotal={getMinimumOrderSubtotal()}
           shipping={{
             action: updateShippingInfo,
             countries,
@@ -438,6 +442,7 @@ export default async function Cart({ params }: Props) {
           title={t('title')}
         />
       </CartAnalyticsProvider>
+
       <Slot label="Cart bottom content" snapshotId="cart-bottom-content" />
       <CartViewed
         currencyCode={cart.currencyCode}

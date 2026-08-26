@@ -484,7 +484,8 @@
             "cartNotFound": "Beim Abrufen des Warenkorbs ist ein Fehler aufgetreten",
             "lineItemNotFound": "Einzelposten nicht gefunden.",
             "failedToUpdateQuantity": "Menge konnte nicht aktualisiert werden.",
-            "somethingWentWrong": "Es ist etwas schiefgegangen Bitte versuchen Sie es später erneut."
+            "somethingWentWrong": "Es ist etwas schiefgegangen Bitte versuchen Sie es später erneut.",
+            "minimumOrderNotMet": "Für den Bezahlvorgang ist eine Zwischensumme von mindestens {minimum} erforderlich."
         }
     },
     "Compare": {

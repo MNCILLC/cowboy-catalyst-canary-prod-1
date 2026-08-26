@@ -484,7 +484,8 @@
             "cartNotFound": "Ett fel uppstod när er varukorg hämtades",
             "lineItemNotFound": "Radartikeln hittades inte.",
             "failedToUpdateQuantity": "Det gick inte att uppdatera antalet.",
-            "somethingWentWrong": "Någonting gick fel. Vänligen försök igen senare."
+            "somethingWentWrong": "Någonting gick fel. Vänligen försök igen senare.",
+            "minimumOrderNotMet": "En delsumma på minst {minimum} krävs för att gå till kassan."
         }
     },
     "Compare": {

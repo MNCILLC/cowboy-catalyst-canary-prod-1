@@ -484,7 +484,8 @@
             "cartNotFound": "Er is een fout opgetreden bij het ophalen van je winkelwagen",
             "lineItemNotFound": "Regelitem niet gevonden.",
             "failedToUpdateQuantity": "Hoeveelheid bijwerken is mislukt.",
-            "somethingWentWrong": "Er is iets fout gegaan. Probeer het later opnieuw."
+            "somethingWentWrong": "Er is iets fout gegaan. Probeer het later opnieuw.",
+            "minimumOrderNotMet": "Een minimumsubtotaal van {minimum} is vereist om af te rekenen."
         }
     },
     "Compare": {

@@ -16,6 +16,7 @@ import {
 } from 'react';
 import { useFormStatus } from 'react-dom';
 
+import { Alert } from '@/vibes/soul/primitives/alert';
 import { Button } from '@/vibes/soul/primitives/button';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
@@ -80,6 +81,8 @@ export interface CartState<LineItem extends CartLineItem> {
 export interface Cart<LineItem extends CartLineItem> {
   lineItems: LineItem[];
   summaryItems: CartSummaryItem[];
+  subtotal: number;
+  currencyCode: string;
   total: string;
   totalLabel?: string;
   totalSubtitle?: string;
@@ -171,6 +174,7 @@ export interface CartProps<LineItem extends CartLineItem> {
   giftCertificate?: GiftCertificate;
   shipping?: Shipping;
   lineItemActionPendingLabel?: string;
+  minimumOrderSubtotal: number;
 }
 
 const defaultEmptyState = {
@@ -216,6 +220,7 @@ export function CartClient<LineItem extends CartLineItem>({
   deleteLineItemLabel,
   lineItemAction,
   lineItemActionPendingLabel = 'You have a cart update in progress. Are you sure you want to leave this page? Your changes may be lost.',
+  minimumOrderSubtotal,
   checkoutAction,
   checkoutLabel = 'Checkout',
   emptyState = defaultEmptyState,
@@ -223,6 +228,10 @@ export function CartClient<LineItem extends CartLineItem>({
   shipping,
 }: CartProps<LineItem>) {
   const events = useEvents();
+
+  const amountRemaining = Math.max(minimumOrderSubtotal - cart.subtotal, 0);
+  const minimumOrderMet = cart.subtotal >= minimumOrderSubtotal;
+
   const [state, formAction, isLineItemActionPending] = useActionState(lineItemAction, {
     lineItems: cart.lineItems,
     lastResult: null,
@@ -536,9 +545,40 @@ export function CartClient<LineItem extends CartLineItem>({
               )}
             </div>
           </dl>
+          {!minimumOrderMet && (
+            <div className="mt-4">
+              <Alert
+                className="w-full !min-w-0 !max-w-none"
+                message={
+                  <>
+                    <span className="block">
+                      Minimum order amount is{' '}
+                      {minimumOrderSubtotal.toLocaleString('en-US', {
+                        style: 'currency',
+                        currency: cart.currencyCode,
+                      })}
+                      .
+                    </span>
+                    <span className="block">
+                      Add{' '}
+                      <strong>
+                        {amountRemaining.toLocaleString('en-US', {
+                          style: 'currency',
+                          currency: cart.currencyCode,
+                        })}
+                      </strong>{' '}
+                      more to checkout.
+                    </span>
+                  </>
+                }
+                variant="error"
+              />
+            </div>
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
+            disabled={!minimumOrderMet}
             isCartUpdatePending={isCartMutationPending}
           >
             {checkoutLabel}
@@ -844,6 +884,7 @@ function CheckoutButton({
 
 function SubmitButton({
   isCartUpdatePending,
+  disabled,
   ...props
 }: { isCartUpdatePending: boolean } & ComponentPropsWithoutRef<typeof Button>) {
   const { pending } = useFormStatus();
@@ -851,7 +892,7 @@ function SubmitButton({
   return (
     <Button
       {...props}
-      disabled={pending || isCartUpdatePending}
+      disabled={disabled || pending || isCartUpdatePending}
       loading={pending || isCartUpdatePending}
       type="submit"
     />

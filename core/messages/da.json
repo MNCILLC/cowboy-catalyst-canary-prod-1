@@ -484,7 +484,8 @@
             "cartNotFound": "Der opstod en fejl ved hentning af din indkøbskurv",
             "lineItemNotFound": "Linjeelement ikke fundet.",
             "failedToUpdateQuantity": "Antallet kunne ikke opdateres.",
-            "somethingWentWrong": "Noget gik galt. Prøv igen senere."
+            "somethingWentWrong": "Noget gik galt. Prøv igen senere.",
+            "minimumOrderNotMet": "Der kræves en minimumssubtotal på {minimum} for at gå til kassen."
         }
     },
     "Compare": {
