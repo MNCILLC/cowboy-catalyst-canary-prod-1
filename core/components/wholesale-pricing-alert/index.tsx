@@ -13,10 +13,10 @@ export function WholesalePricingAlert({ isAuthenticated }: Props) {
 
   return (
     <Alert
-      className="mb-6 w-full !min-w-0 !max-w-none"
+      className="mb-6 w-full !min-w-0 !max-w-none !border-[#19294f] !bg-[#2a4176] [&>div>span]:!text-[#b3d2ff]"
       message={
         <>
-          <Link className="font-medium text-foreground underline underline-offset-2" href="/login">
+          <Link className="font-medium text-[#b3d2ff] underline underline-offset-2" href="/login">
             Login/Create Account
           </Link>{' '}
           to see wholesale pricing.
