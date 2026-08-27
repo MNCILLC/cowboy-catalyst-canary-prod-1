@@ -50,7 +50,10 @@ export const pricesTransformer = (
   }
 
   const isPriceRange = inc.priceRange.min.value !== inc.priceRange.max.value;
-  const isSalePrice = inc.salePrice?.value !== inc.basePrice?.value;
+  const hasDiscount =
+    inc.basePrice != null &&
+    ex.basePrice != null &&
+    (inc.price.value < inc.basePrice.value || ex.price.value < ex.basePrice.value);
 
   if (isPriceRange) {
     return {
@@ -61,7 +64,7 @@ export const pricesTransformer = (
     };
   }
 
-  if (isSalePrice && inc.salePrice && inc.basePrice && ex.salePrice && ex.basePrice) {
+  if (hasDiscount && inc.basePrice && ex.basePrice) {
     return {
       type: 'sale',
       previous: toMoney(inc.basePrice, ex.basePrice, format),
