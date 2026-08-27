@@ -44,9 +44,7 @@ interface Props {
  * ```css
  * :root {
  *   --price-light-text: hsl(var(--foreground));
- *   --price-light-discount-text: #ff0000;
  *   --price-dark-text: hsl(var(--background));
- *   --price-dark-discount-text: #ff0000;
  * }
  * ```
  */
@@ -73,13 +71,13 @@ export function PriceLabel({ className, colorScheme = 'light', price }: Props) {
     return (
       <span className={clsx('block font-semibold', baseColorClass, className)}>
         <span className="block">
-          <PriceLine colorScheme={colorScheme} price={price} t={t} tax="inc" />{' '}
+          <PriceLine price={price} t={t} tax="inc" />{' '}
           <abbr className="cursor-help font-normal opacity-60" title={includingTaxTooltip}>
             {includingTaxLabel}
           </abbr>
         </span>
         <span className="block">
-          <PriceLine colorScheme={colorScheme} dim price={price} t={t} tax="ex" />{' '}
+          <PriceLine dim price={price} t={t} tax="ex" />{' '}
           <abbr className="cursor-help font-normal opacity-60" title={excludingTaxTooltip}>
             {excludingTaxLabel}
           </abbr>
@@ -92,7 +90,7 @@ export function PriceLabel({ className, colorScheme = 'light', price }: Props) {
 
   return (
     <span className={clsx('block font-semibold', baseColorClass, className)}>
-      <PriceLine colorScheme={colorScheme} price={price} t={t} tax={tax} />
+      <PriceLine price={price} t={t} tax={tax} />
     </span>
   );
 }
@@ -101,13 +99,11 @@ function PriceLine({
   price,
   tax,
   t,
-  colorScheme,
   dim,
 }: {
   price: PricePlain | PriceRange | PriceSale;
   tax: 'inc' | 'ex';
   t: ReturnType<typeof useTranslations<'Components.Price'>>;
-  colorScheme: 'light' | 'dark';
   dim?: boolean;
 }) {
   const dimClass = dim ? 'opacity-60' : undefined;
@@ -137,16 +133,7 @@ function PriceLine({
         {pick(price.previous)}
       </span>{' '}
       <span className="sr-only">{t('currentPrice', { price: pick(price.current) })}</span>
-      <span
-        aria-hidden="true"
-        className={clsx(
-          {
-            light: 'text-[var(--price-light-discount-text,#ff0000)]',
-            dark: 'text-[var(--price-dark-discount-text,#ff0000)]',
-          }[colorScheme],
-          dimClass,
-        )}
-      >
+      <span aria-hidden="true" className={clsx('text-primary', dimClass)}>
         {pick(price.current)}
       </span>
     </>
