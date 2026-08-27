@@ -8,6 +8,7 @@ import { createCompareLoader } from '@/vibes/soul/primitives/compare-drawer/load
 import { ProductsListSection } from '@/vibes/soul/sections/products-list-section';
 import { getFilterParsers } from '@/vibes/soul/sections/products-list-section/filter-parsers';
 import { getSessionCustomerAccessToken } from '~/auth';
+import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
 import { pageInfoTransformer } from '~/data-transformers/page-info-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
@@ -74,6 +75,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function Search(props: Props) {
   const { locale } = await props.params;
+  const customerAccessToken = await getSessionCustomerAccessToken();
 
   setRequestLocale(locale);
 
@@ -92,7 +94,6 @@ export default async function Search(props: Props) {
 
   const streamableFacetedSearch = Streamable.from(async () => {
     const searchParams = await props.searchParams;
-    const customerAccessToken = await getSessionCustomerAccessToken();
     const currencyCode = await getPreferredCurrencyCode();
 
     const loadSearchParams = await createSearchSearchParamsLoader(
@@ -189,7 +190,6 @@ export default async function Search(props: Props) {
   const streamableFilters = Streamable.from(async () => {
     const searchParams = await props.searchParams;
     const searchTerm = typeof searchParams.term === 'string' ? searchParams.term : '';
-    const customerAccessToken = await getSessionCustomerAccessToken();
 
     if (!searchTerm) {
       return [];
@@ -221,7 +221,6 @@ export default async function Search(props: Props) {
 
   const streamableCompareProducts = Streamable.from(async () => {
     const searchParams = await props.searchParams;
-    const customerAccessToken = await getSessionCustomerAccessToken();
 
     if (!productComparisonsEnabled) {
       return [];
@@ -259,6 +258,7 @@ export default async function Search(props: Props) {
       maxCompareLimitMessage={t('Compare.maxCompareLimit')}
       maxItems={MAX_COMPARE_LIMIT}
       paginationInfo={streamablePagination}
+      productListBanner={<WholesalePricingAlert isAuthenticated={customerAccessToken != null} />}
       products={streamableProducts}
       rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
       removeLabel={t('Compare.remove')}
