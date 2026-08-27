@@ -26,11 +26,11 @@ export const price = Group({
   props: {
     light: colorGroup('Light', {
       text: hsl(colors.foreground),
-      saleText: hsl(colors.foreground),
+      saleText: hsl(colors.primary),
     }),
     dark: colorGroup('Dark', {
       text: hsl(colors.background),
-      saleText: hsl(colors.background),
+      saleText: hsl(colors.primary),
     }),
   },
 });

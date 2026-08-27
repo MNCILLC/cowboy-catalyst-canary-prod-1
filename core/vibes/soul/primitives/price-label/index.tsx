@@ -44,9 +44,9 @@ interface Props {
  * ```css
  * :root {
  *   --price-light-text: hsl(var(--foreground));
- *   --price-light-sale-text: hsl(var(--foreground));
+ *   --price-light-sale-text: hsl(var(--primary));
  *   --price-dark-text: hsl(var(--background));
- *   --price-dark-sale-text: hsl(var(--background));
+ *   --price-dark-sale-text: hsl(var(--primary));
  * }
  * ```
  */
@@ -131,8 +131,8 @@ function PriceLine({
   }
 
   const saleColorClass = {
-    light: 'text-[var(--price-light-sale-text,hsl(var(--foreground)))]',
-    dark: 'text-[var(--price-dark-sale-text,hsl(var(--background)))]',
+    light: 'text-[var(--price-light-sale-text,hsl(var(--primary)))]',
+    dark: 'text-[var(--price-dark-sale-text,hsl(var(--primary)))]',
   }[colorScheme];
 
   return (
