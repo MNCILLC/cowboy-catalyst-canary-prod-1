@@ -44,9 +44,9 @@ interface Props {
  * ```css
  * :root {
  *   --price-light-text: hsl(var(--foreground));
- *   --price-light-sale-text: hsl(var(--primary));
+ *   --price-light-discount-text: #ff0000;
  *   --price-dark-text: hsl(var(--background));
- *   --price-dark-sale-text: hsl(var(--primary));
+ *   --price-dark-discount-text: #ff0000;
  * }
  * ```
  */
@@ -130,11 +130,6 @@ function PriceLine({
     );
   }
 
-  const saleColorClass = {
-    light: 'text-[var(--price-light-sale-text,hsl(var(--primary)))]',
-    dark: 'text-[var(--price-dark-sale-text,hsl(var(--primary)))]',
-  }[colorScheme];
-
   return (
     <>
       <span className="sr-only">{t('originalPrice', { price: pick(price.previous) })}</span>
@@ -142,7 +137,16 @@ function PriceLine({
         {pick(price.previous)}
       </span>{' '}
       <span className="sr-only">{t('currentPrice', { price: pick(price.current) })}</span>
-      <span aria-hidden="true" className={clsx(saleColorClass, dimClass)}>
+      <span
+        aria-hidden="true"
+        className={clsx(
+          {
+            light: 'text-[var(--price-light-discount-text,#ff0000)]',
+            dark: 'text-[var(--price-dark-discount-text,#ff0000)]',
+          }[colorScheme],
+          dimClass,
+        )}
+      >
         {pick(price.current)}
       </span>
     </>

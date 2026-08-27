@@ -8,7 +8,7 @@ const colorGroup = (
   label: string,
   defaults: {
     text: string;
-    saleText: string;
+    discountText: string;
   },
 ) =>
   Group({
@@ -16,7 +16,7 @@ const colorGroup = (
     preferredLayout: Group.Layout.Inline,
     props: {
       text: Color({ label: 'Text', defaultValue: defaults.text }),
-      saleText: Color({ label: 'Sale text', defaultValue: defaults.saleText }),
+      discountText: Color({ label: 'Discount text', defaultValue: defaults.discountText }),
     },
   });
 
@@ -26,11 +26,11 @@ export const price = Group({
   props: {
     light: colorGroup('Light', {
       text: hsl(colors.foreground),
-      saleText: hsl(colors.primary),
+      discountText: '#ff0000',
     }),
     dark: colorGroup('Dark', {
       text: hsl(colors.background),
-      saleText: hsl(colors.primary),
+      discountText: '#ff0000',
     }),
   },
 });
