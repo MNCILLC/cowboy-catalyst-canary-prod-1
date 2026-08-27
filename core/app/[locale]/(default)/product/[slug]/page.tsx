@@ -18,6 +18,7 @@ import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { isWholesalePricingMessageEnabled } from '~/lib/wholesale-pricing';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -622,7 +623,7 @@ export default async function Product({ params, searchParams }: Props) {
           thumbnailLabel={t('ProductDetails.thumbnail')}
           user={streamableUser}
           wholesalePricingMessage={
-            customerAccessToken ? undefined : (
+            customerAccessToken || !isWholesalePricingMessageEnabled ? undefined : (
               <>
                 <Link
                   className="font-medium text-foreground underline underline-offset-2"
