@@ -8,7 +8,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
-import { Link } from '~/components/link';
+import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
@@ -18,7 +18,6 @@ import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
-import { isWholesalePricingMessageEnabled } from '~/lib/wholesale-pricing';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -622,18 +621,12 @@ export default async function Product({ params, searchParams }: Props) {
           reviewFormAction={submitReview}
           thumbnailLabel={t('ProductDetails.thumbnail')}
           user={streamableUser}
-          wholesalePricingMessage={
-            customerAccessToken || !isWholesalePricingMessageEnabled ? undefined : (
-              <>
-                <Link
-                  className="font-medium text-foreground underline underline-offset-2"
-                  href={`/login?redirectTo=${encodeURIComponent(baseProduct.path)}`}
-                >
-                  Login/Create Account
-                </Link>{' '}
-                to see wholesale pricing.
-              </>
-            )
+          wholesalePricingAlert={
+            <WholesalePricingAlert
+              className="-mt-2 mb-3"
+              isAuthenticated={customerAccessToken != null}
+              redirectTo={baseProduct.path}
+            />
           }
         />
       </ProductAnalyticsProvider>

@@ -258,7 +258,9 @@ export default async function Search(props: Props) {
       maxCompareLimitMessage={t('Compare.maxCompareLimit')}
       maxItems={MAX_COMPARE_LIMIT}
       paginationInfo={streamablePagination}
-      productListBanner={<WholesalePricingAlert isAuthenticated={customerAccessToken != null} />}
+      productListBanner={
+        <WholesalePricingAlert className="mb-6" isAuthenticated={customerAccessToken != null} />
+      }
       products={streamableProducts}
       rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
       removeLabel={t('Compare.remove')}
