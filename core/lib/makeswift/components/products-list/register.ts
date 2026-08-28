@@ -1,4 +1,5 @@
 import {
+  Checkbox,
   Combobox,
   Group,
   List,
@@ -71,6 +72,10 @@ runtime.registerComponent(MSProductsList, {
         { value: 'dark', label: 'Dark' },
       ],
       defaultValue: 'light',
+    }),
+    showWholesalePricingBanner: Checkbox({
+      label: 'Show wholesale pricing banner',
+      defaultValue: true,
     }),
   },
 });

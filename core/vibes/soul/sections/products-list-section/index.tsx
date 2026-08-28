@@ -1,5 +1,5 @@
 import { Sliders } from 'lucide-react';
-import { Suspense } from 'react';
+import { ReactNode, Suspense } from 'react';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Button } from '@/vibes/soul/primitives/button';
@@ -43,6 +43,7 @@ interface Props {
   removeLabel?: Streamable<string>;
   maxItems?: number;
   maxCompareLimitMessage?: Streamable<string>;
+  productListBanner?: ReactNode;
 }
 
 export function ProductsListSection({
@@ -73,6 +74,7 @@ export function ProductsListSection({
   removeLabel,
   maxItems,
   maxCompareLimitMessage,
+  productListBanner,
 }: Props) {
   return (
     <div className="group/products-list-section @container">
@@ -167,6 +169,7 @@ export function ProductsListSection({
           </aside>
 
           <div className="group-has-data-pending/products-list-section:animate-pulse flex-1">
+            {productListBanner}
             <ProductList
               compareHref={compareHref}
               compareLabel={compareLabel}

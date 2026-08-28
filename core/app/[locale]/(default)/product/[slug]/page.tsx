@@ -8,6 +8,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
+import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
@@ -620,6 +621,13 @@ export default async function Product({ params, searchParams }: Props) {
           reviewFormAction={submitReview}
           thumbnailLabel={t('ProductDetails.thumbnail')}
           user={streamableUser}
+          wholesalePricingAlert={
+            <WholesalePricingAlert
+              className="-mt-2 mb-3"
+              isAuthenticated={customerAccessToken != null}
+              redirectTo={baseProduct.path}
+            />
+          }
         />
       </ProductAnalyticsProvider>
 

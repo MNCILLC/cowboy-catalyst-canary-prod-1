@@ -83,6 +83,7 @@ export interface ProductDetailProps<F extends Field> {
   user: Streamable<{ email: string; name: string }>;
   loadMoreImagesAction?: ProductGalleryLoadMoreAction;
   recaptchaSiteKey?: string;
+  wholesalePricingAlert?: ReactNode;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -127,6 +128,7 @@ export function ProductDetail<F extends Field>({
   user,
   loadMoreImagesAction,
   recaptchaSiteKey,
+  wholesalePricingAlert,
 }: ProductDetailProps<F>) {
   return (
     <section className="@container">
@@ -208,6 +210,7 @@ export function ProductDetail<F extends Field>({
                         <PriceLabel className="my-3 text-xl @xl:text-2xl" price={price ?? ''} />
                       )}
                     </Stream>
+                    {wholesalePricingAlert}
                   </div>
                   {promotionCallouts != null && (
                     <div className="group/product-promotions mb-4">

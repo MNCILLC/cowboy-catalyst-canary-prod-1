@@ -3,6 +3,8 @@
 import { ComponentPropsWithoutRef } from 'react';
 
 import { ProductCarousel, ProductsCarouselSkeleton } from '@/vibes/soul/sections/product-carousel';
+import { WholesalePricingAlertPresentation } from '~/components/wholesale-pricing-alert/presentation';
+import { useWholesalePricingBannerVisibility } from '~/components/wholesale-pricing-alert/use-visibility';
 
 import { useProducts } from '../../utils/use-products';
 
@@ -16,6 +18,7 @@ type MSProductsCarouselProps = Omit<
   additionalProducts: Array<{
     entityId?: string;
   }>;
+  showWholesalePricingBanner: boolean;
 };
 
 export function MSProductsCarousel({
@@ -24,6 +27,7 @@ export function MSProductsCarousel({
   limit,
   additionalProducts,
   hideOverflow,
+  showWholesalePricingBanner = true,
   ...props
 }: MSProductsCarouselProps) {
   const additionalProductIds = additionalProducts.map(({ entityId }) => entityId ?? '');
@@ -32,6 +36,7 @@ export function MSProductsCarousel({
     collectionLimit: limit,
     additionalProductIds,
   });
+  const showBanner = useWholesalePricingBannerVisibility(showWholesalePricingBanner);
 
   if (isLoading) {
     return <ProductsCarouselSkeleton className={className} hideOverflow={hideOverflow} />;
@@ -42,11 +47,16 @@ export function MSProductsCarousel({
   }
 
   return (
-    <ProductCarousel
-      {...props}
-      className={className}
-      hideOverflow={hideOverflow}
-      products={products}
-    />
+    <div className={className}>
+      <div className="flex w-full flex-col">
+        {showBanner && <WholesalePricingAlertPresentation className="mb-6" />}
+        <ProductCarousel
+          {...props}
+          className="w-full"
+          hideOverflow={hideOverflow}
+          products={products}
+        />
+      </div>
+    </div>
   );
 }
