@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useState } from 'react';
+import { type CSSProperties, forwardRef, useEffect, useState } from 'react';
 import Headroom from 'react-headroom';
 
 import { Banner } from '@/vibes/soul/primitives/banner';
@@ -9,10 +9,11 @@ import { Navigation } from '@/vibes/soul/primitives/navigation';
 interface Props {
   navigation: React.ComponentPropsWithoutRef<typeof Navigation>;
   banner?: React.ComponentPropsWithoutRef<typeof Banner>;
+  navigationContainerStyle?: CSSProperties;
 }
 
 export const HeaderSection = forwardRef<React.ComponentRef<'div'>, Props>(
-  ({ navigation, banner }, ref) => {
+  ({ navigation, banner, navigationContainerStyle }, ref) => {
     const [bannerElement, setBannerElement] = useState<HTMLElement | null>(null);
     const [bannerHeight, setBannerHeight] = useState(0);
     const [isFloating, setIsFloating] = useState(false);
@@ -42,7 +43,7 @@ export const HeaderSection = forwardRef<React.ComponentRef<'div'>, Props>(
           onUnpin={() => setIsFloating(true)}
           pinStart={bannerHeight}
         >
-          <div className="p-2">
+          <div className="p-2" style={navigationContainerStyle}>
             <Navigation {...navigation} isFloating={isFloating} />
           </div>
         </Headroom>

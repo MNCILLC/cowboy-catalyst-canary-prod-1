@@ -107,5 +107,15 @@ runtime.registerComponent(MakeswiftHeader, {
       ],
       defaultValue: 'center',
     }),
+    paddingTop: Number({
+      label: 'Top padding',
+      suffix: 'px',
+      defaultValue: 8,
+    }),
+    paddingBottom: Number({
+      label: 'Bottom padding',
+      suffix: 'px',
+      defaultValue: 8,
+    }),
   },
 });
