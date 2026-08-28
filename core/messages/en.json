@@ -485,6 +485,7 @@
       "lineItemNotFound": "Line item not found.",
       "failedToUpdateQuantity": "Failed to update quantity.",
       "somethingWentWrong": "Something went wrong. Please try again later.",
+      "authenticationRequired": "Log in or create an account to proceed to checkout.",
       "minimumOrderNotMet": "A minimum subtotal of {minimum} is required to proceed to checkout."
     }
   },

@@ -5,9 +5,11 @@ import { Streamable } from '@/vibes/soul/lib/streamable';
 import { Price } from '@/vibes/soul/primitives/price-label';
 import { Cart as CartComponent, CartEmptyState } from '@/vibes/soul/sections/cart';
 import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components/cart-analytics-provider';
+import { isLoggedIn } from '~/auth';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
+import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
@@ -76,6 +78,7 @@ export default async function Cart({ params }: Props) {
   const tGiftCertificates = await getTranslations('GiftCertificates');
   const format = await getFormatter();
   const cartId = await getCartId();
+  const isAuthenticated = await isLoggedIn();
 
   const emptyState = (
     <>
@@ -281,6 +284,7 @@ export default async function Cart({ params }: Props) {
       <CartAnalyticsProvider data={Streamable.from(() => getAnalyticsData(cartId))}>
         {checkoutUrl ? <CheckoutPreconnect url={checkoutUrl} /> : null}
         <CartComponent
+          authenticationRequiredMessage={t('Errors.authenticationRequired')}
           cart={{
             lineItems: formattedLineItems,
             subtotal: checkout?.subtotal?.value ?? 0,
@@ -344,6 +348,7 @@ export default async function Cart({ params }: Props) {
             ].filter(exists),
           }}
           checkoutAction={CHECKOUT_URL}
+          checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
           checkoutLabel={t('proceedToCheckout')}
           couponCode={{
             action: updateCouponCode,
@@ -372,6 +377,7 @@ export default async function Cart({ params }: Props) {
               : undefined
           }
           incrementLineItemLabel={t('increment')}
+          isAuthenticated={isAuthenticated}
           // Keyed by entityId only; keying by version too would remount the section on
           // every mutation (see the pending-intent dispatcher notes in the Cart section).
           key={cart.entityId}
