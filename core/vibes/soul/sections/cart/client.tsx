@@ -28,6 +28,7 @@ import {
 import { StickySidebarLayout } from '@/vibes/soul/sections/sticky-sidebar-layout';
 import { useEvents } from '~/components/analytics/events';
 import { Image } from '~/components/image';
+import { Link } from '~/components/link';
 
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
 import { ShippingForm, ShippingFormState } from './shipping-form';
@@ -165,6 +166,7 @@ export interface CartProps<LineItem extends CartLineItem> {
   emptyState?: CartEmptyState;
   lineItemAction: Action<CartState<LineItem>, FormData>;
   checkoutAction: Action<SubmissionResult | null, FormData> | string;
+  checkoutAuthenticationRequired: boolean;
   checkoutLabel?: string;
   deleteLineItemLabel?: string;
   decrementLineItemLabel?: string;
@@ -175,6 +177,8 @@ export interface CartProps<LineItem extends CartLineItem> {
   shipping?: Shipping;
   lineItemActionPendingLabel?: string;
   minimumOrderSubtotal: number;
+  isAuthenticated: boolean;
+  authenticationRequiredMessage?: string;
 }
 
 const defaultEmptyState = {
@@ -221,7 +225,10 @@ export function CartClient<LineItem extends CartLineItem>({
   lineItemAction,
   lineItemActionPendingLabel = 'You have a cart update in progress. Are you sure you want to leave this page? Your changes may be lost.',
   minimumOrderSubtotal,
+  isAuthenticated,
+  authenticationRequiredMessage = 'Log in or create an account to proceed to checkout.',
   checkoutAction,
+  checkoutAuthenticationRequired,
   checkoutLabel = 'Checkout',
   emptyState = defaultEmptyState,
   summaryTitle,
@@ -575,10 +582,23 @@ export function CartClient<LineItem extends CartLineItem>({
               />
             </div>
           )}
+          {checkoutAuthenticationRequired && !isAuthenticated && (
+            <div className="mt-4">
+              <Alert
+                className="w-full !min-w-0 !max-w-none"
+                message={
+                  <Link className="underline underline-offset-2" href="/login?redirectTo=/cart">
+                    {authenticationRequiredMessage}
+                  </Link>
+                }
+                variant="error"
+              />
+            </div>
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
-            disabled={!minimumOrderMet}
+            disabled={!minimumOrderMet || (checkoutAuthenticationRequired && !isAuthenticated)}
             isCartUpdatePending={isCartMutationPending}
           >
             {checkoutLabel}
