@@ -5,14 +5,7 @@
 // click — the standard "third-party facade" pattern. The CSS styles the element.
 import 'lite-youtube-embed/src/lite-yt-embed.css';
 
-import type { CSSProperties } from 'react';
-
-// Register the <lite-youtube> custom element on the client only: the package
-// subclasses HTMLElement at import time, which isn't defined during SSR. The
-// element still renders as inert markup on the server and upgrades on hydration.
-if (typeof window !== 'undefined') {
-  void import('lite-youtube-embed');
-}
+import { type CSSProperties, useEffect } from 'react';
 
 declare module 'react' {
   namespace JSX {
@@ -35,6 +28,13 @@ export interface LiteYouTubeProps {
 }
 
 export function LiteYouTube({ videoId, playLabel, className, style }: LiteYouTubeProps) {
+  // Register the custom element after React hydrates the server-rendered markup.
+  // Its connectedCallback mutates the element, so registering it during module
+  // evaluation can change the DOM before hydration finishes.
+  useEffect(() => {
+    void import('lite-youtube-embed');
+  }, []);
+
   return (
     <lite-youtube
       className={className}
