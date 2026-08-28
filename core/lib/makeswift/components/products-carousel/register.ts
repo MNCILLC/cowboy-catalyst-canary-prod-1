@@ -85,5 +85,9 @@ runtime.registerComponent(MSProductsCarousel, {
       label: 'Hide overflow',
       defaultValue: true,
     }),
+    showWholesalePricingBanner: Checkbox({
+      label: 'Show wholesale pricing banner',
+      defaultValue: true,
+    }),
   },
 });

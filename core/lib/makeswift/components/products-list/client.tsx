@@ -3,6 +3,8 @@
 import { ComponentPropsWithoutRef } from 'react';
 
 import { ProductList, ProductListSkeleton } from '@/vibes/soul/sections/product-list';
+import { WholesalePricingAlertPresentation } from '~/components/wholesale-pricing-alert/presentation';
+import { useWholesalePricingBannerVisibility } from '~/components/wholesale-pricing-alert/use-visibility';
 
 import { useProducts } from '../../utils/use-products';
 
@@ -13,6 +15,7 @@ type MSProductsListProps = Omit<ComponentPropsWithoutRef<typeof ProductList>, 'p
   additionalProducts: Array<{
     entityId?: string;
   }>;
+  showWholesalePricingBanner: boolean;
 };
 
 export function MSProductsList({
@@ -20,6 +23,7 @@ export function MSProductsList({
   collection,
   limit,
   additionalProducts,
+  showWholesalePricingBanner = true,
   ...props
 }: MSProductsListProps) {
   const additionalProductIds = additionalProducts.map(({ entityId }) => entityId ?? '');
@@ -28,6 +32,7 @@ export function MSProductsList({
     collectionLimit: limit,
     additionalProductIds,
   });
+  const showBanner = useWholesalePricingBannerVisibility(showWholesalePricingBanner);
 
   if (isLoading) {
     return <ProductListSkeleton className={className} />;
@@ -37,5 +42,12 @@ export function MSProductsList({
     return <ProductListSkeleton className={className} />;
   }
 
-  return <ProductList {...props} className={className} products={products} />;
+  return (
+    <div className={className}>
+      <div className="flex w-full flex-col">
+        {showBanner && <WholesalePricingAlertPresentation className="mb-6" />}
+        <ProductList {...props} className="w-full" products={products} />
+      </div>
+    </div>
+  );
 }
