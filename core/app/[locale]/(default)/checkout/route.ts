@@ -11,6 +11,7 @@ import { redirect } from '~/i18n/routing';
 import { getVisitIdCookie, getVisitorIdCookie } from '~/lib/analytics/bigcommerce';
 import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
+import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
 import { serverToast } from '~/lib/server-toast';
 
@@ -72,6 +73,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   const customerAccessToken = await getSessionCustomerAccessToken();
   const channelId = getChannelIdFromLocale(locale);
   const t = await getTranslations('Cart.Errors');
+
+  if (isCheckoutAuthenticationRequired && !customerAccessToken) {
+    await serverToast.error(t('authenticationRequired'));
+
+    return redirect({ href: '/login?redirectTo=/checkout/', locale });
+  }
 
   if (!cartId) {
     await serverToast.error(t('cartNotFound'));
