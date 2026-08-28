@@ -72,6 +72,8 @@ interface Props {
     link?: { href: string };
   };
   linksPosition: 'center' | 'left' | 'right';
+  paddingTop: number;
+  paddingBottom: number;
 }
 
 function combineLinks(
@@ -93,7 +95,10 @@ function combineLinks(
 }
 
 export const MakeswiftHeader = forwardRef(
-  ({ banner, links, logo, linksPosition }: Props, ref: Ref<HTMLDivElement>) => {
+  (
+    { banner, links, logo, linksPosition, paddingTop = 8, paddingBottom = 8 }: Props,
+    ref: Ref<HTMLDivElement>,
+  ) => {
     const { navigation: passedProps, banner: passedBanner } = useContext(PropsContext);
     const combinedBanner = banner.show
       ? {
@@ -123,6 +128,7 @@ export const MakeswiftHeader = forwardRef(
           linksPosition,
           logoHref: logo.link?.href ?? passedProps.logoHref,
         }}
+        navigationContainerStyle={{ paddingBottom, paddingTop }}
         ref={ref}
       />
     );
