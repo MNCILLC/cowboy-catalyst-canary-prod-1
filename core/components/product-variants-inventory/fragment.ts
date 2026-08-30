@@ -12,6 +12,9 @@ export const ProductVariantsInventoryFragment = graphql(`
               edges {
                 node {
                   locationEntityId
+                  availableToSell
+                  isInStock
+                  warningLevel
                   backorderMessage
                 }
               }

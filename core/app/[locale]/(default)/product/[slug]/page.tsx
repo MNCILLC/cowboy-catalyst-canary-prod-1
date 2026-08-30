@@ -14,6 +14,7 @@ import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { getPreferredLocationId } from '~/lib/location';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
@@ -41,6 +42,26 @@ import {
 interface Props {
   params: Promise<{ slug: string; locale: string }>;
   searchParams: Promise<SearchParams>;
+}
+
+function getLocationStockDisplay(
+  inventory: { availableToSell: number; isInStock: boolean } | undefined,
+  showOutOfStockMessage: boolean,
+  defaultOutOfStockMessage: string,
+  formatStock: (quantity: number) => string,
+) {
+  if (!inventory) return undefined;
+
+  if (!inventory.isInStock) {
+    return showOutOfStockMessage
+      ? { stockLevelMessage: defaultOutOfStockMessage, backorderAvailabilityPrompt: null }
+      : null;
+  }
+
+  return {
+    stockLevelMessage: formatStock(inventory.availableToSell),
+    backorderAvailabilityPrompt: null,
+  };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -89,6 +110,7 @@ export default async function Product({ params, searchParams }: Props) {
     );
 
   const customerAccessToken = await getSessionCustomerAccessToken();
+  const preferredLocationId = await getPreferredLocationId();
   const detachedWishlistFormId = 'product-add-to-wishlist-form';
 
   setRequestLocale(locale);
@@ -166,6 +188,33 @@ export default async function Product({ params, searchParams }: Props) {
     return removeEdgesAndNodes(variants).find((v) => v.sku === product.sku);
   });
 
+  const streamableSelectedLocationInventory = Streamable.from(async () => {
+    const [product, variant] = await Streamable.all([
+      streamableProductInventory,
+      streamableProductVariantInventory,
+    ]);
+    let locations = variant?.inventory?.byLocation;
+
+    if (!product.inventory.hasVariantInventory) {
+      const baseVariant = removeEdgesAndNodes(product.variants).find((v) => v.sku === product.sku);
+
+      locations = baseVariant?.inventory?.byLocation;
+    }
+
+    const selectedInventory = locations
+      ? removeEdgesAndNodes(locations).find(
+          ({ locationEntityId }) => locationEntityId === preferredLocationId,
+        )
+      : undefined;
+
+    return (
+      selectedInventory ??
+      (product.inventory.isStockTracked
+        ? { availableToSell: 0, isInStock: false, locationEntityId: preferredLocationId }
+        : undefined)
+    );
+  });
+
   const streamableProductPricingAndRelatedProducts = Streamable.from(async () => {
     const currencyCode = await getPreferredCurrencyCode();
 
@@ -220,7 +269,10 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streameableCtaLabel = Streamable.from(async () => {
-    const product = await streamableProductInventory;
+    const [product, selectedInventory] = await Streamable.all([
+      streamableProductInventory,
+      streamableSelectedLocationInventory,
+    ]);
 
     if (product.availabilityV2.status === 'Unavailable') {
       return t('ProductDetails.Submit.unavailable');
@@ -230,7 +282,7 @@ export default async function Product({ params, searchParams }: Props) {
       return t('ProductDetails.Submit.preorder');
     }
 
-    if (!product.inventory.isInStock) {
+    if (selectedInventory ? !selectedInventory.isInStock : !product.inventory.isInStock) {
       return t('ProductDetails.Submit.outOfStock');
     }
 
@@ -238,7 +290,10 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streameableCtaDisabled = Streamable.from(async () => {
-    const product = await streamableProductInventory;
+    const [product, selectedInventory] = await Streamable.all([
+      streamableProductInventory,
+      streamableSelectedLocationInventory,
+    ]);
 
     if (product.availabilityV2.status === 'Unavailable') {
       return true;
@@ -248,7 +303,7 @@ export default async function Product({ params, searchParams }: Props) {
       return false;
     }
 
-    if (!product.inventory.isInStock) {
+    if (selectedInventory ? !selectedInventory.isInStock : !product.inventory.isInStock) {
       return true;
     }
 
@@ -283,16 +338,16 @@ export default async function Product({ params, searchParams }: Props) {
     return backorderAvailabilityPrompt;
   };
 
+  // Inventory display follows BigCommerce's stock, warning, and backorder settings in addition to
+  // the shopper's selected location, so keeping the decision tree together makes the precedence clear.
+  // eslint-disable-next-line complexity
   const streamableStockDisplayData = Streamable.from(async () => {
-    const [product, variant, inventorySetting] = await Streamable.all([
+    const [product, variant, inventorySetting, selectedInventory] = await Streamable.all([
       streamableProductInventory,
       streamableProductVariantInventory,
       streamableInventorySettings,
+      streamableSelectedLocationInventory,
     ]);
-
-    if (!inventorySetting) {
-      return null;
-    }
 
     let inventory;
 
@@ -302,7 +357,7 @@ export default async function Product({ params, searchParams }: Props) {
       inventory = product.inventory;
     }
 
-    if (!inventory) {
+    if (!inventory || !inventorySetting) {
       return null;
     }
 
@@ -315,6 +370,15 @@ export default async function Product({ params, searchParams }: Props) {
       showQuantityOnBackorder,
       backorderAvailabilityPrompt,
     } = inventorySetting;
+
+    const locationStockDisplay = getLocationStockDisplay(
+      selectedInventory,
+      showOutOfStockMessage,
+      defaultOutOfStockMessage,
+      (quantity) => t('ProductDetails.currentStock', { quantity }),
+    );
+
+    if (locationStockDisplay !== undefined) return locationStockDisplay;
 
     if (!inventory.isInStock) {
       return showOutOfStockMessage

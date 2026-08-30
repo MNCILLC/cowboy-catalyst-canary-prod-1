@@ -7,12 +7,50 @@ import { getTranslations } from 'next-intl/server';
 import { ReactNode } from 'react';
 
 import { Field, schema } from '@/vibes/soul/sections/product-detail/schema';
+import { getSessionCustomerAccessToken } from '~/auth';
+import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { Link } from '~/components/link';
 import { addToOrCreateCart } from '~/lib/cart';
 import { MissingCartError } from '~/lib/cart/error';
+import { getPreferredLocationId } from '~/lib/location';
 
 type CartSelectedOptionsInput = ReturnType<typeof graphql.scalar<'CartSelectedOptionsInput'>>;
+
+const ProductLocationStockQuery = graphql(`
+  query ProductLocationStockQuery($entityId: Int!, $optionValueIds: [OptionValueId!]) {
+    site {
+      product(
+        entityId: $entityId
+        optionValueIds: $optionValueIds
+        useDefaultOptionSelections: true
+      ) {
+        sku
+        inventory {
+          isStockTracked
+        }
+        variants {
+          edges {
+            node {
+              sku
+              inventory {
+                byLocation {
+                  edges {
+                    node {
+                      locationEntityId
+                      availableToSell
+                      isInStock
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`);
 
 interface State {
   fields: Field[];
@@ -150,6 +188,41 @@ export const addToCart = async (
   }, {});
 
   try {
+    const [locationId, customerAccessToken] = await Promise.all([
+      getPreferredLocationId(),
+      getSessionCustomerAccessToken(),
+    ]);
+    const optionValueIds = selectedOptions.multipleChoices?.map(
+      ({ optionEntityId, optionValueEntityId }) => ({
+        optionEntityId,
+        valueEntityId: optionValueEntityId,
+      }),
+    );
+    const { data: stockData } = await client.fetch({
+      document: ProductLocationStockQuery,
+      variables: { entityId: productEntityId, optionValueIds },
+      customerAccessToken,
+      fetchOptions: { cache: 'no-store' },
+    });
+    const selectedProduct = stockData.site.product;
+    const selectedVariant = selectedProduct?.variants.edges?.find(
+      ({ node }) => node.sku === selectedProduct.sku,
+    )?.node;
+    const locationStock = selectedVariant?.inventory?.byLocation?.edges?.find(
+      ({ node }) => node.locationEntityId === locationId,
+    )?.node;
+
+    if (
+      selectedProduct?.inventory.isStockTracked &&
+      (!locationStock || !locationStock.isInStock || quantity > locationStock.availableToSell)
+    ) {
+      throw new Error(
+        locationStock && locationStock.availableToSell > 0
+          ? `Only ${locationStock.availableToSell} available at your selected location.`
+          : 'This item is out of stock at your selected location.',
+      );
+    }
+
     await addToOrCreateCart({
       lineItems: [
         {

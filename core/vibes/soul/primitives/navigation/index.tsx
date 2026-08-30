@@ -10,6 +10,7 @@ import {
   ArrowRight,
   ChevronDown,
   GiftIcon,
+  MapPin,
   Search,
   SearchIcon,
   ShoppingBag,
@@ -63,6 +64,11 @@ interface Currency {
   label: string;
 }
 
+interface Location {
+  id: number;
+  label: string;
+}
+
 type Action<State, Payload> = (
   state: Awaited<State>,
   payload: Awaited<Payload>,
@@ -88,6 +94,7 @@ export type SearchResult =
 
 type CurrencyAction = Action<SubmissionResult | null, FormData>;
 type LocaleAction = (locale: string) => Promise<void> | void;
+type LocationAction = (locationId: number) => Promise<void> | void;
 type SearchAction<S extends SearchResult> = Action<
   {
     searchResults: S[] | null;
@@ -131,6 +138,10 @@ interface Props<S extends SearchResult> {
   searchLabel?: string;
   mobileMenuTriggerLabel?: string;
   switchCurrencyLabel?: string;
+  locations?: Location[];
+  activeLocationId?: number;
+  locationAction?: LocationAction;
+  switchLocationLabel?: string;
   giftCertificatesLabel?: string;
   giftCertificatesHref: string;
   giftCertificatesEnabled?: Streamable<boolean>;
@@ -302,6 +313,10 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
     searchLabel = 'Search',
     mobileMenuTriggerLabel = 'Toggle navigation',
     switchCurrencyLabel,
+    locations,
+    activeLocationId,
+    locationAction,
+    switchLocationLabel = 'Choose shopping location',
     giftCertificatesLabel = 'Gift Certificates',
     giftCertificatesHref,
     giftCertificatesEnabled: streamableGiftCertificatesEnabled,
@@ -406,6 +421,16 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
                     ))
                   }
                 </Stream>
+                {locations && locations.length > 0 && locationAction ? (
+                  <div className="p-3 @4xl:hidden">
+                    <LocationSwitcher
+                      action={locationAction}
+                      activeLocationId={activeLocationId}
+                      label={switchLocationLabel}
+                      locations={locations}
+                    />
+                  </div>
+                ) : null}
                 {/* Mobile Locale / Currency Dropdown */}
                 {locales && locales.length > 1 && streamableCurrencies && (
                   <div className="p-2 @4xl:p-5">
@@ -559,6 +584,15 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
             linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
           )}
         >
+          {locations && locations.length > 0 && locationAction ? (
+            <LocationSwitcher
+              action={locationAction}
+              activeLocationId={activeLocationId}
+              className="hidden @2xl:block"
+              label={switchLocationLabel}
+              locations={locations}
+            />
+          ) : null}
           {searchAction ? (
             <Popover.Root onOpenChange={setIsSearchOpen} open={isSearchOpen}>
               <Popover.Anchor className="absolute left-0 right-0 top-full" />
@@ -669,6 +703,72 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
 });
 
 Navigation.displayName = 'Navigation';
+
+function LocationSwitcher({
+  action,
+  activeLocationId,
+  className,
+  label,
+  locations,
+}: {
+  action: LocationAction;
+  activeLocationId?: number;
+  className?: string;
+  label: string;
+  locations: Location[];
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const activeLocation = locations.find(({ id }) => id === activeLocationId) ?? locations[0];
+
+  if (!activeLocation) return null;
+
+  return (
+    <div className={className}>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          aria-label={label}
+          className={clsx(
+            'flex max-w-48 items-center gap-1.5 px-2 text-xs transition-opacity disabled:opacity-30',
+            navButtonClassName,
+          )}
+          disabled={isPending}
+        >
+          <MapPin aria-hidden="true" size={18} strokeWidth={1.5} />
+          <span className="truncate">{activeLocation.label}</span>
+          <ChevronDown aria-hidden="true" size={14} strokeWidth={1.5} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            className="z-50 max-h-80 min-w-56 overflow-y-auto rounded-xl bg-[var(--nav-locale-background,hsl(var(--background)))] p-2 shadow-xl @4xl:rounded-2xl"
+            sideOffset={16}
+          >
+            {locations.map((location) => (
+              <DropdownMenu.Item
+                className={clsx(
+                  'cursor-default rounded-lg px-2.5 py-2 text-sm font-medium outline-none ring-[var(--nav-focus,hsl(var(--primary)))] hover:bg-[var(--nav-locale-link-background-hover,hsl(var(--contrast-100)))]',
+                  location.id === activeLocation.id
+                    ? 'text-[var(--nav-locale-link-text-selected,hsl(var(--foreground)))]'
+                    : 'text-[var(--nav-locale-link-text,hsl(var(--contrast-400)))]',
+                )}
+                key={location.id}
+                onSelect={() => {
+                  startTransition(async () => {
+                    await action(location.id);
+                    router.refresh();
+                  });
+                }}
+              >
+                {location.label}
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </div>
+  );
+}
 
 function SearchForm<S extends SearchResult>({
   searchAction,

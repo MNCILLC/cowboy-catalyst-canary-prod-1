@@ -245,6 +245,9 @@ const StreamableProductVariantInventoryBySkuQuery = graphql(`
                   edges {
                     node {
                       locationEntityId
+                      availableToSell
+                      isInStock
+                      warningLevel
                       backorderMessage
                     }
                   }
@@ -376,6 +379,7 @@ const StreamableProductInventoryQuery = graphql(
           inventory {
             hasVariantInventory
             isInStock
+            isStockTracked
             aggregated {
               availableToSell
               warningLevel

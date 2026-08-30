@@ -13,15 +13,45 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { getPreferredLocationId } from '~/lib/location';
 import { serverToast } from '~/lib/server-toast';
 
 const CheckoutEligibilityQuery = graphql(`
   query CheckoutEligibilityQuery($cartId: String) {
     site {
       checkout(entityId: $cartId) {
+        entityId
+        customerMessage
         subtotal {
           value
           currencyCode
+        }
+      }
+    }
+  }
+`);
+
+const CheckoutLocationQuery = graphql(`
+  query CheckoutLocationQuery($locationId: [Int!]) {
+    inventory {
+      locations(first: 1, entityIds: $locationId) {
+        edges {
+          node {
+            entityId
+            label
+          }
+        }
+      }
+    }
+  }
+`);
+
+const SetCheckoutLocationMutation = graphql(`
+  mutation SetCheckoutLocationMutation($input: UpdateCheckoutCustomerMessageInput!) {
+    checkout {
+      updateCheckoutCustomerMessage(input: $input) {
+        checkout {
+          entityId
         }
       }
     }
@@ -66,6 +96,44 @@ const CheckoutRedirectMutation = graphql(`
     }
   }
 `);
+
+async function setCheckoutShoppingLocation({
+  channelId,
+  checkout,
+  customerAccessToken,
+}: {
+  channelId: string | undefined;
+  checkout: { entityId: string; customerMessage?: string | null };
+  customerAccessToken?: string;
+}) {
+  const locationId = await getPreferredLocationId();
+  const { data } = await client.fetch({
+    document: CheckoutLocationQuery,
+    variables: { locationId: [locationId] },
+    fetchOptions: { cache: 'no-store' },
+    customerAccessToken,
+    channelId,
+  });
+  const location = data.inventory.locations.edges?.[0]?.node;
+
+  if (!location) return;
+
+  const marker = `[Shopping location: ${location.label} (#${location.entityId})]`;
+  const customerMessage = checkout.customerMessage?.replace(/^\[Shopping location:.*?\]\s*/, '');
+
+  await client.fetch({
+    document: SetCheckoutLocationMutation,
+    variables: {
+      input: {
+        checkoutEntityId: checkout.entityId,
+        data: { message: `${marker}${customerMessage ? ` ${customerMessage}` : ''}` },
+      },
+    },
+    fetchOptions: { cache: 'no-store' },
+    customerAccessToken,
+    channelId,
+  });
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -113,6 +181,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
       return redirect({ href: '/cart', locale });
     }
+
+    const checkout = eligibilityData.site.checkout;
+
+    if (checkout) await setCheckoutShoppingLocation({ channelId, checkout, customerAccessToken });
 
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
