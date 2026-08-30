@@ -15,6 +15,7 @@ import { productCardTransformer } from '~/data-transformers/product-card-transfo
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getPreferredLocationId } from '~/lib/location';
+import { getLocationInventory } from '~/lib/location/get-location-inventory';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
@@ -189,23 +190,8 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamableSelectedLocationInventory = Streamable.from(async () => {
-    const [product, variant] = await Streamable.all([
-      streamableProductInventory,
-      streamableProductVariantInventory,
-    ]);
-    let locations = variant?.inventory?.byLocation;
-
-    if (!product.inventory.hasVariantInventory) {
-      const baseVariant = removeEdgesAndNodes(product.variants).find((v) => v.sku === product.sku);
-
-      locations = baseVariant?.inventory?.byLocation;
-    }
-
-    const selectedInventory = locations
-      ? removeEdgesAndNodes(locations).find(
-          ({ locationEntityId }) => locationEntityId === preferredLocationId,
-        )
-      : undefined;
+    const product = await streamableProductInventory;
+    const selectedInventory = await getLocationInventory(preferredLocationId, product.sku);
 
     return (
       selectedInventory ??
@@ -282,7 +268,10 @@ export default async function Product({ params, searchParams }: Props) {
       return t('ProductDetails.Submit.preorder');
     }
 
-    if (selectedInventory ? !selectedInventory.isInStock : !product.inventory.isInStock) {
+    if (
+      !product.inventory.isInStock ||
+      (selectedInventory ? !selectedInventory.isInStock : false)
+    ) {
       return t('ProductDetails.Submit.outOfStock');
     }
 
@@ -303,7 +292,10 @@ export default async function Product({ params, searchParams }: Props) {
       return false;
     }
 
-    if (selectedInventory ? !selectedInventory.isInStock : !product.inventory.isInStock) {
+    if (
+      !product.inventory.isInStock ||
+      (selectedInventory ? !selectedInventory.isInStock : false)
+    ) {
       return true;
     }
 

@@ -14,11 +14,12 @@ import { Link } from '~/components/link';
 import { addToOrCreateCart } from '~/lib/cart';
 import { MissingCartError } from '~/lib/cart/error';
 import { getPreferredLocationId } from '~/lib/location';
+import { getLocationInventory } from '~/lib/location/get-location-inventory';
 
 type CartSelectedOptionsInput = ReturnType<typeof graphql.scalar<'CartSelectedOptionsInput'>>;
 
-const ProductLocationStockQuery = graphql(`
-  query ProductLocationStockQuery($entityId: Int!, $optionValueIds: [OptionValueId!]) {
+const ProductSkuQuery = graphql(`
+  query ProductSkuQuery($entityId: Int!, $optionValueIds: [OptionValueId!]) {
     site {
       product(
         entityId: $entityId
@@ -28,24 +29,6 @@ const ProductLocationStockQuery = graphql(`
         sku
         inventory {
           isStockTracked
-        }
-        variants {
-          edges {
-            node {
-              sku
-              inventory {
-                byLocation {
-                  edges {
-                    node {
-                      locationEntityId
-                      availableToSell
-                      isInStock
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
       }
     }
@@ -188,29 +171,23 @@ export const addToCart = async (
   }, {});
 
   try {
-    const [locationId, customerAccessToken] = await Promise.all([
-      getPreferredLocationId(),
-      getSessionCustomerAccessToken(),
-    ]);
+    const locationId = await getPreferredLocationId();
     const optionValueIds = selectedOptions.multipleChoices?.map(
       ({ optionEntityId, optionValueEntityId }) => ({
         optionEntityId,
         valueEntityId: optionValueEntityId,
       }),
     );
-    const { data: stockData } = await client.fetch({
-      document: ProductLocationStockQuery,
+    const { data: productData } = await client.fetch({
+      document: ProductSkuQuery,
       variables: { entityId: productEntityId, optionValueIds },
-      customerAccessToken,
+      customerAccessToken: await getSessionCustomerAccessToken(),
       fetchOptions: { cache: 'no-store' },
     });
-    const selectedProduct = stockData.site.product;
-    const selectedVariant = selectedProduct?.variants.edges?.find(
-      ({ node }) => node.sku === selectedProduct.sku,
-    )?.node;
-    const locationStock = selectedVariant?.inventory?.byLocation?.edges?.find(
-      ({ node }) => node.locationEntityId === locationId,
-    )?.node;
+    const selectedProduct = productData.site.product;
+    const locationStock = selectedProduct
+      ? await getLocationInventory(locationId, selectedProduct.sku)
+      : undefined;
 
     if (
       selectedProduct?.inventory.isStockTracked &&

@@ -14,6 +14,7 @@ import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
 import { getPreferredLocationId } from '~/lib/location';
+import { getAllLocations } from '~/lib/location/get-locations';
 import { serverToast } from '~/lib/server-toast';
 
 const CheckoutEligibilityQuery = graphql(`
@@ -25,21 +26,6 @@ const CheckoutEligibilityQuery = graphql(`
         subtotal {
           value
           currencyCode
-        }
-      }
-    }
-  }
-`);
-
-const CheckoutLocationQuery = graphql(`
-  query CheckoutLocationQuery($locationId: [Int!]) {
-    inventory {
-      locations(first: 1, entityIds: $locationId) {
-        edges {
-          node {
-            entityId
-            label
-          }
         }
       }
     }
@@ -107,18 +93,11 @@ async function setCheckoutShoppingLocation({
   customerAccessToken?: string;
 }) {
   const locationId = await getPreferredLocationId();
-  const { data } = await client.fetch({
-    document: CheckoutLocationQuery,
-    variables: { locationId: [locationId] },
-    fetchOptions: { cache: 'no-store' },
-    customerAccessToken,
-    channelId,
-  });
-  const location = data.inventory.locations.edges?.[0]?.node;
+  const location = (await getAllLocations()).find(({ id }) => id === locationId);
 
   if (!location) return;
 
-  const marker = `[Shopping location: ${location.label} (#${location.entityId})]`;
+  const marker = `[Shopping location: ${location.label} (#${location.id})]`;
   const customerMessage = checkout.customerMessage?.replace(/^\[Shopping location:.*?\]\s*/, '');
 
   await client.fetch({
