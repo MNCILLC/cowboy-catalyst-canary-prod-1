@@ -74,6 +74,8 @@ interface Destination {
   address: Address;
   shipments: Shipment[];
   lineItems: ShipmentLineItem[];
+  addressLabel?: string;
+  methodLabel?: string;
 }
 
 interface EmailDestination {
@@ -165,10 +167,10 @@ export function OrderDetailsSection({
               <div className="order-2 flex-1 pr-12 @3xl:order-1">
                 {order.destinations.map((destination) => (
                   <Shipment
-                    addressLabel={shipmentAddressLabel}
+                    addressLabel={destination.addressLabel ?? shipmentAddressLabel}
                     destination={destination}
                     key={destination.id}
-                    methodLabel={shipmentMethodLabel}
+                    methodLabel={destination.methodLabel ?? shipmentMethodLabel}
                   />
                 ))}
                 {order.emailDestinations.map((destination, index) => (

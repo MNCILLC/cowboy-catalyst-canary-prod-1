@@ -1,11 +1,11 @@
-import { NextResponse, URLPattern } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { anonymousSignIn, auth, clearAnonymousSession, getAnonymousSession } from '~/auth';
 
 import { type ProxyFactory } from './compose-proxies';
 
 // Path matcher for any routes that require authentication
-const protectedPathPattern = new URLPattern({ pathname: `{/:locale}?/(account)/*` });
+const PROTECTED_PATH_RE = /^\/(?:[^/]+\/)?account(?:\/|$)/i;
 const SESSION_TOKEN_COOKIE_RE = /^(__Secure-)?authjs\.session-token(\.\d+)?=/;
 
 function redirectToLogin(url: string) {
@@ -37,7 +37,7 @@ export const withAuth: ProxyFactory = (next) => {
   return async (request, event) => {
     const response = await auth(async (req) => {
       const anonymousSession = await getAnonymousSession();
-      const isProtectedRoute = protectedPathPattern.test(req.nextUrl.toString().toLowerCase());
+      const isProtectedRoute = PROTECTED_PATH_RE.test(req.nextUrl.pathname);
       const isGetRequest = req.method === 'GET';
 
       // Create the anonymous session if it doesn't exist

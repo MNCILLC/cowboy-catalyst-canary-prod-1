@@ -1,4 +1,4 @@
-import { NextResponse, URLPattern } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '~/auth';
@@ -7,7 +7,6 @@ import { client } from '~/client';
 import { type ProxyFactory } from './compose-proxies';
 
 const ALLOWED_REQUESTERS = ['checkout-sdk-js'];
-const graphqlPathPattern = new URLPattern({ pathname: '/graphql' });
 
 const bodySchema = z.object({
   query: z.unknown(),
@@ -17,7 +16,7 @@ const bodySchema = z.object({
 export const withGraphqlProxy: ProxyFactory = (next) => {
   return async (request, event) => {
     // Only handle /graphql path
-    if (!graphqlPathPattern.test(request.nextUrl.toString())) {
+    if (request.nextUrl.pathname !== '/graphql') {
       return next(request, event);
     }
 

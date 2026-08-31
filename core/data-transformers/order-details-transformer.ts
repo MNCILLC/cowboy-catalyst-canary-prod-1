@@ -41,6 +41,45 @@ export const orderDetailsTransformer = (
   format: ExistingResultType<typeof getFormatter>,
   tGiftCertificate: ExistingResultType<typeof getTranslations<'Cart.GiftCertificate'>>,
 ): Order => {
+  const mapPhysicalLineItem = (
+    lineItem: NonNullable<
+      ExistingResultType<typeof getCustomerOrderDetails>['consignments']['shipping']
+    >[number]['lineItems'][number],
+  ) => {
+    const price = lineItem.catalogProductWithOptionSelections?.prices?.price
+      ? format.number(lineItem.catalogProductWithOptionSelections.prices.price.value, {
+          style: 'currency',
+          currency: lineItem.catalogProductWithOptionSelections.prices.price.currencyCode,
+        })
+      : format.number(lineItem.subTotalListPrice.value / lineItem.quantity, {
+          style: 'currency',
+          currency: lineItem.subTotalListPrice.currencyCode,
+        });
+
+    return {
+      id: String(lineItem.entityId),
+      title: lineItem.name,
+      subtitle: lineItem.brand ?? '',
+      price,
+      totalPrice: format.number(lineItem.subTotalListPrice.value, {
+        style: 'currency',
+        currency: lineItem.subTotalListPrice.currencyCode,
+      }),
+      href: lineItem.baseCatalogProduct?.path ?? undefined,
+      image: lineItem.image
+        ? {
+            src: lineItem.image.url,
+            alt: lineItem.image.altText,
+          }
+        : undefined,
+      quantity: lineItem.quantity,
+      metadata: lineItem.productOptions.map((option) => ({
+        label: option.name,
+        value: option.value,
+      })),
+    };
+  };
+
   const paymentMethods = removeEdgesAndNodes(order.payments).map((payment) => {
     if (payment.detail?.__typename === 'CreditCardPaymentInstrument') {
       return {
@@ -79,49 +118,49 @@ export const orderDetailsTransformer = (
     };
   });
 
+  if (paymentMethods.length === 0 && order.fallbackPayment) {
+    paymentMethods.push({
+      title: order.fallbackPayment.name,
+      subtitle: undefined,
+      amount: format.number(order.fallbackPayment.amount, {
+        style: 'currency',
+        currency: order.fallbackPayment.currencyCode,
+      }),
+    });
+  }
+
   return {
     date: format.dateTime(new Date(order.orderedAt.utc)),
     id: String(order.entityId),
     status: order.status.label,
     statusColor: getStatusColor(order.status.value),
-    destinations:
-      order.consignments.shipping?.map((consignment, index, arr) => {
+    destinations: [
+      ...(order.consignments.pickups?.map((consignment) => ({
+        id: `pickup-${consignment.entityId}`,
+        title: consignment.locationName,
+        addressLabel: 'Pickup address',
+        methodLabel: 'Pickup method',
+        lineItems: consignment.lineItems.map(mapPhysicalLineItem),
+        address: {
+          city: consignment.address.city,
+          country: consignment.address.country,
+          state: consignment.address.stateOrProvince ?? '',
+          street1: consignment.address.address1,
+          street2: consignment.address.address2 ?? '',
+          zipcode: consignment.address.postalCode,
+          name: consignment.locationName,
+        },
+        shipments: [
+          {
+            name: consignment.pickupMethodName,
+            status: consignment.collectionTimeDescription || consignment.collectionInstructions,
+          },
+        ],
+      })) ?? []),
+      ...(order.consignments.shipping?.map((consignment, index, arr) => {
         return {
           id: String(consignment.entityId),
-          lineItems: consignment.lineItems.map((lineItem) => {
-            const price = lineItem.catalogProductWithOptionSelections?.prices?.price
-              ? format.number(lineItem.catalogProductWithOptionSelections.prices.price.value, {
-                  style: 'currency',
-                  currency: lineItem.catalogProductWithOptionSelections.prices.price.currencyCode,
-                })
-              : format.number(lineItem.subTotalListPrice.value / lineItem.quantity, {
-                  style: 'currency',
-                  currency: lineItem.subTotalListPrice.currencyCode,
-                });
-
-            return {
-              id: String(lineItem.entityId),
-              title: lineItem.name,
-              subtitle: lineItem.brand ?? '',
-              price,
-              totalPrice: format.number(lineItem.subTotalListPrice.value, {
-                style: 'currency',
-                currency: lineItem.subTotalListPrice.currencyCode,
-              }),
-              href: lineItem.baseCatalogProduct?.path ?? undefined,
-              image: lineItem.image
-                ? {
-                    src: lineItem.image.url,
-                    alt: lineItem.image.altText,
-                  }
-                : undefined,
-              quantity: lineItem.quantity,
-              metadata: lineItem.productOptions.map((option) => ({
-                label: option.name,
-                value: option.value,
-              })),
-            };
-          }),
+          lineItems: consignment.lineItems.map(mapPhysicalLineItem),
           title:
             arr.length > 1
               ? t('destinationWithCount', { number: index + 1, total: arr.length })
@@ -143,7 +182,8 @@ export const orderDetailsTransformer = (
             };
           }),
         };
-      }) ?? [],
+      }) ?? []),
+    ],
     emailDestinations:
       order.consignments.email?.map(({ email, lineItems }) => ({
         title: t('digitalDelivery', { email }),

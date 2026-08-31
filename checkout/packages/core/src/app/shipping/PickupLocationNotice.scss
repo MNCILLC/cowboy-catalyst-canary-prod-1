@@ -1,0 +1,26 @@
+.pickupLocationNotice {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #b7d7c3;
+  border-radius: 0.25rem;
+  background: #f1faf4;
+  color: #193c27;
+}
+
+.pickupLocationNotice-label {
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pickupLocationNotice-name {
+  display: block;
+  font-size: 1rem;
+}
+
+.pickupLocationNotice-description {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+}

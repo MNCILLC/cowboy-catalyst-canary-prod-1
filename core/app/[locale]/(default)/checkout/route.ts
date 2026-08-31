@@ -2,6 +2,7 @@ import { BigCommerceAuthError } from '@bigcommerce/catalyst-client';
 import { unstable_rethrow as rethrow } from 'next/navigation';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTranslations } from 'next-intl/server';
+import { z } from 'zod';
 
 import { getSessionCustomerAccessToken } from '~/auth';
 import { getChannelIdFromLocale } from '~/channels.config';
@@ -15,6 +16,11 @@ import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication'
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
 import { getPreferredLocationId } from '~/lib/location';
 import { getAllLocations } from '~/lib/location/get-locations';
+import {
+  getLocationPickupMethodId,
+  PickupCheckoutError,
+  prepareShippingCheckout,
+} from '~/lib/pickup/prepare-pickup-checkout';
 import { serverToast } from '~/lib/server-toast';
 
 const CheckoutEligibilityQuery = graphql(`
@@ -83,7 +89,7 @@ const CheckoutRedirectMutation = graphql(`
   }
 `);
 
-async function setCheckoutShoppingLocation({
+async function prepareCheckoutForShoppingLocation({
   channelId,
   checkout,
   customerAccessToken,
@@ -95,10 +101,16 @@ async function setCheckoutShoppingLocation({
   const locationId = await getPreferredLocationId();
   const location = (await getAllLocations()).find(({ id }) => id === locationId);
 
-  if (!location) return;
+  if (!location) {
+    throw new PickupCheckoutError(`Shopping location ${locationId} is not available.`);
+  }
 
-  const marker = `[Shopping location: ${location.label} (#${location.id})]`;
-  const customerMessage = checkout.customerMessage?.replace(/^\[Shopping location:.*?\]\s*/, '');
+  const pickupMethodId = await getLocationPickupMethodId(location.id);
+  const marker = `[Shopping location: ${location.label} (#${location.id})][Pickup method: #${pickupMethodId}]`;
+  const customerMessage = checkout.customerMessage?.replace(
+    /^\[Shopping location:.*?\](?:\[Pickup method: #\d+\])?\s*/,
+    '',
+  );
 
   await client.fetch({
     document: SetCheckoutLocationMutation,
@@ -112,6 +124,36 @@ async function setCheckoutShoppingLocation({
     customerAccessToken,
     channelId,
   });
+
+  await prepareShippingCheckout(checkout.entityId);
+}
+
+function isPickupPreparationError(error: unknown): boolean {
+  return error instanceof PickupCheckoutError || error instanceof z.ZodError;
+}
+
+async function handleCheckoutError(error: unknown, locale: string, errorMessage: string) {
+  rethrow(error);
+
+  if (error instanceof BigCommerceAuthError) {
+    return redirect({ href: '/logout?redirectTo=/checkout/', locale });
+  }
+
+  if (isPickupPreparationError(error)) {
+    // eslint-disable-next-line no-console
+    console.error('Unable to prepare BigCommerce pickup checkout', error);
+    await serverToast.error(errorMessage);
+
+    return redirect({ href: '/cart', locale });
+  }
+
+  // eslint-disable-next-line no-console
+  console.error(error);
+
+  return NextResponse.json(
+    { message: 'Server error' },
+    { status: 500, statusText: 'Server error' },
+  );
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
@@ -163,7 +205,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
     const checkout = eligibilityData.site.checkout;
 
-    if (checkout) await setCheckoutShoppingLocation({ channelId, checkout, customerAccessToken });
+    if (checkout) {
+      await prepareCheckoutForShoppingLocation({ channelId, checkout, customerAccessToken });
+    }
 
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
@@ -196,18 +240,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       locale,
     });
   } catch (error) {
-    rethrow(error);
-
-    if (error instanceof BigCommerceAuthError) {
-      return redirect({ href: '/logout?redirectTo=/checkout/', locale });
-    }
-
-    // eslint-disable-next-line no-console
-    console.error(error);
-
-    return NextResponse.json(
-      { message: 'Server error' },
-      { status: 500, statusText: 'Server error' },
-    );
+    return handleCheckoutError(error, locale, t('somethingWentWrong'));
   }
 }
