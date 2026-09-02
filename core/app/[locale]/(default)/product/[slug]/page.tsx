@@ -481,7 +481,7 @@ export default async function Product({ params, searchParams }: Props) {
           ]
         : []),
       ...customFields.map((field) => ({
-        name: field.name,
+        name: `${field.name.charAt(0).toLocaleUpperCase(locale)}${field.name.slice(1)}`,
         value: field.value,
       })),
     ];
