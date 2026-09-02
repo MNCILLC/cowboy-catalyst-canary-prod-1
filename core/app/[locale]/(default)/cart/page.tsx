@@ -28,6 +28,9 @@ interface Props {
 }
 
 const CHECKOUT_URL = process.env.TRAILING_SLASH !== 'false' ? '/checkout/' : '/checkout';
+const SHOW_SHIPPING_QUOTE_MESSAGE = process.env.SHOW_SHIPPING_QUOTE_MESSAGE === 'true';
+const SHIPPING_QUOTE_MESSAGE =
+  "We cannot currently provide live shipping quotes. When you checkout, enter your addresss and select 'Pick up at warehouse'.  A sales rep will contact you to generate your shipping quote and coordinate delivery.";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -350,6 +353,8 @@ export default async function Cart({ params }: Props) {
           checkoutAction={CHECKOUT_URL}
           checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
           checkoutLabel={t('proceedToCheckout')}
+          checkoutMessage={SHOW_SHIPPING_QUOTE_MESSAGE ? SHIPPING_QUOTE_MESSAGE : undefined}
+          checkoutMessageTitle={SHOW_SHIPPING_QUOTE_MESSAGE ? 'Shipping Quotes Note' : undefined}
           couponCode={{
             action: updateCouponCode,
             couponCodes: checkout?.coupons.map((coupon) => coupon.code) ?? [],
