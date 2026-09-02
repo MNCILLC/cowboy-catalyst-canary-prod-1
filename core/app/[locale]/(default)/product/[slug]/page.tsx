@@ -463,20 +463,23 @@ export default async function Product({ params, searchParams }: Props) {
     const product = await streamableProduct;
 
     const customFields = removeEdgesAndNodes(product.customFields);
+    const weightValue = product.weight?.value;
+    const hasWeight =
+      weightValue != null && String(weightValue).trim() !== '' && Number(weightValue) !== 0;
 
     const specifications = [
       {
         name: t('ProductDetails.Accordions.sku'),
         value: product.sku,
       },
-      {
-        name: t('ProductDetails.Accordions.weight'),
-        value: `${product.weight?.value} ${product.weight?.unit}`,
-      },
-      {
-        name: t('ProductDetails.Accordions.condition'),
-        value: product.condition,
-      },
+      ...(hasWeight
+        ? [
+            {
+              name: t('ProductDetails.Accordions.weight'),
+              value: `${weightValue} ${product.weight?.unit}`,
+            },
+          ]
+        : []),
       ...customFields.map((field) => ({
         name: field.name,
         value: field.value,
