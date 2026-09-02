@@ -28,9 +28,9 @@ interface Props {
 }
 
 const CHECKOUT_URL = process.env.TRAILING_SLASH !== 'false' ? '/checkout/' : '/checkout';
-const SHOW_SHIPPING_QUOTE_MESSAGE = process.env.SHOW_SHIPPING_QUOTE_MESSAGE === 'true';
-const SHIPPING_QUOTE_MESSAGE =
-  "We cannot currently provide live shipping quotes. When you checkout, enter your addresss and select 'Pick up at warehouse'.  A sales rep will contact you to generate your shipping quote and coordinate delivery.";
+const SHOW_SHIPPING_QUOTE_MESSAGE =
+  process.env.SHIPPING_QUOTE_MESSAGE && process.env.SHOW_SHIPPING_QUOTE_MESSAGE === 'true';
+const SHIPPING_QUOTE_MESSAGE = process.env.SHIPPING_QUOTE_MESSAGE ?? '';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
