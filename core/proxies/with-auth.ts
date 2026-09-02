@@ -1,4 +1,4 @@
-import { NextResponse, URLPattern } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { anonymousSignIn, auth, clearAnonymousSession, getAnonymousSession } from '~/auth';
 

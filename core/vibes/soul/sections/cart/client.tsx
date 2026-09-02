@@ -3,7 +3,7 @@
 import { SubmissionResult, useForm } from '@conform-to/react';
 import { clsx } from 'clsx';
 import debounce from 'lodash.debounce';
-import { ArrowRight, GiftIcon, Minus, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, GiftIcon, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import {
   ComponentPropsWithoutRef,
   FormEvent,
@@ -168,6 +168,8 @@ export interface CartProps<LineItem extends CartLineItem> {
   checkoutAction: Action<SubmissionResult | null, FormData> | string;
   checkoutAuthenticationRequired: boolean;
   checkoutLabel?: string;
+  checkoutMessage?: string;
+  checkoutMessageTitle?: string;
   deleteLineItemLabel?: string;
   decrementLineItemLabel?: string;
   incrementLineItemLabel?: string;
@@ -230,6 +232,8 @@ export function CartClient<LineItem extends CartLineItem>({
   checkoutAction,
   checkoutAuthenticationRequired,
   checkoutLabel = 'Checkout',
+  checkoutMessage,
+  checkoutMessageTitle,
   emptyState = defaultEmptyState,
   summaryTitle,
   shipping,
@@ -594,6 +598,23 @@ export function CartClient<LineItem extends CartLineItem>({
                 variant="error"
               />
             </div>
+          )}
+          {checkoutMessage != null && (
+            <Alert
+              className="mt-4 w-full !min-w-0 !max-w-none"
+              message={
+                <>
+                  {checkoutMessageTitle != null && (
+                    <span className="mb-1 flex items-center gap-2 font-semibold">
+                      <TriangleAlert aria-hidden="true" className="shrink-0" size={18} />
+                      {checkoutMessageTitle}
+                    </span>
+                  )}
+                  <span className="block">{checkoutMessage}</span>
+                </>
+              }
+              variant="warning"
+            />
           )}
           <CheckoutButton
             action={checkoutAction}

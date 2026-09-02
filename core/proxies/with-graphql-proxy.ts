@@ -1,4 +1,4 @@
-import { NextResponse, URLPattern } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { auth } from '~/auth';
