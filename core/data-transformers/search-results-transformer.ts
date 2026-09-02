@@ -4,7 +4,7 @@ import { getFormatter, getTranslations } from 'next-intl/server';
 import { SearchResult } from '@/vibes/soul/primitives/navigation';
 import { SearchProductFragment } from '~/components/header/_actions/fragment';
 
-import { pricesTransformer, TaxDisplay } from './prices-transformer';
+import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
 
 export async function searchResultsTransformer(
   searchProducts: Array<ResultOf<typeof SearchProductFragment>>,
@@ -12,11 +12,12 @@ export async function searchResultsTransformer(
 ): Promise<SearchResult[]> {
   const format = await getFormatter();
   const t = await getTranslations('Components.Header.Search');
+  const visibleProducts = searchProducts.filter((product) => !hasZeroPrice(product));
 
   const productResults: SearchResult = {
     type: 'products',
     title: t('products'),
-    products: searchProducts.map((product) => {
+    products: visibleProducts.map((product) => {
       const price = pricesTransformer(product, format, taxDisplay);
 
       return {
@@ -35,9 +36,9 @@ export async function searchResultsTransformer(
     type: 'links',
     title: t('categories'),
     links:
-      searchProducts.length > 0
+      visibleProducts.length > 0
         ? Object.entries(
-            searchProducts.reduce<Record<string, string>>((categories, product) => {
+            visibleProducts.reduce<Record<string, string>>((categories, product) => {
               product.categories.edges?.forEach((category) => {
                 categories[category.node.name] = category.node.path;
               });
@@ -54,9 +55,9 @@ export async function searchResultsTransformer(
     type: 'links',
     title: t('brands'),
     links:
-      searchProducts.length > 0
+      visibleProducts.length > 0
         ? Object.entries(
-            searchProducts.reduce<Record<string, string>>((brands, product) => {
+            visibleProducts.reduce<Record<string, string>>((brands, product) => {
               if (product.brand) {
                 brands[product.brand.name] = product.brand.path;
               }

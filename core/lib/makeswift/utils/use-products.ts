@@ -3,6 +3,8 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import { z } from 'zod';
 
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+
 import {
   BcProductSchema,
   Product,
@@ -63,7 +65,10 @@ export function useProducts({ collection, collectionLimit = 20, additionalProduc
   const isLoading = isCollectionLoading || isAdditionalLoading;
 
   const products = useMemo(
-    () => (isLoading ? null : combinedProducts.map(bcProductToVibesProduct)),
+    () =>
+      isLoading
+        ? null
+        : combinedProducts.filter((product) => !hasZeroPrice(product)).map(bcProductToVibesProduct),
     [isLoading, combinedProducts, bcProductToVibesProduct],
   );
 

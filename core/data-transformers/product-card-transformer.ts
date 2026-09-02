@@ -7,7 +7,7 @@ import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
 
-import { pricesTransformer, TaxDisplay } from './prices-transformer';
+import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
 
 const getInventoryMessage = (
   product: ResultOf<typeof ProductCardFragment>,
@@ -85,13 +85,15 @@ export const productCardTransformer = (
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
 ): Product[] => {
-  return products.map((product) =>
-    singleProductCardTransformer(
-      product,
-      format,
-      outOfStockMessage,
-      showBackorderMessage,
-      taxDisplay,
-    ),
-  );
+  return products
+    .filter((product) => !hasZeroPrice(product))
+    .map((product) =>
+      singleProductCardTransformer(
+        product,
+        format,
+        outOfStockMessage,
+        showBackorderMessage,
+        taxDisplay,
+      ),
+    );
 };
