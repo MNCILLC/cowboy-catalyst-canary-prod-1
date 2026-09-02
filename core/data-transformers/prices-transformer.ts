@@ -10,6 +10,9 @@ type Format = ExistingResultType<typeof getFormatter>;
 
 export type TaxDisplay = 'INC' | 'EX' | 'BOTH';
 
+export const hasZeroPrice = (pricing: Pricing): boolean =>
+  pricing.pricesIncludingTax?.price.value === 0 || pricing.pricesExcludingTax?.price.value === 0;
+
 const toMoney = (
   inc: { value: number; currencyCode: string },
   ex: { value: number; currencyCode: string },

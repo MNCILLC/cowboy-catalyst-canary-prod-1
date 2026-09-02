@@ -3,6 +3,7 @@
 import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import {
   BcProductSchema,
   useBcProductToVibesProduct,
@@ -31,6 +32,10 @@ export function MakeswiftProductCard({ className, entityId, badge, ...props }: P
 
   if (entityId == null || isLoading || data == null) {
     return <ProductCardSkeleton className={className} />;
+  }
+
+  if (hasZeroPrice(data)) {
+    return null;
   }
 
   const product = bcProductToVibesProduct(data);

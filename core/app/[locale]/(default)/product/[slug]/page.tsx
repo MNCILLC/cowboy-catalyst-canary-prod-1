@@ -10,7 +10,7 @@ import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-vide
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
-import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
@@ -111,6 +111,22 @@ export default async function Product({ params, searchParams }: Props) {
     return notFound();
   }
 
+  const currencyCode = await getPreferredCurrencyCode();
+  const visibilityVariables = {
+    entityId: productId,
+    optionValueIds,
+    useDefaultOptionSelections: true,
+    currencyCode,
+  };
+  const visibilityPricing = await getProductPricingAndRelatedProducts(
+    visibilityVariables,
+    customerAccessToken,
+  );
+
+  if (!visibilityPricing || hasZeroPrice(visibilityPricing)) {
+    return notFound();
+  }
+
   const streamableProduct = Streamable.from(async () => {
     const variables = {
       entityId: Number(productId),
@@ -167,8 +183,6 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamableProductPricingAndRelatedProducts = Streamable.from(async () => {
-    const currencyCode = await getPreferredCurrencyCode();
-
     const variables = {
       entityId: Number(productId),
       optionValueIds,

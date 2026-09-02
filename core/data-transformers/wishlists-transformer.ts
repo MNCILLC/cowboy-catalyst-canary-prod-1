@@ -13,7 +13,7 @@ import {
   WishlistsFragment,
 } from '~/components/wishlist/fragment';
 
-import { TaxDisplay } from './prices-transformer';
+import { hasZeroPrice, TaxDisplay } from './prices-transformer';
 import { singleProductCardTransformer } from './product-card-transformer';
 
 const getCtaLabel = (
@@ -60,7 +60,7 @@ function wishlistItemsTransformer(
   return removeEdgesAndNodes(wishlistItems)
     .filter(
       (item): item is typeof item & { product: NonNullable<typeof item.product> } =>
-        item.product !== null,
+        item.product !== null && !hasZeroPrice(item.product),
     )
     .map((item) => ({
       itemId: item.entityId.toString(),
