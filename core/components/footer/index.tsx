@@ -143,7 +143,7 @@ export const Footer = async () => {
       logo={logo}
       logoHref="/"
       logoLabel={t('home')}
-      paymentIcons={paymentIcons}
+      // paymentIcons={paymentIcons}
       sections={streamableSections}
       socialMediaLinks={socialMediaLinks}
     />
