@@ -25,9 +25,9 @@ runtime.registerComponent(MSSlideshow, {
       label: 'Slides',
       type: Group({
         props: {
-          title: TextInput({ label: 'Title', defaultValue: 'Slide title' }),
+          title: TextArea({ label: 'Title (HTML)', defaultValue: 'Slide title' }),
           showDescription: Checkbox({ label: 'Show description', defaultValue: true }),
-          description: TextArea({ label: 'Description', defaultValue: 'Slide description' }),
+          description: TextArea({ label: 'Description (HTML)', defaultValue: 'Slide description' }),
           contentVerticalAlign: Select({
             label: 'Content vertical alignment',
             options: [
@@ -37,7 +37,6 @@ runtime.registerComponent(MSSlideshow, {
             ],
             defaultValue: 'bottom',
           }),
-          imageSrc: Image(),
           shadingVerticalAlign: Select({
             label: 'Shading vertical alignment',
             options: [
@@ -48,6 +47,7 @@ runtime.registerComponent(MSSlideshow, {
             ],
             defaultValue: 'bottom',
           }),
+          imageSrc: Image(),
           imageAlt: TextInput({ label: 'Image alt', defaultValue: 'Slide image' }),
           imageAlign: Select({
             label: 'Image alignment',

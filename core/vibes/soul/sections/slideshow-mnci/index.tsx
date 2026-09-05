@@ -238,13 +238,15 @@ export function Slideshow({
                           : 'pb-16 @xl:pb-20',
                       )}
                     >
-                      <h1 className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl">
-                        {title}
-                      </h1>
+                      <h1
+                        className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl"
+                        dangerouslySetInnerHTML={{ __html: title }}
+                      />
                       {showDescription && (
-                        <p className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg">
-                          {description}
-                        </p>
+                        <div
+                          className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
+                          dangerouslySetInnerHTML={{ __html: description ?? '' }}
+                        />
                       )}
                       {showCta && (
                         <ButtonLink
