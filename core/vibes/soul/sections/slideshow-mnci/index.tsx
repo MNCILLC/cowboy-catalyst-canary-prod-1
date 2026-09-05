@@ -19,6 +19,8 @@ interface Slide {
   showDescription?: boolean;
   image?: { alt: string; blurDataUrl?: string; src: string };
   imageAlign: 'left' | 'center';
+  contentVerticalAlign?: 'top' | 'center' | 'bottom';
+  shadingVerticalAlign?: 'top' | 'center' | 'bottom' | 'off';
 
   cta?: {
     label: string;
@@ -109,7 +111,15 @@ const useProgressButton = (
  * }
  * ```
  */
-export function Slideshow({ slides, playOnInit = true, interval = 5000, className, height, minHeight, aspectRatio }: Props) {
+export function Slideshow({
+  slides,
+  playOnInit = true,
+  interval = 5000,
+  className,
+  height,
+  minHeight,
+  aspectRatio,
+}: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 20 }, [
     Autoplay({ delay: interval, active: playOnInit }),
     Fade(),
@@ -154,8 +164,9 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
         setIsPlaying(autoplay.isPlaying());
       });
   }, [emblaApi, playCount]);
-  
-  const isEmpty = (value: string | undefined) => value === null || value === '';
+
+  const isEmpty = (value: string | null | undefined) =>
+    value === undefined || value === null || value === '';
 
   const style: React.CSSProperties =
     isEmpty(height) && isEmpty(minHeight) && isEmpty(aspectRatio)
@@ -168,30 +179,74 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
 
   return (
     <section
-      style={style}
       className={clsx(
         `relative bg-[var(--slideshow-background,color-mix(in_oklab,hsl(var(--primary)),black_75%))] @container`,
         className,
       )}
+      style={style}
     >
       <div className="h-full overflow-hidden" ref={emblaRef}>
         <div className="flex h-full">
           {slides.map(
-            ({ title, description, showDescription = true, image, imageAlign = 'center', cta, showCta = true }, idx) => {
+            (
+              {
+                title,
+                description,
+                showDescription = true,
+                image,
+                imageAlign = 'center',
+                contentVerticalAlign = 'bottom',
+                shadingVerticalAlign = 'bottom',
+                cta,
+                showCta = true,
+              },
+              idx,
+            ) => {
               return (
                 <div
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
                   key={idx}
                 >
-                  <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[var(--slideshow-mask,hsl(var(--foreground)/80%))] to-transparent">
-                    <div className="mx-auto w-full max-w-screen-2xl text-balance px-4 pb-16 pt-12 @xl:px-6 @xl:pb-20 @xl:pt-16 @4xl:px-8 @4xl:pt-20">
-                      <h1 className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl">
-                        {title}
-                      </h1>
+                  {shadingVerticalAlign !== 'off' && (
+                    <div
+                      aria-hidden="true"
+                      className={clsx(
+                        'pointer-events-none absolute inset-x-0 z-[1] h-2/3 to-transparent',
+                        {
+                          'top-0 bg-gradient-to-b from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'top',
+                          'top-1/2 -translate-y-1/2 bg-gradient-to-b from-transparent via-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'center',
+                          'bottom-0 bg-gradient-to-t from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'bottom',
+                        },
+                      )}
+                    />
+                  )}
+                  <div
+                    className={clsx('absolute inset-x-0 z-10', {
+                      'top-0': contentVerticalAlign === 'top',
+                      'top-1/2 -translate-y-1/2': contentVerticalAlign === 'center',
+                      'bottom-0': contentVerticalAlign === 'bottom',
+                    })}
+                  >
+                    <div
+                      className={clsx(
+                        'mx-auto w-full max-w-screen-2xl text-balance px-4 pt-12 @xl:px-6 @xl:pt-16 @4xl:px-8 @4xl:pt-20',
+                        contentVerticalAlign === 'center'
+                          ? 'pb-12 @xl:pb-16 @4xl:pb-20'
+                          : 'pb-16 @xl:pb-20',
+                      )}
+                    >
+                      <h1
+                        className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl"
+                        dangerouslySetInnerHTML={{ __html: title }}
+                      />
                       {showDescription && (
-                        <p className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg">
-                          {description}
-                        </p>
+                        <div
+                          className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
+                          dangerouslySetInnerHTML={{ __html: description ?? '' }}
+                        />
                       )}
                       {showCta && (
                         <ButtonLink
@@ -230,7 +285,7 @@ export function Slideshow({ slides, playOnInit = true, interval = 5000, classNam
       </div>
 
       {/* Controls */}
-      <div className="absolute bottom-4 left-1/2 flex w-full max-w-screen-2xl -translate-x-1/2 flex-wrap items-center px-4 @xl:bottom-6 @xl:px-6 @4xl:px-8">
+      <div className="absolute bottom-4 left-1/2 z-20 flex w-full max-w-screen-2xl -translate-x-1/2 flex-wrap items-center px-4 @xl:bottom-6 @xl:px-6 @4xl:px-8">
         {/* Progress Buttons */}
         {scrollSnaps.map((_: number, index: number) => {
           return (
