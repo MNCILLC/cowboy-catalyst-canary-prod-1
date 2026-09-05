@@ -20,6 +20,7 @@ interface Slide {
   image?: { alt: string; blurDataUrl?: string; src: string };
   imageAlign: 'left' | 'center';
   contentVerticalAlign?: 'top' | 'center' | 'bottom';
+  shadingVerticalAlign?: 'top' | 'center' | 'bottom' | 'off';
 
   cta?: {
     label: string;
@@ -195,6 +196,7 @@ export function Slideshow({
                 image,
                 imageAlign = 'center',
                 contentVerticalAlign = 'bottom',
+                shadingVerticalAlign = 'bottom',
                 cta,
                 showCta = true,
               },
@@ -205,16 +207,28 @@ export function Slideshow({
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
                   key={idx}
                 >
+                  {shadingVerticalAlign !== 'off' && (
+                    <div
+                      aria-hidden="true"
+                      className={clsx(
+                        'pointer-events-none absolute inset-x-0 z-[1] h-2/3 to-transparent',
+                        {
+                          'top-0 bg-gradient-to-b from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'top',
+                          'top-1/2 -translate-y-1/2 bg-gradient-to-b from-transparent via-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'center',
+                          'bottom-0 bg-gradient-to-t from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                            shadingVerticalAlign === 'bottom',
+                        },
+                      )}
+                    />
+                  )}
                   <div
-                    className={clsx(
-                      'absolute inset-x-0 z-10 from-[var(--slideshow-mask,hsl(var(--foreground)/80%))] to-transparent',
-                      {
-                        'top-0 bg-gradient-to-b': contentVerticalAlign === 'top',
-                        'top-1/2 -translate-y-1/2 bg-gradient-to-t':
-                          contentVerticalAlign === 'center',
-                        'bottom-0 bg-gradient-to-t': contentVerticalAlign === 'bottom',
-                      },
-                    )}
+                    className={clsx('absolute inset-x-0 z-10', {
+                      'top-0': contentVerticalAlign === 'top',
+                      'top-1/2 -translate-y-1/2': contentVerticalAlign === 'center',
+                      'bottom-0': contentVerticalAlign === 'bottom',
+                    })}
                   >
                     <div
                       className={clsx(

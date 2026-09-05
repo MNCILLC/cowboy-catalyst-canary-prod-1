@@ -8,6 +8,7 @@ interface Slide {
   imageAlt: string;
   imageAlign: 'left' | 'center';
   contentVerticalAlign?: 'top' | 'center' | 'bottom';
+  shadingVerticalAlign?: 'top' | 'center' | 'bottom' | 'off';
   showButton: boolean;
   buttonLink?: { href?: string; target?: string };
   buttonText: string;
@@ -50,6 +51,7 @@ export function MSSlideshow({
           imageAlt,
           imageAlign,
           contentVerticalAlign,
+          shadingVerticalAlign,
           showButton,
           buttonLink,
           buttonText,
@@ -62,6 +64,7 @@ export function MSSlideshow({
             image: imageSrc ? { alt: imageAlt, src: imageSrc } : undefined,
             imageAlign,
             contentVerticalAlign,
+            shadingVerticalAlign,
             showCta: showButton,
             cta: { label: buttonText, href: buttonLink?.href ?? '#', variant: buttonColor },
           };

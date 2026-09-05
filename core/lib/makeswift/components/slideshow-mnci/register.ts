@@ -38,6 +38,16 @@ runtime.registerComponent(MSSlideshow, {
             defaultValue: 'bottom',
           }),
           imageSrc: Image(),
+          shadingVerticalAlign: Select({
+            label: 'Shading vertical alignment',
+            options: [
+              { value: 'top', label: 'Top' },
+              { value: 'center', label: 'Center' },
+              { value: 'bottom', label: 'Bottom' },
+              { value: 'off', label: 'Off' },
+            ],
+            defaultValue: 'bottom',
+          }),
           imageAlt: TextInput({ label: 'Image alt', defaultValue: 'Slide image' }),
           imageAlign: Select({
             label: 'Image alignment',
