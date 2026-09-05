@@ -79,6 +79,10 @@ const useProgressButton = (
     onSelect(emblaApi);
 
     emblaApi.on('reinit', onInit).on('reinit', onSelect).on('select', onSelect);
+
+    return () => {
+      emblaApi.off('reinit', onInit).off('reinit', onSelect).off('select', onSelect);
+    };
   }, [emblaApi, onInit, onSelect]);
 
   return {
@@ -121,7 +125,7 @@ export function Slideshow({
   aspectRatio,
 }: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 20 }, [
-    Autoplay({ delay: interval, active: playOnInit }),
+    Autoplay({ delay: interval }),
     Fade(),
   ]);
   const { selectedIndex, scrollSnaps, onProgressButtonClick } = useProgressButton(emblaApi);
@@ -131,7 +135,7 @@ export function Slideshow({
   const toggleAutoplay = useCallback(() => {
     const autoplay = emblaApi?.plugins().autoplay;
 
-    if (!autoplay) return;
+    if (!autoplay || emblaApi.snapList().length <= 1) return;
 
     const playOrStop = autoplay.isPlaying() ? autoplay.stop : autoplay.play;
 
@@ -147,23 +151,38 @@ export function Slideshow({
   }, [emblaApi]);
 
   useEffect(() => {
-    const autoplay = emblaApi?.plugins().autoplay;
+    if (!emblaApi) return;
 
-    if (!autoplay) return;
+    const onPlay = () => {
+      setIsPlaying(true);
+      setPlayCount((count) => count + 1);
+    };
+    const onStop = () => {
+      setIsPlaying(false);
+    };
+    const syncAutoplay = () => {
+      // Reinitialization can replace the plugin, so read the current instance each time.
+      const autoplay = emblaApi.plugins().autoplay;
 
-    setIsPlaying(autoplay.isPlaying());
-    emblaApi
-      .on('autoplay:play', () => {
-        setIsPlaying(true);
-        setPlayCount(playCount + 1);
-      })
-      .on('autoplay:stop', () => {
-        setIsPlaying(false);
-      })
-      .on('reinit', () => {
-        setIsPlaying(autoplay.isPlaying());
-      });
-  }, [emblaApi, playCount]);
+      if (playOnInit && emblaApi.snapList().length > 1) {
+        autoplay.play();
+      } else {
+        autoplay.stop();
+      }
+
+      setIsPlaying(autoplay.isPlaying());
+    };
+
+    emblaApi.on('autoplay:play', onPlay).on('autoplay:stop', onStop).on('reinit', syncAutoplay);
+    syncAutoplay();
+
+    return () => {
+      emblaApi
+        .off('autoplay:play', onPlay)
+        .off('autoplay:stop', onStop)
+        .off('reinit', syncAutoplay);
+    };
+  }, [emblaApi, playOnInit]);
 
   const isEmpty = (value: string | null | undefined) =>
     value === undefined || value === null || value === '';
