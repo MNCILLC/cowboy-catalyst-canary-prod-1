@@ -28,6 +28,15 @@ runtime.registerComponent(MSSlideshow, {
           title: TextInput({ label: 'Title', defaultValue: 'Slide title' }),
           showDescription: Checkbox({ label: 'Show description', defaultValue: true }),
           description: TextArea({ label: 'Description', defaultValue: 'Slide description' }),
+          contentVerticalAlign: Select({
+            label: 'Content vertical alignment',
+            options: [
+              { value: 'top', label: 'Top' },
+              { value: 'center', label: 'Center' },
+              { value: 'bottom', label: 'Bottom' },
+            ],
+            defaultValue: 'bottom',
+          }),
           imageSrc: Image(),
           imageAlt: TextInput({ label: 'Image alt', defaultValue: 'Slide image' }),
           imageAlign: Select({
