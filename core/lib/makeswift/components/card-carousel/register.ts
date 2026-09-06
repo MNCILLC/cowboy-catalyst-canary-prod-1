@@ -34,6 +34,14 @@ runtime.registerComponent(MSCardCarousel, {
         return card?.title || 'Card';
       },
     }),
+    imageFit: Select({
+      label: 'Image fit',
+      options: [
+        { value: 'contain', label: 'Show full image' },
+        { value: 'cover', label: 'Fill card (crop)' },
+      ],
+      defaultValue: 'cover',
+    }),
     aspectRatio: Select({
       label: 'Aspect ratio',
       options: [

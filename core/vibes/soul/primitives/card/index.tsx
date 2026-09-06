@@ -17,6 +17,7 @@ export interface CardProps extends CardContent {
   iconColorScheme?: 'light' | 'dark';
   aspectRatio?: '5:6' | '3:4' | '1:1';
   imageSizes?: string;
+  imageFit?: 'cover' | 'contain';
   textPosition?: 'inside' | 'outside';
   textSize?: 'small' | 'medium' | 'large' | 'x-large';
   showOverlay?: boolean;
@@ -52,6 +53,7 @@ export function Card({
   iconColorScheme = 'light',
   aspectRatio = '5:6',
   imageSizes = '(min-width: 42rem) 25vw, (min-width: 32rem) 33vw, (min-width: 28rem) 50vw, 100vw',
+  imageFit = 'cover',
   textPosition = 'outside',
   textSize = 'small',
   showOverlay = true,
@@ -97,7 +99,11 @@ export function Card({
           <Image
             alt={image.alt}
             className={clsx(
-              'w-full scale-100 select-none object-cover transition-transform duration-500 ease-out group-hover:scale-110',
+              'w-full scale-100 select-none transition-transform duration-500 ease-out',
+              {
+                cover: 'object-cover group-hover:scale-110',
+                contain: 'object-contain',
+              }[imageFit],
               {
                 light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
                 dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
