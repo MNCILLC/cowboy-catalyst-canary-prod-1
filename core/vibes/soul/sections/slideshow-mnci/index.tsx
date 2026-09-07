@@ -209,8 +209,8 @@ export function Slideshow({
           {slides.map(
             (
               {
-                title,
-                description,
+                title = '',
+                description = '',
                 showDescription = true,
                 image,
                 imageAlign = 'center',
