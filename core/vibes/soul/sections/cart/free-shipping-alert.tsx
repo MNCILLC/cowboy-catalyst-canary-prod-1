@@ -18,7 +18,7 @@ export function FreeShippingAlert({
   return (
     <Alert
       className={clsx(
-        'mb-6 w-full !min-w-0 !max-w-none [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1',
+        'mt-4 w-full !min-w-0 !max-w-none [&>div:first-child]:min-w-0 [&>div:first-child]:flex-1',
         // Override the shared info alert background regardless of stylesheet order.
         `[&&]:${backgroundClass}`,
       )}

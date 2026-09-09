@@ -623,6 +623,13 @@ export function CartClient<LineItem extends CartLineItem>({
               variant="warning"
             />
           )}
+          {freeShippingMessage != null && !isCartMutationPending && (
+            <FreeShippingAlert
+              backgroundClass={freeShippingBackgroundClass}
+              message={freeShippingMessage}
+              textClass={freeShippingTextClass}
+            />
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
@@ -638,13 +645,6 @@ export function CartClient<LineItem extends CartLineItem>({
       sidebarSize="1/3"
     >
       <div className="w-full">
-        {freeShippingMessage != null && !isCartMutationPending && (
-          <FreeShippingAlert
-            backgroundClass={freeShippingBackgroundClass}
-            message={freeShippingMessage}
-            textClass={freeShippingTextClass}
-          />
-        )}
         <h1 className="mb-10 font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
           {title}
           <span className="ml-4 text-[var(--cart-subtext-text,hsl(var(--contrast-300)))] contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
