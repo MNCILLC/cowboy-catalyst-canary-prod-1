@@ -141,7 +141,9 @@ export function ProductCard({
       imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
       details: 'min-w-0',
-      actions: 'ml-auto flex flex-col items-end gap-3',
+      actions: clsx('ml-auto flex flex-col items-end gap-3', {
+        '@lg:-mt-8': showCompare,
+      }),
       compare: 'absolute left-4 top-4',
       badge: 'mb-1',
     },
