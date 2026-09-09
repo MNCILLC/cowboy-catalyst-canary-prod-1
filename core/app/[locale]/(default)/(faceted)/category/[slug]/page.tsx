@@ -9,6 +9,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { createCompareLoader } from '@/vibes/soul/primitives/compare-drawer/loader';
 import { ProductsListSection } from '@/vibes/soul/sections/products-list-section';
 import { getFilterParsers } from '@/vibes/soul/sections/products-list-section/filter-parsers';
+import { addToCart } from '~/app/[locale]/(default)/compare/_actions/add-to-cart';
 import { getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
@@ -17,6 +18,7 @@ import { productCardTransformer } from '~/data-transformers/product-card-transfo
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
+import { getPreferredProductView } from '~/lib/product-view';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 
 import { MAX_COMPARE_LIMIT } from '../../../compare/page-data';
@@ -169,6 +171,7 @@ export default async function Category(props: Props) {
 
   const streamableProducts = Streamable.from(async () => {
     const format = await getFormatter();
+    const productDetailsT = await getTranslations('Product.ProductDetails');
 
     const search = await streamableFacetedSearch;
     const products = search.products.items;
@@ -182,6 +185,10 @@ export default async function Category(props: Props) {
       showOutOfStockMessage ? defaultOutOfStockMessage : undefined,
       showBackorderMessage,
       taxDisplay,
+      {
+        settings: settings?.inventory,
+        formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
+      },
     );
   });
 
@@ -273,6 +280,7 @@ export default async function Category(props: Props) {
         snapshotId={`category-${categoryId}-top-content`}
       />
       <ProductsListSection
+        addToCartAction={addToCart}
         breadcrumbs={breadcrumbs}
         compareLabel={t('Compare.compare')}
         compareProducts={streamableCompareProducts}
@@ -281,6 +289,7 @@ export default async function Category(props: Props) {
         filterLabel={t('FacetedSearch.filters')}
         filters={streamableFilters}
         filtersPanelTitle={t('FacetedSearch.filters')}
+        initialView={await getPreferredProductView()}
         maxCompareLimitMessage={t('Compare.maxCompareLimit')}
         maxItems={MAX_COMPARE_LIMIT}
         paginationInfo={streamablePagination}

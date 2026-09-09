@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import { useTranslations } from 'next-intl';
+import { ReactNode } from 'react';
 import {
   Content as CalloutContent,
   Description as CalloutDescription,
@@ -28,11 +29,22 @@ export interface Product {
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  stockDisplayData?: {
+    stockLevelMessage: string;
+    backorderAvailabilityPrompt: string | null;
+  } | null;
   numberOfReviews?: number;
   promotions?: Array<{ id: string; text: string }>;
+  hasOptions?: boolean;
+  canAddToCart?: boolean;
+  isPreorder?: boolean;
+  minQuantity?: number;
+  maxQuantity?: number;
 }
 
 export interface ProductCardProps {
+  layout?: 'grid' | 'list';
+  purchaseAction?: ReactNode;
   className?: string;
   colorScheme?: 'light' | 'dark';
   aspectRatio?: '5:6' | '3:4' | '1:1';
@@ -77,11 +89,14 @@ export function ProductCard({
     image,
     href,
     inventoryMessage,
+    stockDisplayData,
     rating,
     numberOfReviews,
     promotions,
   },
   showRating = false,
+  layout = 'grid',
+  purchaseAction,
   colorScheme = 'light',
   className,
   showCompare = false,
@@ -92,23 +107,64 @@ export function ProductCard({
   imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
 }: ProductCardProps) {
   const t = useTranslations('Components.ProductCard');
+  const layoutStyles = {
+    grid: {
+      root: 'max-w-md flex-col gap-3',
+      content: '',
+      image: { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
+      placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
+      details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
+      actions: 'ml-1 mt-auto',
+      badge: 'absolute left-3 top-3',
+    },
+    list: {
+      root: 'max-w-none flex-col gap-3 border-b border-contrast-100 py-4 @lg:flex-row @lg:items-start @lg:gap-6',
+      content:
+        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
+      image: 'aspect-square',
+      placeholder: 'p-2 text-sm',
+      details: 'min-w-0',
+      actions: 'ml-auto flex flex-col items-end gap-3',
+      badge: 'mb-1',
+    },
+  }[layout];
+  const badgeElement =
+    badge != null && badge !== '' ? (
+      <Badge className={layoutStyles.badge} shape="rounded">
+        {badge}
+      </Badge>
+    ) : null;
+
+  const inventory = (
+    <ProductCardInventory
+      colorScheme={colorScheme}
+      inventoryMessage={inventoryMessage}
+      layout={layout}
+      stockDisplayData={stockDisplayData}
+    />
+  );
+  const inventoryPlacement = {
+    grid: { details: inventory, row: null },
+    list: {
+      details: null,
+      row: <div className="min-w-0 @lg:w-48 @lg:shrink-0">{inventory}</div>,
+    },
+  }[layout];
 
   return (
     <article
       className={clsx(
-        'group flex min-w-0 max-w-md flex-col gap-3 font-[family-name:var(--card-font-family,var(--font-family-body))] @container',
+        'group flex min-w-0 font-[family-name:var(--card-font-family,var(--font-family-body))] @container',
+        layoutStyles.root,
         className,
       )}
+      data-layout={layout}
     >
-      <div className="relative">
+      <div className={clsx('relative', layoutStyles.content)}>
         <div
           className={clsx(
             'relative overflow-hidden rounded-xl @md:rounded-2xl',
-            {
-              '5:6': 'aspect-[5/6]',
-              '3:4': 'aspect-[3/4]',
-              '1:1': 'aspect-square',
-            }[aspectRatio],
+            layoutStyles.image,
             {
               light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))]',
               dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))]',
@@ -133,7 +189,8 @@ export function ProductCard({
           ) : (
             <div
               className={clsx(
-                'break-words pl-5 pt-5 text-4xl font-bold leading-[0.8] tracking-tighter opacity-25 transition-transform duration-500 ease-out group-hover:scale-105 @xs:text-7xl',
+                'break-words font-bold tracking-tighter opacity-25 transition-transform duration-500 ease-out group-hover:scale-105',
+                layoutStyles.placeholder,
                 {
                   light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
                   dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
@@ -143,15 +200,12 @@ export function ProductCard({
               {title}
             </div>
           )}
-          {badge != null && badge !== '' && (
-            <Badge className="absolute left-3 top-3" shape="rounded">
-              {badge}
-            </Badge>
-          )}
+          {layout === 'grid' && badgeElement}
         </div>
 
-        <div className="mt-2 flex flex-col items-start gap-x-4 gap-y-3 px-1 @xs:mt-3 @2xl:flex-row">
-          <div className="flex-1 text-sm @[16rem]:text-base">
+        <div className={clsx('flex flex-col items-start gap-x-4 gap-y-3', layoutStyles.details)}>
+          <div className="min-w-0 flex-1 text-sm @[16rem]:text-base">
+            {layout === 'list' && badgeElement}
             <span
               className={clsx(
                 'line-clamp-2 font-semibold',
@@ -202,17 +256,7 @@ export function ProductCard({
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
-            <span
-              className={clsx(
-                'block text-sm font-normal',
-                {
-                  light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
-                  dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
-                }[colorScheme],
-              )}
-            >
-              {inventoryMessage}
-            </span>
+            {inventoryPlacement.details}
           </div>
         </div>
         {href !== '#' && (
@@ -232,43 +276,105 @@ export function ProductCard({
           </Link>
         )}
       </div>
-      {showCompare && (
-        <div className="ml-1 mt-auto shrink-0">
-          <Compare
-            colorScheme={colorScheme}
-            label={compareLabel}
-            paramName={compareParamName}
-            product={{ id, title, href, image }}
-          />
+      {inventoryPlacement.row}
+      {(showCompare || Boolean(purchaseAction)) && (
+        <div className={clsx('shrink-0', layoutStyles.actions)}>
+          {purchaseAction}
+          {showCompare && (
+            <Compare
+              colorScheme={colorScheme}
+              label={compareLabel}
+              paramName={compareParamName}
+              product={{ id, title, href, image }}
+            />
+          )}
         </div>
       )}
     </article>
   );
 }
 
+function ProductCardInventory({
+  colorScheme,
+  inventoryMessage,
+  layout,
+  stockDisplayData,
+}: Pick<Product, 'inventoryMessage' | 'stockDisplayData'> &
+  Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  return (
+    <>
+      {layout === 'list' && stockDisplayData && (
+        <div
+          className={clsx(
+            'flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
+            {
+              light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+              dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
+            }[colorScheme],
+          )}
+        >
+          <span className="font-semibold">{stockDisplayData.stockLevelMessage}</span>
+          {!!stockDisplayData.backorderAvailabilityPrompt && (
+            <span className="border-s border-contrast-100 pl-2.5">
+              {stockDisplayData.backorderAvailabilityPrompt}
+            </span>
+          )}
+        </div>
+      )}
+      <span
+        className={clsx(
+          'block text-sm font-normal',
+          {
+            light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
+            dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
+          }[colorScheme],
+        )}
+      >
+        {layout === 'list' && inventoryMessage === stockDisplayData?.stockLevelMessage
+          ? null
+          : inventoryMessage}
+      </span>
+    </>
+  );
+}
+
 export function ProductCardSkeleton({
   className,
   aspectRatio = '5:6',
-}: Pick<ProductCardProps, 'className' | 'aspectRatio'>) {
+  layout = 'grid',
+}: Pick<ProductCardProps, 'className' | 'aspectRatio' | 'layout'>) {
   return (
-    <Skeleton.Root className={clsx(className)}>
+    <Skeleton.Root
+      className={clsx(
+        layout === 'list' && 'flex items-start gap-4 border-b border-contrast-100 py-4',
+        className,
+      )}
+    >
       <Skeleton.Box
         className={clsx(
           'rounded-[var(--product-card-border-radius,1rem)]',
-          {
-            '5:6': 'aspect-[5/6]',
-            '3:4': 'aspect-[3/4]',
-            '1:1': 'aspect-square',
-          }[aspectRatio],
+          layout === 'list'
+            ? 'aspect-square w-16 shrink-0 @lg:w-24'
+            : {
+                '5:6': 'aspect-[5/6]',
+                '3:4': 'aspect-[3/4]',
+                '1:1': 'aspect-square',
+              }[aspectRatio],
         )}
       />
-      <div className="mt-2 flex flex-col items-start gap-x-4 gap-y-3 px-1 @xs:mt-3 @2xl:flex-row">
+      <div
+        className={clsx(
+          'flex flex-col items-start gap-x-4 gap-y-3',
+          layout === 'list' ? 'min-w-0 flex-1' : 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
+        )}
+      >
         <div className="w-full text-sm @[16rem]:text-base">
           <Skeleton.Text characterCount={10} className="rounded" />
           <Skeleton.Text characterCount={8} className="rounded" />
           <Skeleton.Text characterCount={6} className="rounded" />
         </div>
       </div>
+      {layout === 'list' && <Skeleton.Box className="h-12 w-28 rounded-full" />}
     </Skeleton.Root>
   );
 }
