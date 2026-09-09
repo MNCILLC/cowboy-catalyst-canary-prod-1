@@ -57,6 +57,15 @@ export const singleProductCardTransformer = (
     id: product.entityId.toString(),
     title: product.name,
     href: product.path,
+    hasOptions:
+      'productOptions' in product
+        ? removeEdgesAndNodes(product.productOptions).length > 0
+        : undefined,
+    canAddToCart:
+      product.showCartAction &&
+      product.availabilityV2.status !== 'Unavailable' &&
+      product.inventory.isInStock,
+    isPreorder: product.availabilityV2.status === 'Preorder',
     image: product.defaultImage
       ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
       : undefined,

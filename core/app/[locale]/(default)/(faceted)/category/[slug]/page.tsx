@@ -9,6 +9,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { createCompareLoader } from '@/vibes/soul/primitives/compare-drawer/loader';
 import { ProductsListSection } from '@/vibes/soul/sections/products-list-section';
 import { getFilterParsers } from '@/vibes/soul/sections/products-list-section/filter-parsers';
+import { addToCart } from '~/app/[locale]/(default)/compare/_actions/add-to-cart';
 import { getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
@@ -273,6 +274,7 @@ export default async function Category(props: Props) {
         snapshotId={`category-${categoryId}-top-content`}
       />
       <ProductsListSection
+        addToCartAction={addToCart}
         breadcrumbs={breadcrumbs}
         compareLabel={t('Compare.compare')}
         compareProducts={streamableCompareProducts}
