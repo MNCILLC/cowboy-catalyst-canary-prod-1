@@ -417,6 +417,7 @@
   },
   "Cart": {
     "title": "Cart",
+    "freeShippingMessage": "Spend {amount} more to receive free shipping.",
     "heading": "Your cart",
     "proceedToCheckout": "Proceed to checkout",
     "increment": "Increase quantity",
