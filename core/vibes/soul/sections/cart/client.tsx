@@ -31,6 +31,7 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
+import { FreeShippingAlert } from './free-shipping-alert';
 import { ShippingForm, ShippingFormState } from './shipping-form';
 
 import { CartEmptyState } from '.';
@@ -162,6 +163,9 @@ interface Shipping {
 
 export interface CartProps<LineItem extends CartLineItem> {
   title?: string;
+  freeShippingMessage?: string;
+  freeShippingBackgroundClass?: string;
+  freeShippingTextClass?: string;
   summaryTitle?: string;
   emptyState?: CartEmptyState;
   lineItemAction: Action<CartState<LineItem>, FormData>;
@@ -218,6 +222,9 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
  */
 export function CartClient<LineItem extends CartLineItem>({
   title,
+  freeShippingMessage,
+  freeShippingBackgroundClass,
+  freeShippingTextClass,
   cart,
   couponCode,
   giftCertificate,
@@ -614,6 +621,13 @@ export function CartClient<LineItem extends CartLineItem>({
                 </>
               }
               variant="warning"
+            />
+          )}
+          {freeShippingMessage != null && !isCartMutationPending && (
+            <FreeShippingAlert
+              backgroundClass={freeShippingBackgroundClass}
+              message={freeShippingMessage}
+              textClass={freeShippingTextClass}
             />
           )}
           <CheckoutButton
