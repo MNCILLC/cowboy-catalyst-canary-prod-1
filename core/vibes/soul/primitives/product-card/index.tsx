@@ -129,7 +129,7 @@ export function ProductCard({
     list: {
       root: clsx(
         'relative max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
-        showCompare && 'pt-12',
+        showCompare && 'pb-12',
         {
           light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
           dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
@@ -141,10 +141,8 @@ export function ProductCard({
       imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
       details: 'min-w-0',
-      actions: clsx('ml-auto flex flex-col items-end gap-3', {
-        '@lg:-mt-8': showCompare,
-      }),
-      compare: 'absolute left-4 top-4',
+      actions: 'ml-auto flex flex-col items-end gap-3',
+      compare: 'absolute bottom-4 left-4',
       badge: 'mb-1',
     },
   }[layout];
