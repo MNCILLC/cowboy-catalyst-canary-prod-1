@@ -164,6 +164,8 @@ interface Shipping {
 export interface CartProps<LineItem extends CartLineItem> {
   title?: string;
   freeShippingMessage?: string;
+  freeShippingBackgroundClass?: string;
+  freeShippingTextClass?: string;
   summaryTitle?: string;
   emptyState?: CartEmptyState;
   lineItemAction: Action<CartState<LineItem>, FormData>;
@@ -221,6 +223,8 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
 export function CartClient<LineItem extends CartLineItem>({
   title,
   freeShippingMessage,
+  freeShippingBackgroundClass,
+  freeShippingTextClass,
   cart,
   couponCode,
   giftCertificate,
@@ -635,7 +639,11 @@ export function CartClient<LineItem extends CartLineItem>({
     >
       <div className="w-full">
         {freeShippingMessage != null && !isCartMutationPending && (
-          <FreeShippingAlert message={freeShippingMessage} />
+          <FreeShippingAlert
+            backgroundClass={freeShippingBackgroundClass}
+            message={freeShippingMessage}
+            textClass={freeShippingTextClass}
+          />
         )}
         <h1 className="mb-10 font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
           {title}

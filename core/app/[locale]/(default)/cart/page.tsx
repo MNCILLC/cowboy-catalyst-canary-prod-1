@@ -371,6 +371,9 @@ export default async function Cart({ params }: Props) {
             subtitle: t('Empty.subtitle'),
             cta: { label: t('Empty.cta'), href: '/shop-all' },
           }}
+          freeShippingBackgroundClass={
+            process.env.FREE_SHIPPING_BACKGROUND_CLASS?.trim() || undefined
+          }
           freeShippingMessage={
             freeShippingAmountRemaining !== undefined
               ? t('freeShippingMessage', {
@@ -381,6 +384,7 @@ export default async function Cart({ params }: Props) {
                 })
               : undefined
           }
+          freeShippingTextClass={process.env.FREE_SHIPPING_TEXT_CLASS?.trim() || undefined}
           giftCertificate={
             giftCertificatesEnabled
               ? {
