@@ -118,9 +118,9 @@ export function ProductCard({
       badge: 'absolute left-3 top-3',
     },
     list: {
-      root: 'max-w-none flex-col gap-3 border-b border-contrast-100 py-4 @lg:flex-row @lg:items-center @lg:gap-6',
+      root: 'max-w-none flex-col gap-3 border-b border-contrast-100 py-4 @lg:flex-row @lg:items-start @lg:gap-6',
       content:
-        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-center gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
+        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
       image: 'aspect-square',
       placeholder: 'p-2 text-sm',
       details: 'min-w-0',
@@ -134,6 +134,22 @@ export function ProductCard({
         {badge}
       </Badge>
     ) : null;
+
+  const inventory = (
+    <ProductCardInventory
+      colorScheme={colorScheme}
+      inventoryMessage={inventoryMessage}
+      layout={layout}
+      stockDisplayData={stockDisplayData}
+    />
+  );
+  const inventoryPlacement = {
+    grid: { details: inventory, row: null },
+    list: {
+      details: null,
+      row: <div className="min-w-0 @lg:w-48 @lg:shrink-0">{inventory}</div>,
+    },
+  }[layout];
 
   return (
     <article
@@ -240,12 +256,7 @@ export function ProductCard({
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
-            <ProductCardInventory
-              colorScheme={colorScheme}
-              inventoryMessage={inventoryMessage}
-              layout={layout}
-              stockDisplayData={stockDisplayData}
-            />
+            {inventoryPlacement.details}
           </div>
         </div>
         {href !== '#' && (
@@ -265,6 +276,7 @@ export function ProductCard({
           </Link>
         )}
       </div>
+      {inventoryPlacement.row}
       {(showCompare || Boolean(purchaseAction)) && (
         <div className={clsx('shrink-0', layoutStyles.actions)}>
           {purchaseAction}
@@ -294,7 +306,7 @@ function ProductCardInventory({
       {layout === 'list' && stockDisplayData && (
         <div
           className={clsx(
-            'mt-1 flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
+            'flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
             {
               light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
               dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
@@ -334,7 +346,7 @@ export function ProductCardSkeleton({
   return (
     <Skeleton.Root
       className={clsx(
-        layout === 'list' && 'flex items-center gap-4 border-b border-contrast-100 py-4',
+        layout === 'list' && 'flex items-start gap-4 border-b border-contrast-100 py-4',
         className,
       )}
     >
