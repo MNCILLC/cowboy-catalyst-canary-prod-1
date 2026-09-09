@@ -35,7 +35,8 @@ import { Label } from '@/vibes/soul/form/label';
  */
 export const NumberInput = React.forwardRef<
   React.ComponentRef<'input'>,
-  Omit<React.ComponentPropsWithoutRef<'input'>, 'id'> & {
+  Omit<React.ComponentPropsWithoutRef<'input'>, 'id' | 'size'> & {
+    size?: 'small' | 'medium';
     label?: string;
     errors?: string[];
     decrementLabel?: string;
@@ -52,6 +53,7 @@ export const NumberInput = React.forwardRef<
       decrementLabel,
       incrementLabel,
       disabled = false,
+      size = 'medium',
       colorScheme = 'light',
       ...rest
     },
@@ -88,7 +90,8 @@ export const NumberInput = React.forwardRef<
           <button
             aria-label={decrementLabel}
             className={clsx(
-              'group rounded-l-lg p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
+              'group rounded-l-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
+              size === 'small' ? 'p-3' : 'p-3.5',
               {
                 light:
                   'bg-[var(--number-input-light-button-background,hsl(var(--background)))] hover:bg-[var(--number-input-light-button-background-hover,hsl(var(--contrast-100)/50%))]',
@@ -104,6 +107,7 @@ export const NumberInput = React.forwardRef<
               input?.stepDown();
               input?.dispatchEvent(new InputEvent('change', { bubbles: true, cancelable: true }));
             }}
+            type="button"
           >
             <Minus
               className={clsx(
@@ -114,7 +118,7 @@ export const NumberInput = React.forwardRef<
                   dark: 'text-[var(--number-input-dark-icon,hsl(var(--contrast-300)))] group-hover:text-[var(--number-input-dark-icon-hover,hsl(var(--background)))]',
                 }[colorScheme],
               )}
-              size={18}
+              size={size === 'small' ? 16 : 18}
               strokeWidth={1.5}
             />
           </button>
@@ -122,6 +126,7 @@ export const NumberInput = React.forwardRef<
             {...rest}
             className={clsx(
               'w-8 flex-1 select-none justify-center bg-transparent text-center [appearance:textfield] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+              size === 'small' && 'text-sm',
               {
                 light: 'text-[var(--number-input-light-text,hsl(var(--foreground)))]',
                 dark: 'text-[var(--number-input-dark-text,hsl(var(--background)))]',
@@ -136,7 +141,8 @@ export const NumberInput = React.forwardRef<
           <button
             aria-label={incrementLabel}
             className={clsx(
-              'group rounded-r-lg p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
+              'group rounded-r-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
+              size === 'small' ? 'p-3' : 'p-3.5',
               {
                 light:
                   'bg-[var(--number-input-light-button-background,hsl(var(--background)))] hover:bg-[var(--number-input-light-button-background-hover,hsl(var(--contrast-100)/50%))]',
@@ -152,6 +158,7 @@ export const NumberInput = React.forwardRef<
               input?.stepUp();
               input?.dispatchEvent(new InputEvent('change', { bubbles: true, cancelable: true }));
             }}
+            type="button"
           >
             <Plus
               className={clsx(
@@ -162,7 +169,7 @@ export const NumberInput = React.forwardRef<
                   dark: 'text-[var(--number-input-dark-icon,hsl(var(--contrast-300)))] group-hover:text-[var(--number-input-dark-icon-hover,hsl(var(--background)))]',
                 }[colorScheme],
               )}
-              size={18}
+              size={size === 'small' ? 16 : 18}
               strokeWidth={1.5}
             />
           </button>

@@ -1,6 +1,14 @@
+'use client';
+
 import { clsx } from 'clsx';
+import { useTranslations } from 'next-intl';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
+import { ButtonLink } from '@/vibes/soul/primitives/button-link';
+import {
+  AddToCartForm,
+  CompareAddToCartAction,
+} from '@/vibes/soul/primitives/compare-card/add-to-cart-form';
 import { CompareDrawer, CompareDrawerProvider } from '@/vibes/soul/primitives/compare-drawer';
 import {
   type Product,
@@ -9,7 +17,10 @@ import {
 } from '@/vibes/soul/primitives/product-card';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 
+import { useProductView } from './view';
+
 interface ProductListProps {
+  addToCartAction?: CompareAddToCartAction;
   products: Streamable<Product[]>;
   showRating?: boolean;
   compareProducts?: Streamable<Product[]>;
@@ -45,6 +56,7 @@ interface ProductListProps {
  * ```
  */
 export function ProductList({
+  addToCartAction,
   products: streamableProducts,
   showRating,
   className,
@@ -62,6 +74,11 @@ export function ProductList({
   maxItems,
   maxCompareLimitMessage: streamableMaxCompareLimitMessage,
 }: ProductListProps) {
+  const view = useProductView();
+  const t = useTranslations('Compare');
+  const tProduct = useTranslations('Product.ProductDetails.Submit');
+  const tQuantity = useTranslations('Product.ProductDetails');
+
   return (
     <Stream
       fallback={<ProductListSkeleton placeholderCount={placeholderCount} />}
@@ -99,16 +116,52 @@ export function ProductList({
             maxItems={maxItems}
           >
             <div className={clsx('w-full @container', className)}>
-              <div className="mx-auto grid grid-cols-1 gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5">
+              <div
+                className={clsx(
+                  'mx-auto grid grid-cols-1',
+                  view === 'grid' &&
+                    'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5',
+                )}
+              >
                 {products.map((product) => (
                   <ProductCard
                     aspectRatio={aspectRatio}
                     colorScheme={colorScheme}
                     compareLabel={compareLabel}
                     compareParamName={compareParamName}
-                    imageSizes="(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw"
+                    imageSizes={
+                      view === 'list'
+                        ? '70px'
+                        : '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw'
+                    }
                     key={product.id}
+                    layout={view}
                     product={product}
+                    purchaseAction={
+                      view === 'list' &&
+                      addToCartAction &&
+                      (product.hasOptions === false ? (
+                        <AddToCartForm
+                          addToCartAction={addToCartAction}
+                          addToCartLabel={t('addToCart')}
+                          decrementLabel={tQuantity('decreaseQuantity')}
+                          disabled={product.canAddToCart === false}
+                          incrementLabel={tQuantity('increaseQuantity')}
+                          isPreorder={product.isPreorder}
+                          maxQuantity={product.maxQuantity}
+                          minQuantity={product.minQuantity}
+                          preorderLabel={tProduct('preorder')}
+                          productId={product.id}
+                          quantityLabel={tQuantity('quantity')}
+                          showQuantity
+                          size="small"
+                        />
+                      ) : (
+                        <ButtonLink href={product.href} size="small">
+                          {t('viewOptions')}
+                        </ButtonLink>
+                      ))
+                    }
                     showCompare={showCompare}
                     showRating={showRating}
                   />
@@ -134,14 +187,22 @@ export function ProductListSkeleton({
   className,
   placeholderCount = 8,
 }: Pick<ProductListProps, 'className' | 'placeholderCount'>) {
+  const view = useProductView();
+
   return (
     <Skeleton.Root
       className={clsx('group-has-data-pending/product-list:animate-pulse', className)}
       pending
     >
-      <div className="mx-auto grid grid-cols-1 gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5">
+      <div
+        className={clsx(
+          'mx-auto grid grid-cols-1',
+          view === 'grid' &&
+            'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5',
+        )}
+      >
         {Array.from({ length: placeholderCount }).map((_, index) => (
-          <ProductCardSkeleton key={index} />
+          <ProductCardSkeleton key={index} layout={view} />
         ))}
       </div>
     </Skeleton.Root>
