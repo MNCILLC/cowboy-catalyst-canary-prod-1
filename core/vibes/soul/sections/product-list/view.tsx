@@ -24,17 +24,21 @@ const ProductViewContext = createContext<{
 
 export function ProductViewProvider({
   children,
+  enabled = true,
   initialView = 'grid',
 }: {
   children: ReactNode;
+  enabled?: boolean;
   initialView?: ProductView;
 }) {
   const [view, setView] = useState<ProductView>(initialView);
 
   useEffect(() => {
+    if (!enabled) return;
+
     // A prefetched page can have an older initial value than the current cookie.
     setView(getCookieValue(PRODUCT_VIEW_COOKIE) === 'list' ? 'list' : 'grid');
-  }, []);
+  }, [enabled]);
 
   const changeView = useCallback((nextView: ProductView) => {
     setView(nextView);
@@ -50,7 +54,11 @@ export function ProductViewProvider({
   }, []);
   const value = useMemo(() => ({ view, setView: changeView }), [view, changeView]);
 
-  return <ProductViewContext.Provider value={value}>{children}</ProductViewContext.Provider>;
+  return (
+    <ProductViewContext.Provider value={enabled ? value : null}>
+      {children}
+    </ProductViewContext.Provider>
+  );
 }
 
 export function useProductView() {

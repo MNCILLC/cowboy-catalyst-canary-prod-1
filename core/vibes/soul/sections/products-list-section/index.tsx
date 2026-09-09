@@ -22,6 +22,7 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  enableListView?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
   breadcrumbs?: Streamable<Breadcrumb[]>;
@@ -55,6 +56,7 @@ interface Props {
 }
 
 export function ProductsListSection({
+  enableListView = true,
   initialView,
   addToCartAction,
   breadcrumbs: streamableBreadcrumbs,
@@ -87,7 +89,7 @@ export function ProductsListSection({
   productListBanner,
 }: Props) {
   return (
-    <ProductViewProvider initialView={initialView}>
+    <ProductViewProvider enabled={enableListView} initialView={initialView}>
       <div className="group/products-list-section @container">
         <div className="mx-auto max-w-screen-2xl px-4 py-10 @xl:px-6 @xl:py-14 @4xl:px-8 @4xl:py-12">
           <div>
