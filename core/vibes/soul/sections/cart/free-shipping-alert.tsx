@@ -24,14 +24,11 @@ export function FreeShippingAlert({
       )}
       message={
         <span className={clsx('flex flex-wrap items-center gap-x-4 gap-y-2', textClass)}>
-          <span className="flex items-center gap-2">
+          <span className="flex grow items-center gap-2">
             <Info aria-hidden="true" className="shrink-0" size={20} />
             <span>{message}</span>
           </span>
-          <Link
-            className="ml-auto shrink-0 font-medium underline underline-offset-4"
-            href="/shop-all"
-          >
+          <Link className="shrink-0 font-medium underline underline-offset-4" href="/shop-all">
             Continue Shopping
           </Link>
         </span>
