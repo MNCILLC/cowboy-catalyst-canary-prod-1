@@ -8,6 +8,7 @@ import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components
 import { isLoggedIn } from '~/auth';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { getCartId } from '~/lib/cart';
+import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
@@ -280,6 +281,7 @@ export default async function Cart({ params }: Props) {
     shippingConsignment?.address && !shippingConsignment.selectedShippingOption;
 
   const checkoutUrl = data.site.settings?.url.checkoutUrl;
+  const freeShippingAmountRemaining = getFreeShippingAmountRemaining(checkout?.subtotal?.value);
 
   return (
     <>
@@ -369,6 +371,16 @@ export default async function Cart({ params }: Props) {
             subtitle: t('Empty.subtitle'),
             cta: { label: t('Empty.cta'), href: '/shop-all' },
           }}
+          freeShippingMessage={
+            freeShippingAmountRemaining !== undefined
+              ? t('freeShippingMessage', {
+                  amount: format.number(freeShippingAmountRemaining, {
+                    style: 'currency',
+                    currency: cart.currencyCode,
+                  }),
+                })
+              : undefined
+          }
           giftCertificate={
             giftCertificatesEnabled
               ? {
