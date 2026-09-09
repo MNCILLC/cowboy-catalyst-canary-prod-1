@@ -645,12 +645,14 @@ export function CartClient<LineItem extends CartLineItem>({
       sidebarSize="1/3"
     >
       <div className="w-full">
-        <h1 className="mb-10 font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
-          {title}
-          <span className="ml-4 text-[var(--cart-subtext-text,hsl(var(--contrast-300)))] contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
-            {displayTotalQuantity}
-          </span>
-        </h1>
+        <div className="mb-10">
+          <h1 className="font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
+            {title}
+          </h1>
+          <p className="text-lg text-contrast-300 contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
+            {displayTotalQuantity} {displayTotalQuantity === 1 ? 'Product' : 'Products'}
+          </p>
+        </div>
         {/* Cart Items */}
         <ul className="flex flex-col gap-5">
           {displayLineItems.map((lineItem) => (
