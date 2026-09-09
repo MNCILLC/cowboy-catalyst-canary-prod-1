@@ -99,13 +99,18 @@ export function ProductsListSection({
                 </h1>
               </div>
               <div>
-                <Suspense
+                <Stream
                   fallback={
                     <span className="inline-flex h-[1lh] w-[2ch] animate-pulse rounded-lg bg-contrast-100" />
                   }
+                  value={totalCount}
                 >
-                  <span className="text-lg text-contrast-300">{totalCount} Products</span>
-                </Suspense>
+                  {(count) => (
+                    <span className="text-lg text-contrast-300">
+                      {count} {count === '1' ? 'Product' : 'Products'}
+                    </span>
+                  )}
+                </Stream>
               </div>
             </div>
             <div className="flex gap-2">
