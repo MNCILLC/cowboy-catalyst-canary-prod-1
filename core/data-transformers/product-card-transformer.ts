@@ -66,6 +66,14 @@ export const singleProductCardTransformer = (
       product.availabilityV2.status !== 'Unavailable' &&
       product.inventory.isInStock,
     isPreorder: product.availabilityV2.status === 'Preorder',
+    minQuantity:
+      'minPurchaseQuantity' in product && product.minPurchaseQuantity != null
+        ? Math.max(1, product.minPurchaseQuantity)
+        : undefined,
+    maxQuantity:
+      'maxPurchaseQuantity' in product && product.maxPurchaseQuantity != null
+        ? product.maxPurchaseQuantity
+        : undefined,
     image: product.defaultImage
       ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
       : undefined,

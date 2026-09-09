@@ -77,6 +77,7 @@ export function ProductList({
   const view = useProductView();
   const t = useTranslations('Compare');
   const tProduct = useTranslations('Product.ProductDetails.Submit');
+  const tQuantity = useTranslations('Product.ProductDetails');
 
   return (
     <Stream
@@ -143,13 +144,20 @@ export function ProductList({
                         <AddToCartForm
                           addToCartAction={addToCartAction}
                           addToCartLabel={t('addToCart')}
+                          decrementLabel={tQuantity('decreaseQuantity')}
                           disabled={product.canAddToCart === false}
+                          incrementLabel={tQuantity('increaseQuantity')}
                           isPreorder={product.isPreorder}
+                          maxQuantity={product.maxQuantity}
+                          minQuantity={product.minQuantity}
                           preorderLabel={tProduct('preorder')}
                           productId={product.id}
+                          quantityLabel={tQuantity('quantity')}
+                          showQuantity
+                          size="small"
                         />
                       ) : (
-                        <ButtonLink href={product.href} size="medium">
+                        <ButtonLink href={product.href} size="small">
                           {t('viewOptions')}
                         </ButtonLink>
                       ))

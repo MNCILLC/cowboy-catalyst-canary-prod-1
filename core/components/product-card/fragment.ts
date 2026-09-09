@@ -12,6 +12,8 @@ export const ProductCardFragment = graphql(
       }
       path
       showCartAction
+      minPurchaseQuantity
+      maxPurchaseQuantity
       availabilityV2 {
         status
       }

@@ -34,6 +34,8 @@ export interface Product {
   hasOptions?: boolean;
   canAddToCart?: boolean;
   isPreorder?: boolean;
+  minQuantity?: number;
+  maxQuantity?: number;
 }
 
 export interface ProductCardProps {
