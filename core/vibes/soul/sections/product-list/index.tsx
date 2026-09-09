@@ -119,8 +119,9 @@ export function ProductList({
               <div
                 className={clsx(
                   'mx-auto grid grid-cols-1',
-                  view === 'grid' &&
-                    'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5',
+                  view === 'grid'
+                    ? 'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5'
+                    : 'gap-4',
                 )}
               >
                 {products.map((product) => (
@@ -197,8 +198,9 @@ export function ProductListSkeleton({
       <div
         className={clsx(
           'mx-auto grid grid-cols-1',
-          view === 'grid' &&
-            'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5',
+          view === 'grid'
+            ? 'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5'
+            : 'gap-4',
         )}
       >
         {Array.from({ length: placeholderCount }).map((_, index) => (

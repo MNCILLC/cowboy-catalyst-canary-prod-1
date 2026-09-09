@@ -111,17 +111,32 @@ export function ProductCard({
     grid: {
       root: 'max-w-md flex-col gap-3',
       content: '',
-      image: { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
+      image: clsx(
+        'rounded-xl @md:rounded-2xl',
+        { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
+        {
+          light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))]',
+          dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))]',
+        }[colorScheme],
+      ),
+      imageFit: 'object-cover',
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
       actions: 'ml-1 mt-auto',
       badge: 'absolute left-3 top-3',
     },
     list: {
-      root: 'max-w-none flex-col gap-3 border-b border-contrast-100 py-4 @lg:flex-row @lg:items-start @lg:gap-6',
+      root: clsx(
+        'max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
+        {
+          light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
+          dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
+        }[colorScheme],
+      ),
       content:
         'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
       image: 'aspect-square',
+      imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
       details: 'min-w-0',
       actions: 'ml-auto flex flex-col items-end gap-3',
@@ -161,25 +176,13 @@ export function ProductCard({
       data-layout={layout}
     >
       <div className={clsx('relative', layoutStyles.content)}>
-        <div
-          className={clsx(
-            'relative overflow-hidden rounded-xl @md:rounded-2xl',
-            layoutStyles.image,
-            {
-              light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))]',
-              dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))]',
-            }[colorScheme],
-          )}
-        >
+        <div className={clsx('relative overflow-hidden', layoutStyles.image)}>
           {image != null ? (
             <Image
               alt={image.alt}
               className={clsx(
-                'w-full scale-100 select-none object-cover transition-transform duration-500 ease-out group-hover:scale-110',
-                {
-                  light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100))]',
-                  dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500))]',
-                }[colorScheme],
+                'w-full scale-100 select-none transition-transform duration-500 ease-out group-hover:scale-110',
+                layoutStyles.imageFit,
               )}
               fill
               preload={imagePriority}
@@ -346,13 +349,14 @@ export function ProductCardSkeleton({
   return (
     <Skeleton.Root
       className={clsx(
-        layout === 'list' && 'flex items-start gap-4 border-b border-contrast-100 py-4',
+        layout === 'list' &&
+          'flex items-start gap-4 rounded-2xl border border-contrast-100 bg-[var(--card-light-background,hsl(var(--contrast-100)))] p-4 shadow-sm',
         className,
       )}
     >
       <Skeleton.Box
         className={clsx(
-          'rounded-[var(--product-card-border-radius,1rem)]',
+          layout === 'grid' && 'rounded-[var(--product-card-border-radius,1rem)]',
           layout === 'list'
             ? 'aspect-square w-16 shrink-0 @lg:w-24'
             : {
