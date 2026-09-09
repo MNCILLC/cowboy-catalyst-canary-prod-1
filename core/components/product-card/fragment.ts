@@ -32,6 +32,8 @@ export const ProductCardFragment = graphql(
         hasVariantInventory
         isInStock
         aggregated {
+          availableToSell
+          warningLevel
           availableForBackorder
           unlimitedBackorder
           availableOnHand

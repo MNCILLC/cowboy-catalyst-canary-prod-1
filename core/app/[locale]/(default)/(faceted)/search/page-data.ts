@@ -11,6 +11,10 @@ const SearchPageQuery = graphql(`
         inventory {
           defaultOutOfStockMessage
           showOutOfStockMessage
+          stockLevelDisplay
+          showBackorderAvailabilityPrompt
+          backorderAvailabilityPrompt
+          showQuantityOnBackorder
           showBackorderMessage
         }
         storefront {

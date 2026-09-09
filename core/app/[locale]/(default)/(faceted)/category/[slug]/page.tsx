@@ -171,6 +171,7 @@ export default async function Category(props: Props) {
 
   const streamableProducts = Streamable.from(async () => {
     const format = await getFormatter();
+    const productDetailsT = await getTranslations('Product.ProductDetails');
 
     const search = await streamableFacetedSearch;
     const products = search.products.items;
@@ -184,6 +185,10 @@ export default async function Category(props: Props) {
       showOutOfStockMessage ? defaultOutOfStockMessage : undefined,
       showBackorderMessage,
       taxDisplay,
+      {
+        settings: settings?.inventory,
+        formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
+      },
     );
   });
 

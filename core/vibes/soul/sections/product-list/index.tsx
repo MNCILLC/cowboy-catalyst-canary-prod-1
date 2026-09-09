@@ -131,7 +131,7 @@ export function ProductList({
                     compareParamName={compareParamName}
                     imageSizes={
                       view === 'list'
-                        ? '96px'
+                        ? '70px'
                         : '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw'
                     }
                     key={product.id}

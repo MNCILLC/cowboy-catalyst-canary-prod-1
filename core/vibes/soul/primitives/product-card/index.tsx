@@ -29,6 +29,10 @@ export interface Product {
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  stockDisplayData?: {
+    stockLevelMessage: string;
+    backorderAvailabilityPrompt: string | null;
+  } | null;
   numberOfReviews?: number;
   promotions?: Array<{ id: string; text: string }>;
   hasOptions?: boolean;
@@ -85,6 +89,7 @@ export function ProductCard({
     image,
     href,
     inventoryMessage,
+    stockDisplayData,
     rating,
     numberOfReviews,
     promotions,
@@ -235,17 +240,12 @@ export function ProductCard({
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
-            <span
-              className={clsx(
-                'block text-sm font-normal',
-                {
-                  light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
-                  dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
-                }[colorScheme],
-              )}
-            >
-              {inventoryMessage}
-            </span>
+            <ProductCardInventory
+              colorScheme={colorScheme}
+              inventoryMessage={inventoryMessage}
+              layout={layout}
+              stockDisplayData={stockDisplayData}
+            />
           </div>
         </div>
         {href !== '#' && (
@@ -279,6 +279,50 @@ export function ProductCard({
         </div>
       )}
     </article>
+  );
+}
+
+function ProductCardInventory({
+  colorScheme,
+  inventoryMessage,
+  layout,
+  stockDisplayData,
+}: Pick<Product, 'inventoryMessage' | 'stockDisplayData'> &
+  Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  return (
+    <>
+      {layout === 'list' && stockDisplayData && (
+        <div
+          className={clsx(
+            'mt-1 flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
+            {
+              light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+              dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
+            }[colorScheme],
+          )}
+        >
+          <span className="font-semibold">{stockDisplayData.stockLevelMessage}</span>
+          {!!stockDisplayData.backorderAvailabilityPrompt && (
+            <span className="border-s border-contrast-100 pl-2.5">
+              {stockDisplayData.backorderAvailabilityPrompt}
+            </span>
+          )}
+        </div>
+      )}
+      <span
+        className={clsx(
+          'block text-sm font-normal',
+          {
+            light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
+            dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
+          }[colorScheme],
+        )}
+      >
+        {layout === 'list' && inventoryMessage === stockDisplayData?.stockLevelMessage
+          ? null
+          : inventoryMessage}
+      </span>
+    </>
   );
 }
 

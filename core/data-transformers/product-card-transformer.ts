@@ -6,8 +6,14 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
+
+interface ProductCardStockDisplay {
+  settings?: StockDisplaySettings | null;
+  formatStock: (quantity: number) => string;
+}
 
 const getInventoryMessage = (
   product: ResultOf<typeof ProductCardFragment>,
@@ -52,6 +58,7 @@ export const singleProductCardTransformer = (
   outOfStockMessage?: string,
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
+  stockDisplay?: ProductCardStockDisplay,
 ): Product => {
   return {
     id: product.entityId.toString(),
@@ -85,6 +92,17 @@ export const singleProductCardTransformer = (
       'variants' in product
         ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
         : undefined,
+    stockDisplayData:
+      stockDisplay && 'variants' in product
+        ? getStockDisplayData(
+            // A list card has no selected variant. Do not display a combined or arbitrary count.
+            product.inventory.hasVariantInventory
+              ? { isInStock: product.inventory.isInStock }
+              : product.inventory,
+            stockDisplay.settings,
+            stockDisplay.formatStock,
+          )
+        : undefined,
     promotions:
       'featuredPromotions' in product
         ? removeEdgesAndNodes(product.featuredPromotions).map((p) => ({
@@ -101,6 +119,7 @@ export const productCardTransformer = (
   outOfStockMessage?: string,
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
+  stockDisplay?: ProductCardStockDisplay,
 ): Product[] => {
   return products
     .filter((product) => !hasZeroPrice(product))
@@ -111,6 +130,7 @@ export const productCardTransformer = (
         outOfStockMessage,
         showBackorderMessage,
         taxDisplay,
+        stockDisplay,
       ),
     );
 };
