@@ -650,7 +650,7 @@ export function CartClient<LineItem extends CartLineItem>({
             {title}
           </h1>
           <p className="text-lg text-contrast-300 contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
-            {displayTotalQuantity} Products
+            {displayTotalQuantity} {displayTotalQuantity === 1 ? 'Product' : 'Products'}
           </p>
         </div>
         {/* Cart Items */}
