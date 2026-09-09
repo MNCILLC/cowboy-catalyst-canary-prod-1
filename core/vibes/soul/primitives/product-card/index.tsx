@@ -123,11 +123,13 @@ export function ProductCard({
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
       actions: 'ml-1 mt-auto',
+      compare: '',
       badge: 'absolute left-3 top-3',
     },
     list: {
       root: clsx(
-        'max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
+        'relative max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
+        showCompare && 'pt-12',
         {
           light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
           dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
@@ -140,6 +142,7 @@ export function ProductCard({
       placeholder: 'p-2 text-sm',
       details: 'min-w-0',
       actions: 'ml-auto flex flex-col items-end gap-3',
+      compare: 'absolute left-4 top-4',
       badge: 'mb-1',
     },
   }[layout];
@@ -165,6 +168,37 @@ export function ProductCard({
       row: <div className="min-w-0 @lg:w-48 @lg:shrink-0">{inventory}</div>,
     },
   }[layout];
+  const priceElement = price != null && (
+    <PriceLabel
+      className="[&_abbr]:cursor-default [&_abbr]:no-underline"
+      colorScheme={colorScheme}
+      price={price}
+    />
+  );
+  const compareElement = showCompare && (
+    <div className={layoutStyles.compare}>
+      <Compare
+        colorScheme={colorScheme}
+        label={compareLabel}
+        paramName={compareParamName}
+        product={{ id, title, href, image }}
+      />
+    </div>
+  );
+  const controlPlacement = {
+    grid: {
+      compareStart: null,
+      compareActions: compareElement,
+      priceDetails: priceElement,
+      priceActions: null,
+    },
+    list: {
+      compareStart: compareElement,
+      compareActions: null,
+      priceDetails: null,
+      priceActions: priceElement,
+    },
+  }[layout];
 
   return (
     <article
@@ -175,6 +209,7 @@ export function ProductCard({
       )}
       data-layout={layout}
     >
+      {controlPlacement.compareStart}
       <div className={clsx('relative', layoutStyles.content)}>
         <div className={clsx('relative overflow-hidden', layoutStyles.image)}>
           {image != null ? (
@@ -233,13 +268,7 @@ export function ProductCard({
                 {subtitle}
               </span>
             )}
-            {price != null && (
-              <PriceLabel
-                className="[&_abbr]:cursor-default [&_abbr]:no-underline"
-                colorScheme={colorScheme}
-                price={price}
-              />
-            )}
+            {controlPlacement.priceDetails}
             {promotions != null && promotions.length > 0 && (
               <div className="mt-1.5">
                 <CalloutRoot size="small" variant="warning">
@@ -280,17 +309,13 @@ export function ProductCard({
         )}
       </div>
       {inventoryPlacement.row}
-      {(showCompare || Boolean(purchaseAction)) && (
+      {[controlPlacement.priceActions, purchaseAction, controlPlacement.compareActions].some(
+        Boolean,
+      ) && (
         <div className={clsx('shrink-0', layoutStyles.actions)}>
+          {controlPlacement.priceActions}
           {purchaseAction}
-          {showCompare && (
-            <Compare
-              colorScheme={colorScheme}
-              label={compareLabel}
-              paramName={compareParamName}
-              product={{ id, title, href, image }}
-            />
-          )}
+          {controlPlacement.compareActions}
         </div>
       )}
     </article>
