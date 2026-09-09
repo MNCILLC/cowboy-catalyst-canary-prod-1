@@ -18,6 +18,7 @@ import { productCardTransformer } from '~/data-transformers/product-card-transfo
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
+import { getPreferredProductView } from '~/lib/product-view';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 
 import { MAX_COMPARE_LIMIT } from '../../../compare/page-data';
@@ -283,6 +284,7 @@ export default async function Category(props: Props) {
         filterLabel={t('FacetedSearch.filters')}
         filters={streamableFilters}
         filtersPanelTitle={t('FacetedSearch.filters')}
+        initialView={await getPreferredProductView()}
         maxCompareLimitMessage={t('Compare.maxCompareLimit')}
         maxItems={MAX_COMPARE_LIMIT}
         paginationInfo={streamablePagination}

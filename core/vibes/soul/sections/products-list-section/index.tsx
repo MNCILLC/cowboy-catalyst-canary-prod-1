@@ -9,7 +9,11 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import * as SidePanel from '@/vibes/soul/primitives/side-panel';
 import { Breadcrumb, Breadcrumbs, BreadcrumbsSkeleton } from '@/vibes/soul/sections/breadcrumbs';
 import { ProductList } from '@/vibes/soul/sections/product-list';
-import { ProductViewProvider, ProductViewSwitcher } from '@/vibes/soul/sections/product-list/view';
+import {
+  ProductView,
+  ProductViewProvider,
+  ProductViewSwitcher,
+} from '@/vibes/soul/sections/product-list/view';
 import { Filter, FiltersPanel } from '@/vibes/soul/sections/products-list-section/filters-panel';
 import {
   Sorting,
@@ -18,6 +22,7 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
   breadcrumbs?: Streamable<Breadcrumb[]>;
   title?: Streamable<string | null>;
@@ -50,6 +55,7 @@ interface Props {
 }
 
 export function ProductsListSection({
+  initialView,
   addToCartAction,
   breadcrumbs: streamableBreadcrumbs,
   title = 'Products',
@@ -81,7 +87,7 @@ export function ProductsListSection({
   productListBanner,
 }: Props) {
   return (
-    <ProductViewProvider>
+    <ProductViewProvider initialView={initialView}>
       <div className="group/products-list-section @container">
         <div className="mx-auto max-w-screen-2xl px-4 py-10 @xl:px-6 @xl:py-14 @4xl:px-8 @4xl:py-12">
           <div>
