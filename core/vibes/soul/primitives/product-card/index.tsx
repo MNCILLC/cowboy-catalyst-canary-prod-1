@@ -18,10 +18,13 @@ import { Link } from '~/components/link';
 import { Rating } from '../rating';
 
 import { Compare } from './compare';
+import { ProductCardDescription } from './description';
 
 export interface Product {
   id: string;
   title: string;
+  packing?: string;
+  descriptionHtml?: string;
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -83,6 +86,8 @@ export function ProductCard({
   product: {
     id,
     title,
+    packing,
+    descriptionHtml,
     subtitle,
     badge,
     price,
@@ -111,21 +116,41 @@ export function ProductCard({
     grid: {
       root: 'max-w-md flex-col gap-3',
       content: '',
-      image: { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
+      image: clsx(
+        'rounded-xl @md:rounded-2xl',
+        { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
+        {
+          light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))]',
+          dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))]',
+        }[colorScheme],
+      ),
+      imageFit: 'object-cover',
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
+      detailsContent: '',
       actions: 'ml-1 mt-auto',
+      compare: '',
       badge: 'absolute left-3 top-3',
     },
     list: {
-      root: 'max-w-none flex-col gap-3 border-b border-contrast-100 py-4 @lg:flex-row @lg:items-start @lg:gap-6',
+      root: clsx(
+        'relative max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
+        showCompare && 'pb-12',
+        {
+          light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
+          dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
+        }[colorScheme],
+      ),
       content:
-        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
+        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:self-stretch @lg:grid-cols-[6rem_minmax(0,1fr)]',
       image: 'aspect-square',
+      imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
-      details: 'min-w-0',
+      details: 'min-h-0 min-w-0 self-stretch',
+      detailsContent: 'flex min-h-0 w-full flex-col',
       actions: 'ml-auto flex flex-col items-end gap-3',
-      badge: 'mb-1',
+      compare: 'absolute bottom-4 left-4',
+      badge: 'mb-1 self-start',
     },
   }[layout];
   const badgeElement =
@@ -144,10 +169,41 @@ export function ProductCard({
     />
   );
   const inventoryPlacement = {
-    grid: { details: inventory, row: null },
+    grid: { details: inventory, actions: null },
     list: {
       details: null,
-      row: <div className="min-w-0 @lg:w-48 @lg:shrink-0">{inventory}</div>,
+      actions: <div className="w-full min-w-0 max-w-xs">{inventory}</div>,
+    },
+  }[layout];
+  const priceElement = price != null && (
+    <PriceLabel
+      className="[&_abbr]:cursor-default [&_abbr]:no-underline"
+      colorScheme={colorScheme}
+      price={price}
+    />
+  );
+  const compareElement = showCompare && (
+    <div className={layoutStyles.compare}>
+      <Compare
+        colorScheme={colorScheme}
+        label={compareLabel}
+        paramName={compareParamName}
+        product={{ id, title, href, image }}
+      />
+    </div>
+  );
+  const controlPlacement = {
+    grid: {
+      compareStart: null,
+      compareActions: compareElement,
+      priceDetails: priceElement,
+      priceActions: null,
+    },
+    list: {
+      compareStart: compareElement,
+      compareActions: null,
+      priceDetails: null,
+      priceActions: priceElement,
     },
   }[layout];
 
@@ -160,26 +216,15 @@ export function ProductCard({
       )}
       data-layout={layout}
     >
+      {controlPlacement.compareStart}
       <div className={clsx('relative', layoutStyles.content)}>
-        <div
-          className={clsx(
-            'relative overflow-hidden rounded-xl @md:rounded-2xl',
-            layoutStyles.image,
-            {
-              light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))]',
-              dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))]',
-            }[colorScheme],
-          )}
-        >
+        <div className={clsx('relative overflow-hidden', layoutStyles.image)}>
           {image != null ? (
             <Image
               alt={image.alt}
               className={clsx(
-                'w-full scale-100 select-none object-cover transition-transform duration-500 ease-out group-hover:scale-110',
-                {
-                  light: 'bg-[var(--product-card-light-background,hsl(var(--contrast-100))]',
-                  dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500))]',
-                }[colorScheme],
+                'w-full scale-100 select-none transition-transform duration-500 ease-out group-hover:scale-110',
+                layoutStyles.imageFit,
               )}
               fill
               preload={imagePriority}
@@ -204,7 +249,12 @@ export function ProductCard({
         </div>
 
         <div className={clsx('flex flex-col items-start gap-x-4 gap-y-3', layoutStyles.details)}>
-          <div className="min-w-0 flex-1 text-sm @[16rem]:text-base">
+          <div
+            className={clsx(
+              'min-w-0 flex-1 text-sm @[16rem]:text-base',
+              layoutStyles.detailsContent,
+            )}
+          >
             {layout === 'list' && badgeElement}
             <span
               className={clsx(
@@ -217,6 +267,12 @@ export function ProductCard({
             >
               {title}
             </span>
+            <ProductCardPacking colorScheme={colorScheme} layout={layout} packing={packing} />
+            <ProductCardDescription
+              colorScheme={colorScheme}
+              description={descriptionHtml}
+              layout={layout}
+            />
             {subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
@@ -230,13 +286,7 @@ export function ProductCard({
                 {subtitle}
               </span>
             )}
-            {price != null && (
-              <PriceLabel
-                className="[&_abbr]:cursor-default [&_abbr]:no-underline"
-                colorScheme={colorScheme}
-                price={price}
-              />
-            )}
+            {controlPlacement.priceDetails}
             {promotions != null && promotions.length > 0 && (
               <div className="mt-1.5">
                 <CalloutRoot size="small" variant="warning">
@@ -276,21 +326,42 @@ export function ProductCard({
           </Link>
         )}
       </div>
-      {inventoryPlacement.row}
-      {(showCompare || Boolean(purchaseAction)) && (
+      {[
+        controlPlacement.priceActions,
+        purchaseAction,
+        inventoryPlacement.actions,
+        controlPlacement.compareActions,
+      ].some(Boolean) && (
         <div className={clsx('shrink-0', layoutStyles.actions)}>
+          {controlPlacement.priceActions}
           {purchaseAction}
-          {showCompare && (
-            <Compare
-              colorScheme={colorScheme}
-              label={compareLabel}
-              paramName={compareParamName}
-              product={{ id, title, href, image }}
-            />
-          )}
+          {inventoryPlacement.actions}
+          {controlPlacement.compareActions}
         </div>
       )}
     </article>
+  );
+}
+
+function ProductCardPacking({
+  colorScheme,
+  layout,
+  packing,
+}: Pick<Product, 'packing'> & Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  if (layout !== 'list' || !packing?.trim()) return null;
+
+  return (
+    <span
+      className={clsx(
+        'block text-sm font-normal',
+        {
+          light: 'text-[var(--product-card-light-subtitle,hsl(var(--foreground)/75%))]',
+          dark: 'text-[var(--product-card-dark-subtitle,hsl(var(--background)/75%))]',
+        }[colorScheme],
+      )}
+    >
+      {packing}
+    </span>
   );
 }
 
@@ -346,13 +417,14 @@ export function ProductCardSkeleton({
   return (
     <Skeleton.Root
       className={clsx(
-        layout === 'list' && 'flex items-start gap-4 border-b border-contrast-100 py-4',
+        layout === 'list' &&
+          'flex items-start gap-4 rounded-2xl border border-contrast-100 bg-[var(--card-light-background,hsl(var(--contrast-100)))] p-4 shadow-sm',
         className,
       )}
     >
       <Skeleton.Box
         className={clsx(
-          'rounded-[var(--product-card-border-radius,1rem)]',
+          layout === 'grid' && 'rounded-[var(--product-card-border-radius,1rem)]',
           layout === 'list'
             ? 'aspect-square w-16 shrink-0 @lg:w-24'
             : {
