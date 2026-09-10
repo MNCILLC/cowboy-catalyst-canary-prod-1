@@ -169,10 +169,10 @@ export function ProductCard({
     />
   );
   const inventoryPlacement = {
-    grid: { details: inventory, row: null },
+    grid: { details: inventory, actions: null },
     list: {
       details: null,
-      row: <div className="min-w-0 @lg:w-48 @lg:shrink-0">{inventory}</div>,
+      actions: <div className="w-full min-w-0 max-w-xs">{inventory}</div>,
     },
   }[layout];
   const priceElement = price != null && (
@@ -326,13 +326,16 @@ export function ProductCard({
           </Link>
         )}
       </div>
-      {inventoryPlacement.row}
-      {[controlPlacement.priceActions, purchaseAction, controlPlacement.compareActions].some(
-        Boolean,
-      ) && (
+      {[
+        controlPlacement.priceActions,
+        purchaseAction,
+        inventoryPlacement.actions,
+        controlPlacement.compareActions,
+      ].some(Boolean) && (
         <div className={clsx('shrink-0', layoutStyles.actions)}>
           {controlPlacement.priceActions}
           {purchaseAction}
+          {inventoryPlacement.actions}
           {controlPlacement.compareActions}
         </div>
       )}
