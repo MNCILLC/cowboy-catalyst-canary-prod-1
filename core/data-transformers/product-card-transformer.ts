@@ -63,6 +63,11 @@ export const singleProductCardTransformer = (
   return {
     id: product.entityId.toString(),
     title: product.name,
+    descriptionHtml: 'description' in product ? product.description : undefined,
+    packing:
+      'packingFields' in product
+        ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim() || undefined
+        : undefined,
     href: product.path,
     hasOptions:
       'productOptions' in product
