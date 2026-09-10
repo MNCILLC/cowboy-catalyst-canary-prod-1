@@ -6,8 +6,14 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
+
+interface ProductCardStockDisplay {
+  settings?: StockDisplaySettings | null;
+  formatStock: (quantity: number) => string;
+}
 
 const getInventoryMessage = (
   product: ResultOf<typeof ProductCardFragment>,
@@ -52,11 +58,34 @@ export const singleProductCardTransformer = (
   outOfStockMessage?: string,
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
+  stockDisplay?: ProductCardStockDisplay,
 ): Product => {
   return {
     id: product.entityId.toString(),
     title: product.name,
+    descriptionHtml: 'description' in product ? product.description : undefined,
+    packing:
+      'packingFields' in product
+        ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim() || undefined
+        : undefined,
     href: product.path,
+    hasOptions:
+      'productOptions' in product
+        ? removeEdgesAndNodes(product.productOptions).length > 0
+        : undefined,
+    canAddToCart:
+      product.showCartAction &&
+      product.availabilityV2.status !== 'Unavailable' &&
+      product.inventory.isInStock,
+    isPreorder: product.availabilityV2.status === 'Preorder',
+    minQuantity:
+      'minPurchaseQuantity' in product && product.minPurchaseQuantity != null
+        ? Math.max(1, product.minPurchaseQuantity)
+        : undefined,
+    maxQuantity:
+      'maxPurchaseQuantity' in product && product.maxPurchaseQuantity != null
+        ? product.maxPurchaseQuantity
+        : undefined,
     image: product.defaultImage
       ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
       : undefined,
@@ -67,6 +96,17 @@ export const singleProductCardTransformer = (
     inventoryMessage:
       'variants' in product
         ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
+        : undefined,
+    stockDisplayData:
+      stockDisplay && 'variants' in product
+        ? getStockDisplayData(
+            // A list card has no selected variant. Do not display a combined or arbitrary count.
+            product.inventory.hasVariantInventory
+              ? { isInStock: product.inventory.isInStock }
+              : product.inventory,
+            stockDisplay.settings,
+            stockDisplay.formatStock,
+          )
         : undefined,
     promotions:
       'featuredPromotions' in product
@@ -84,6 +124,7 @@ export const productCardTransformer = (
   outOfStockMessage?: string,
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
+  stockDisplay?: ProductCardStockDisplay,
 ): Product[] => {
   return products
     .filter((product) => !hasZeroPrice(product))
@@ -94,6 +135,7 @@ export const productCardTransformer = (
         outOfStockMessage,
         showBackorderMessage,
         taxDisplay,
+        stockDisplay,
       ),
     );
 };

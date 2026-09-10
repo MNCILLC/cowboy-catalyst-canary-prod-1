@@ -6,11 +6,32 @@ export const ProductCardFragment = graphql(
     fragment ProductCardFragment on Product {
       entityId
       name
+      description
+      packingFields: customFields(names: ["packing", "Packing", "PACKING"], first: 1) {
+        edges {
+          node {
+            value
+          }
+        }
+      }
       defaultImage {
         altText
         url: urlTemplate(lossy: true)
       }
       path
+      showCartAction
+      minPurchaseQuantity
+      maxPurchaseQuantity
+      availabilityV2 {
+        status
+      }
+      productOptions(first: 1) {
+        edges {
+          node {
+            entityId
+          }
+        }
+      }
       brand {
         name
         path
@@ -19,6 +40,8 @@ export const ProductCardFragment = graphql(
         hasVariantInventory
         isInStock
         aggregated {
+          availableToSell
+          warningLevel
           availableForBackorder
           unlimitedBackorder
           availableOnHand
