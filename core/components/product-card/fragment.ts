@@ -6,6 +6,13 @@ export const ProductCardFragment = graphql(
     fragment ProductCardFragment on Product {
       entityId
       name
+      packingFields: customFields(names: ["packing", "Packing", "PACKING"], first: 1) {
+        edges {
+          node {
+            value
+          }
+        }
+      }
       defaultImage {
         altText
         url: urlTemplate(lossy: true)

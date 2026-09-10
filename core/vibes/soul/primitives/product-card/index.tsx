@@ -22,6 +22,7 @@ import { Compare } from './compare';
 export interface Product {
   id: string;
   title: string;
+  packing?: string;
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -83,6 +84,7 @@ export function ProductCard({
   product: {
     id,
     title,
+    packing,
     subtitle,
     badge,
     price,
@@ -255,6 +257,7 @@ export function ProductCard({
             >
               {title}
             </span>
+            <ProductCardPacking colorScheme={colorScheme} layout={layout} packing={packing} />
             {subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
@@ -319,6 +322,28 @@ export function ProductCard({
         </div>
       )}
     </article>
+  );
+}
+
+function ProductCardPacking({
+  colorScheme,
+  layout,
+  packing,
+}: Pick<Product, 'packing'> & Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  if (layout !== 'list' || !packing?.trim()) return null;
+
+  return (
+    <span
+      className={clsx(
+        'block text-sm font-normal',
+        {
+          light: 'text-[var(--product-card-light-subtitle,hsl(var(--foreground)/75%))]',
+          dark: 'text-[var(--product-card-dark-subtitle,hsl(var(--background)/75%))]',
+        }[colorScheme],
+      )}
+    >
+      {packing}
+    </span>
   );
 }
 
