@@ -18,11 +18,13 @@ import { Link } from '~/components/link';
 import { Rating } from '../rating';
 
 import { Compare } from './compare';
+import { ProductCardDescription } from './description';
 
 export interface Product {
   id: string;
   title: string;
   packing?: string;
+  descriptionHtml?: string;
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -85,6 +87,7 @@ export function ProductCard({
     id,
     title,
     packing,
+    descriptionHtml,
     subtitle,
     badge,
     price,
@@ -124,6 +127,7 @@ export function ProductCard({
       imageFit: 'object-cover',
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
+      detailsContent: '',
       actions: 'ml-1 mt-auto',
       compare: '',
       badge: 'absolute left-3 top-3',
@@ -138,14 +142,15 @@ export function ProductCard({
         }[colorScheme],
       ),
       content:
-        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:grid-cols-[6rem_minmax(0,1fr)]',
+        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:self-stretch @lg:grid-cols-[6rem_minmax(0,1fr)]',
       image: 'aspect-square',
       imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
-      details: 'min-w-0',
+      details: 'min-h-0 min-w-0 self-stretch',
+      detailsContent: 'flex min-h-0 w-full flex-col',
       actions: 'ml-auto flex flex-col items-end gap-3',
       compare: 'absolute bottom-4 left-4',
-      badge: 'mb-1',
+      badge: 'mb-1 self-start',
     },
   }[layout];
   const badgeElement =
@@ -244,7 +249,12 @@ export function ProductCard({
         </div>
 
         <div className={clsx('flex flex-col items-start gap-x-4 gap-y-3', layoutStyles.details)}>
-          <div className="min-w-0 flex-1 text-sm @[16rem]:text-base">
+          <div
+            className={clsx(
+              'min-w-0 flex-1 text-sm @[16rem]:text-base',
+              layoutStyles.detailsContent,
+            )}
+          >
             {layout === 'list' && badgeElement}
             <span
               className={clsx(
@@ -258,6 +268,11 @@ export function ProductCard({
               {title}
             </span>
             <ProductCardPacking colorScheme={colorScheme} layout={layout} packing={packing} />
+            <ProductCardDescription
+              colorScheme={colorScheme}
+              description={descriptionHtml}
+              layout={layout}
+            />
             {subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
