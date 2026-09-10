@@ -270,13 +270,13 @@ export function ProductCard({
             >
               {title}
             </span>
-            <ProductCardPacking colorScheme={colorScheme} layout={layout} packing={packing} />
+            <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
             <ProductCardDescription
               colorScheme={colorScheme}
               description={descriptionHtml}
               layout={layout}
             />
-            {subtitle != null && subtitle !== '' && (
+            {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
                   'mb-1.5 block text-sm font-normal',
@@ -346,25 +346,18 @@ export function ProductCard({
   );
 }
 
-function ProductCardPacking({
-  colorScheme,
+function ProductCardBadges({
   layout,
   packing,
-}: Pick<Product, 'packing'> & Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
-  if (layout !== 'list' || !packing?.trim()) return null;
+  subtitle,
+}: Pick<Product, 'packing' | 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
+  if (layout !== 'list' || (!packing?.trim() && !subtitle?.trim())) return null;
 
   return (
-    <span
-      className={clsx(
-        'block text-sm font-normal',
-        {
-          light: 'text-[var(--product-card-light-subtitle,hsl(var(--foreground)/75%))]',
-          dark: 'text-[var(--product-card-dark-subtitle,hsl(var(--background)/75%))]',
-        }[colorScheme],
-      )}
-    >
-      {packing}
-    </span>
+    <div className="my-1.5 flex flex-wrap gap-2">
+      {!!packing?.trim() && <Badge variant="info">{packing}</Badge>}
+      {!!subtitle?.trim() && <Badge variant="info">{subtitle}</Badge>}
+    </div>
   );
 }
 
