@@ -7,7 +7,7 @@ import { getSessionCustomerAccessToken } from '~/auth';
 import { getChannelIdFromLocale } from '~/channels.config';
 import { client } from '~/client';
 import { graphql } from '~/client/graphql';
-import { redirect } from '~/i18n/routing';
+import { redirect } from '~/i18n/navigation-server';
 import { getVisitIdCookie, getVisitorIdCookie } from '~/lib/analytics/bigcommerce';
 import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   if (!cartId) {
     await serverToast.error(t('cartNotFound'));
 
-    return redirect({ href: '/cart', locale });
+    return await redirect({ href: '/cart', locale });
   }
 
   const visitId = await getVisitIdCookie();
@@ -137,10 +137,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     ) {
       await serverToast.error(t('somethingWentWrong'));
 
-      return redirect({ href: '/cart', locale });
+      return await redirect({ href: '/cart', locale });
     }
 
-    return redirect({
+    return await redirect({
       href: data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl,
       locale,
     });
@@ -148,7 +148,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     rethrow(error);
 
     if (error instanceof BigCommerceAuthError) {
-      return redirect({ href: '/logout?redirectTo=/checkout/', locale });
+      return await redirect({ href: '/logout?redirectTo=/checkout/', locale });
     }
 
     // eslint-disable-next-line no-console
