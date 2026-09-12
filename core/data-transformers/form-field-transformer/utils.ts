@@ -48,8 +48,9 @@ export const REGISTER_CUSTOMER_FORM_LAYOUT = [
   FieldNameToFieldId.phone,
   FieldNameToFieldId.address1,
   FieldNameToFieldId.address2,
+  FieldNameToFieldId.countryCode,
   [FieldNameToFieldId.city, FieldNameToFieldId.stateOrProvince],
-  [FieldNameToFieldId.postalCode, FieldNameToFieldId.countryCode],
+  FieldNameToFieldId.postalCode,
 ];
 
 export const ADDRESS_FORM_LAYOUT = [

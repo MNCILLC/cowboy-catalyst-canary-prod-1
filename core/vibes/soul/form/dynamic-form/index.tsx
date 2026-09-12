@@ -7,6 +7,7 @@ import {
   getFormProps,
   getInputProps,
   SubmissionResult,
+  useField,
   useForm,
   useInputControl,
 } from '@conform-to/react';
@@ -40,6 +41,7 @@ import { Textarea } from '@/vibes/soul/form/textarea';
 import { Button, ButtonProps } from '@/vibes/soul/primitives/button';
 
 import {
+  DependentSelectField,
   Field,
   FieldGroup,
   FormErrorTranslationMap,
@@ -262,6 +264,9 @@ export function DynamicFormField({
   const controls = useInputControl(formField);
 
   switch (field.type) {
+    case 'dependent-select':
+      return <DependentSelect controls={controls} field={field} formField={formField} />;
+
     case 'number':
       return (
         <NumberInput
@@ -464,4 +469,55 @@ export function DynamicFormField({
     case 'hidden':
       return <input {...getInputProps(formField, { type: 'hidden' })} key={field.name} />;
   }
+}
+
+function DependentSelect({
+  controls,
+  field,
+  formField,
+}: {
+  controls: ReturnType<typeof useInputControl>;
+  field: DependentSelectField;
+  formField: FieldMetadata<string | string[] | number | boolean | Date | undefined>;
+}) {
+  const [dependency] = useField<string>(field.dependsOn);
+  const dependencyValue = dependency.value ?? '';
+  const previousDependency = useRef(dependencyValue);
+  const options = field.options[dependencyValue] ?? [];
+  const { change } = controls;
+
+  useEffect(() => {
+    if (previousDependency.current !== dependencyValue) {
+      previousDependency.current = dependencyValue;
+      change('');
+    }
+  }, [dependencyValue, change]);
+
+  if (dependencyValue && options.length === 0 && field.allowCustomValue) {
+    return (
+      <Input
+        {...getInputProps(formField, { type: 'text' })}
+        errors={formField.errors}
+        key={formField.key}
+        label={field.label}
+        placeholder={field.placeholder}
+      />
+    );
+  }
+
+  return (
+    <Select
+      disabled={!dependencyValue}
+      errors={formField.errors}
+      label={field.label}
+      name={formField.name}
+      onBlur={controls.blur}
+      onFocus={controls.focus}
+      onValueChange={controls.change}
+      options={options}
+      placeholder={field.placeholder}
+      required={formField.required}
+      value={typeof controls.value === 'string' ? controls.value : ''}
+    />
+  );
 }
