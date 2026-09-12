@@ -7,6 +7,7 @@ import { DynamicFormSection } from '@/vibes/soul/sections/dynamic-form-section';
 import {
   formFieldTransformer,
   injectCountryCodeOptions,
+  injectStateOrProvinceOptions,
 } from '~/data-transformers/form-field-transformer';
 import {
   CUSTOMER_FIELDS_TO_EXCLUDE,
@@ -101,10 +102,18 @@ export default async function Register({ params }: Props) {
     .filter(exists)
     .map((field) => {
       if (Array.isArray(field)) {
-        return field.map((f) => injectCountryCodeOptions(f, countries ?? []));
+        return field.map((f) =>
+          injectStateOrProvinceOptions(
+            injectCountryCodeOptions(f, countries ?? []),
+            countries ?? [],
+          ),
+        );
       }
 
-      return injectCountryCodeOptions(field, countries ?? []);
+      return injectStateOrProvinceOptions(
+        injectCountryCodeOptions(field, countries ?? []),
+        countries ?? [],
+      );
     })
     .filter(exists)
     .filter(removeExlusiveOffersField);
