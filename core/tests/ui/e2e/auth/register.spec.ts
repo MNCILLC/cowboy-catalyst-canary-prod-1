@@ -32,11 +32,12 @@ test('Registration works as expected', { tag: [TAGS.writesData] }, async ({ page
   await page.getByLabel('Phone').fill(phone);
   await page.getByLabel('Address Line 1').fill(streetAddress);
   await page.getByLabel('Suburb/City').fill(city);
-  await page.getByLabel('State/Province').fill(state);
   await page.getByLabel('Zip/Postcode').fill(postalCode);
   await page.getByRole('combobox', { name: 'Country' }).click();
   await page.keyboard.type('United States');
   await page.keyboard.press('Enter');
+  await page.getByRole('combobox', { name: 'State/Province' }).click();
+  await page.getByRole('option', { name: state, exact: true }).click();
 
   // Click reCAPTCHA if enabled (uses test key — no challenge, always passes)
   const recaptchaFrame = page.frameLocator('iframe[title="reCAPTCHA"]');
@@ -88,11 +89,12 @@ test('Registration fails if email is already in use', async ({ page, customer })
   await page.getByLabel('Phone').fill(phone);
   await page.getByLabel('Address Line 1').fill(streetAddress);
   await page.getByLabel('Suburb/City').fill(city);
-  await page.getByLabel('State/Province').fill(state);
   await page.getByLabel('Zip/Postcode').fill(postalCode);
   await page.getByRole('combobox', { name: 'Country' }).click();
   await page.keyboard.type('United States');
   await page.keyboard.press('Enter');
+  await page.getByRole('combobox', { name: 'State/Province' }).click();
+  await page.getByRole('option', { name: state, exact: true }).click();
 
   // Click reCAPTCHA if enabled (uses test key — no challenge, always passes)
   const recaptchaFrame = page.frameLocator('iframe[title="reCAPTCHA"]');
@@ -138,14 +140,38 @@ test('Registration fails if reCAPTCHA is not completed', async ({ page }) => {
   await page.getByLabel('Phone').fill(faker.phone.number({ style: 'national' }));
   await page.getByLabel('Address Line 1').fill(faker.location.streetAddress());
   await page.getByLabel('Suburb/City').fill(faker.location.city());
-  await page.getByLabel('State/Province').fill(faker.location.state());
   await page.getByLabel('Zip/Postcode').fill(faker.location.zipCode());
   await page.getByRole('combobox', { name: 'Country' }).click();
   await page.keyboard.type('United States');
   await page.keyboard.press('Enter');
+  await page.getByRole('combobox', { name: 'State/Province' }).click();
+  await page.getByRole('option', { name: faker.location.state(), exact: true }).click();
 
   await page.getByRole('button', { name: t('cta') }).click();
 
   await expect(page).not.toHaveURL('/account/orders/');
   await expect(page.getByText(t('recaptchaRequired'))).toBeVisible();
+});
+
+test('Registration state options follow the selected country', async ({ page }) => {
+  await page.goto('/register');
+
+  const country = page.getByRole('combobox', { name: 'Country', exact: true });
+  const state = page.getByRole('combobox', { name: 'State/Province' });
+  const stateValue = page.locator('input[name="stateOrProvince"]');
+
+  await expect(state).toBeDisabled();
+  await country.click();
+  await page.getByRole('option', { name: 'United States', exact: true }).click();
+  await state.click();
+  await page.getByRole('option', { name: 'Missouri', exact: true }).click();
+  await expect(stateValue).toHaveValue('Missouri');
+
+  await country.click();
+  await page.getByRole('option', { name: 'Canada', exact: true }).click();
+  await expect(stateValue).toHaveValue('');
+  await state.click();
+  await expect(page.getByRole('option', { name: 'Missouri', exact: true })).toHaveCount(0);
+  await page.getByRole('option', { name: 'Ontario', exact: true }).click();
+  await expect(stateValue).toHaveValue('Ontario');
 });
