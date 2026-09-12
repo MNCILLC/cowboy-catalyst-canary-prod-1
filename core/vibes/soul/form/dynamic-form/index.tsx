@@ -19,6 +19,7 @@ import {
   startTransition,
   useActionState,
   useEffect,
+  useRef,
 } from 'react';
 import { useFormStatus } from 'react-dom';
 import RecaptchaWidget from 'react-google-recaptcha';
@@ -97,6 +98,7 @@ export function DynamicForm<F extends Field>({
   recaptchaSiteKey,
 }: DynamicFormProps<F>) {
   const t = useTranslations('Form');
+  const recaptchaRef = useRef<RecaptchaWidget>(null);
   // Remove options from fields before passing to action to reduce payload size
   // Options are only needed for rendering, not for processing form submissions
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -158,6 +160,13 @@ export function DynamicForm<F extends Field>({
   });
 
   useEffect(() => {
+    if (lastResult) {
+      // The server may consume the token even when it returns validation errors.
+      recaptchaRef.current?.reset();
+    }
+  }, [lastResult]);
+
+  useEffect(() => {
     if (lastResult && lastResult.status === 'success' && successMessage) {
       onSuccess?.(lastResult, successMessage);
     }
@@ -194,7 +203,9 @@ export function DynamicForm<F extends Field>({
 
             return <DynamicFormField field={field} formField={formField} key={formField.id} />;
           })}
-          {recaptchaSiteKey ? <RecaptchaWidget sitekey={recaptchaSiteKey} /> : null}
+          {recaptchaSiteKey ? (
+            <RecaptchaWidget ref={recaptchaRef} sitekey={recaptchaSiteKey} />
+          ) : null}
           <div className="flex gap-1 pt-3">
             {onCancel && (
               <Button
