@@ -116,6 +116,7 @@ export function ProductCard({
     grid: {
       root: 'max-w-md flex-col gap-3',
       content: '',
+      imageColumn: '',
       image: clsx(
         'rounded-xl @md:rounded-2xl',
         { '5:6': 'aspect-[5/6]', '3:4': 'aspect-[3/4]', '1:1': 'aspect-square' }[aspectRatio],
@@ -135,21 +136,21 @@ export function ProductCard({
     list: {
       root: clsx(
         'relative max-w-none flex-col gap-3 rounded-2xl border border-contrast-100 p-4 shadow-sm @lg:flex-row @lg:items-start @lg:gap-6',
-        showCompare && 'pb-12',
         {
           light: 'bg-[var(--card-light-background,hsl(var(--contrast-100)))]',
           dark: 'bg-[var(--card-dark-background,hsl(var(--contrast-500)))]',
         }[colorScheme],
       ),
       content:
-        'grid min-w-0 flex-1 grid-cols-[4rem_minmax(0,1fr)] items-start gap-4 @lg:self-stretch @lg:grid-cols-[6rem_minmax(0,1fr)]',
-      image: 'aspect-square',
+        'grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-start gap-4 @lg:self-stretch',
+      imageColumn: 'flex flex-col items-start gap-3',
+      image: 'aspect-square w-16 @lg:w-24',
       imageFit: 'object-contain',
       placeholder: 'p-2 text-sm',
       details: 'min-h-0 min-w-0 self-stretch',
       detailsContent: 'flex min-h-0 w-full flex-col',
       actions: 'ml-auto flex flex-col items-end gap-3',
-      compare: 'absolute bottom-4 left-4',
+      compare: 'relative z-10 w-fit',
       badge: 'mb-1 self-start',
     },
   }[layout];
@@ -194,13 +195,13 @@ export function ProductCard({
   );
   const controlPlacement = {
     grid: {
-      compareStart: null,
+      compareImage: null,
       compareActions: compareElement,
       priceDetails: priceElement,
       priceActions: null,
     },
     list: {
-      compareStart: compareElement,
+      compareImage: compareElement,
       compareActions: null,
       priceDetails: null,
       priceActions: priceElement,
@@ -216,36 +217,38 @@ export function ProductCard({
       )}
       data-layout={layout}
     >
-      {controlPlacement.compareStart}
       <div className={clsx('relative', layoutStyles.content)}>
-        <div className={clsx('relative overflow-hidden', layoutStyles.image)}>
-          {image != null ? (
-            <Image
-              alt={image.alt}
-              className={clsx(
-                'w-full scale-100 select-none transition-transform duration-500 ease-out group-hover:scale-110',
-                layoutStyles.imageFit,
-              )}
-              fill
-              preload={imagePriority}
-              sizes={imageSizes}
-              src={image.src}
-            />
-          ) : (
-            <div
-              className={clsx(
-                'break-words font-bold tracking-tighter opacity-25 transition-transform duration-500 ease-out group-hover:scale-105',
-                layoutStyles.placeholder,
-                {
-                  light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-                  dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
-                }[colorScheme],
-              )}
-            >
-              {title}
-            </div>
-          )}
-          {layout === 'grid' && badgeElement}
+        <div className={layoutStyles.imageColumn}>
+          <div className={clsx('relative overflow-hidden', layoutStyles.image)}>
+            {image != null ? (
+              <Image
+                alt={image.alt}
+                className={clsx(
+                  'w-full scale-100 select-none transition-transform duration-500 ease-out group-hover:scale-110',
+                  layoutStyles.imageFit,
+                )}
+                fill
+                preload={imagePriority}
+                sizes={imageSizes}
+                src={image.src}
+              />
+            ) : (
+              <div
+                className={clsx(
+                  'break-words font-bold tracking-tighter opacity-25 transition-transform duration-500 ease-out group-hover:scale-105',
+                  layoutStyles.placeholder,
+                  {
+                    light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+                    dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
+                  }[colorScheme],
+                )}
+              >
+                {title}
+              </div>
+            )}
+            {layout === 'grid' && badgeElement}
+          </div>
+          {controlPlacement.compareImage}
         </div>
 
         <div className={clsx('flex flex-col items-start gap-x-4 gap-y-3', layoutStyles.details)}>
@@ -267,13 +270,13 @@ export function ProductCard({
             >
               {title}
             </span>
-            <ProductCardPacking colorScheme={colorScheme} layout={layout} packing={packing} />
+            <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
             <ProductCardDescription
               colorScheme={colorScheme}
               description={descriptionHtml}
               layout={layout}
             />
-            {subtitle != null && subtitle !== '' && (
+            {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
                   'mb-1.5 block text-sm font-normal',
@@ -343,25 +346,18 @@ export function ProductCard({
   );
 }
 
-function ProductCardPacking({
-  colorScheme,
+function ProductCardBadges({
   layout,
   packing,
-}: Pick<Product, 'packing'> & Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
-  if (layout !== 'list' || !packing?.trim()) return null;
+  subtitle,
+}: Pick<Product, 'packing' | 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
+  if (layout !== 'list' || (!packing?.trim() && !subtitle?.trim())) return null;
 
   return (
-    <span
-      className={clsx(
-        'block text-sm font-normal',
-        {
-          light: 'text-[var(--product-card-light-subtitle,hsl(var(--foreground)/75%))]',
-          dark: 'text-[var(--product-card-dark-subtitle,hsl(var(--background)/75%))]',
-        }[colorScheme],
-      )}
-    >
-      {packing}
-    </span>
+    <div className="my-1.5 flex flex-wrap gap-2">
+      {!!packing?.trim() && <Badge variant="info">{packing}</Badge>}
+      {!!subtitle?.trim() && <Badge variant="info">{subtitle}</Badge>}
+    </div>
   );
 }
 
