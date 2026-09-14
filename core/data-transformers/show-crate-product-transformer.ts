@@ -13,7 +13,7 @@ export const isShowCrateProduct = (product: ShowCrateProduct): boolean =>
 
 export function showCrateProductTransformer(
   product: ShowCrateProduct,
-): Pick<Product, 'isShow' | 'showFeatures' | 'showDescription'> {
+): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription'> {
   const isShow = isShowCrateProduct(product);
   const configuredFieldNames = removeEdgesAndNodes(product.showMetafields).find(
     ({ key }) => key === 'product_card_custom_fields',
@@ -30,6 +30,9 @@ export function showCrateProductTransformer(
 
   return {
     isShow,
+    showName: isShow
+      ? customFields.find(({ name }) => name.trim() === 'Show Name')?.value.trim() || undefined
+      : undefined,
     showDescription: isShow ? product.showDescription.trim() || undefined : undefined,
     showFeatures: isShow
       ? fieldNames.flatMap((name) =>

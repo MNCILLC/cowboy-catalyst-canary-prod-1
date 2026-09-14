@@ -33,6 +33,7 @@ export function ShowCrateProductCard({
     href,
     price,
     showFeatures = [],
+    showName,
     stockDisplayData,
     inventoryMessage,
     rating,
@@ -74,20 +75,27 @@ export function ShowCrateProductCard({
                 {subtitle}
               </p>
             )}
-            <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
-              {title}
-            </h3>
-            {!!stockMessage && (
-              <div className="mt-1">
-                <Badge
-                  className="max-w-full break-words bg-neutral-300"
-                  shape="pill"
-                  variant="info"
-                >
-                  {stockMessage}
-                </Badge>
+            {(!!showName || !!stockMessage) && (
+              <div className="mt-1 flex items-center justify-between gap-3">
+                {!!showName && (
+                  <span className="min-w-0 flex-1 break-words text-xs font-medium text-neutral-600">
+                    {showName}
+                  </span>
+                )}
+                {!!stockMessage && (
+                  <Badge
+                    className="ml-auto max-w-full break-words bg-neutral-300 text-right"
+                    shape="pill"
+                    variant="info"
+                  >
+                    {stockMessage}
+                  </Badge>
+                )}
               </div>
             )}
+            <h3 className="mt-2 break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
+              {title}
+            </h3>
             <PriceLabel
               className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
               colorScheme={colorScheme}
