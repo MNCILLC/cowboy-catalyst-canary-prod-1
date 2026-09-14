@@ -87,6 +87,7 @@ export function ShowCrateProductCard({
                   <Badge
                     className={clsx('ml-auto max-w-full break-words text-right', {
                       'bg-neutral-300': stockLevelStatus !== 'error',
+                      '!bg-red-700 !text-white': stockLevelStatus === 'error',
                     })}
                     shape="pill"
                     variant={stockLevelStatus}
