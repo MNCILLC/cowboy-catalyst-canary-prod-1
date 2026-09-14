@@ -43,7 +43,7 @@ export function ShowCrateProductCard({
   return (
     <article
       className={clsx(
-        'relative flex h-full min-w-0 scale-100 flex-col overflow-hidden rounded-2xl border border-contrast-300 bg-slate-300 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm transition-transform duration-500 ease-out @container hover:z-10 hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none',
+        'relative flex h-full min-w-0 scale-100 flex-col overflow-hidden rounded-2xl border border-gray-600 bg-orange-100 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm transition-transform duration-500 ease-out @container hover:z-10 hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none',
         {
           light:
             'bg-[var(--product-card-light-offset,hsl(var(--background)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
@@ -125,7 +125,7 @@ export function ShowCrateProductCard({
         />
         <div className="relative z-20 mt-auto">
           <ButtonLink
-            className="w-full"
+            className="w-full after:hidden"
             href={href}
             shape="rounded"
             size="small"
