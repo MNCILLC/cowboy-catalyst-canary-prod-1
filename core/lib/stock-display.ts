@@ -21,7 +21,7 @@ export interface StockDisplaySettings {
 
 export interface StockDisplayData {
   stockLevelMessage: string;
-  stockLevelStatus?: 'error';
+  stockLevelStatus?: 'error' | 'success';
   backorderAvailabilityPrompt: string | null;
 }
 
@@ -59,6 +59,7 @@ function getStockLevelMessage(
     if (!isLowStock && process.env.ENABLE_IN_STOCK_MESSAGE === 'true') {
       return {
         stockLevelMessage: 'IN STOCK',
+        stockLevelStatus: 'success',
       };
     }
   }

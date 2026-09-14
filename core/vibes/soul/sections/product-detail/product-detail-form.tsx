@@ -48,7 +48,7 @@ export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData
 
 export interface StockDisplayData {
   stockLevelMessage?: string | null;
-  stockLevelStatus?: 'error';
+  stockLevelStatus?: 'error' | 'success';
   backorderAvailabilityPrompt?: string | null;
 }
 

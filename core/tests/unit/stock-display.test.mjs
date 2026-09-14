@@ -54,7 +54,7 @@ test('low stock includes the threshold and uses the error state when enabled', (
     });
   });
   assert.equal(display(inventory(6)).stockLevelMessage, 'IN STOCK');
-  assert.equal(display(inventory(6)).stockLevelStatus, undefined);
+  assert.equal(display(inventory(6)).stockLevelStatus, 'success');
   assert.equal(display(inventory(1, 0)).stockLevelMessage, 'IN STOCK');
 });
 
@@ -71,6 +71,10 @@ test('each flag independently restores the original text for its stock condition
       assert.equal(
         display(inventory(10)).stockLevelMessage,
         normal === 'true' ? 'IN STOCK' : 'Current stock: 10',
+      );
+      assert.equal(
+        display(inventory(10)).stockLevelStatus,
+        normal === 'true' ? 'success' : undefined,
       );
     });
   });
