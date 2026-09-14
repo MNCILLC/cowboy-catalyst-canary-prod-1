@@ -304,6 +304,7 @@ export default async function Category(props: Props) {
         showCompare={productComparisonsEnabled}
         showFilters={process.env.HIDE_PRODUCT_FILTERS !== 'true'}
         showRating={showRating}
+        showSort={process.env.HIDE_PRODUCT_SORT !== 'true'}
         sortDefaultValue={categoryDefaultSort}
         sortLabel={t('SortBy.sortBy')}
         sortOptions={[
