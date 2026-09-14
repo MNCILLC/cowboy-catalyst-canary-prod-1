@@ -43,11 +43,11 @@ export function ShowCrateProductCard({
   return (
     <article
       className={clsx(
-        'relative flex h-full min-w-0 scale-100 flex-col overflow-hidden rounded-2xl border border-gray-600 bg-orange-100 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm transition-transform duration-500 ease-out @container hover:z-10 hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none',
+        'relative flex h-full min-w-0 scale-100 flex-col overflow-hidden rounded-2xl border border-gray-600 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm transition-transform duration-500 ease-out @container hover:z-10 hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none',
         {
           light:
-            'bg-[var(--product-card-light-offset,hsl(var(--background)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-          dark: 'bg-[var(--product-card-dark-offset,hsl(var(--foreground)))] text-[var(--product-card-dark-title,hsl(var(--background)))]',
+            'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+          dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))] text-[var(--product-card-dark-title,hsl(var(--background)))]',
         }[colorScheme],
         layout === 'grid' && 'max-w-md',
         className,
@@ -79,7 +79,11 @@ export function ShowCrateProductCard({
             </h3>
             {!!stockMessage && (
               <div className="mt-1">
-                <Badge className="max-w-full break-words" shape="pill" variant="info">
+                <Badge
+                  className="max-w-full break-words bg-neutral-300"
+                  shape="pill"
+                  variant="info"
+                >
                   {stockMessage}
                 </Badge>
               </div>
