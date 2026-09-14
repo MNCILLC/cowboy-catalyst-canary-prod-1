@@ -39,6 +39,7 @@ export interface Product {
   inventoryMessage?: string;
   stockDisplayData?: {
     stockLevelMessage: string;
+    stockLevelStatus?: 'error';
     backorderAvailabilityPrompt: string | null;
   } | null;
   numberOfReviews?: number;
@@ -393,7 +394,14 @@ function ProductCardInventory({
             }[colorScheme],
           )}
         >
-          <span className="font-semibold">{stockDisplayData.stockLevelMessage}</span>
+          <span
+            className={clsx(
+              'font-semibold',
+              stockDisplayData.stockLevelStatus === 'error' && 'text-error',
+            )}
+          >
+            {stockDisplayData.stockLevelMessage}
+          </span>
           {!!stockDisplayData.backorderAvailabilityPrompt && (
             <span className="border-s border-contrast-100 pl-2.5">
               {stockDisplayData.backorderAvailabilityPrompt}

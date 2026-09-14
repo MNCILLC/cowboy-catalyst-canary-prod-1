@@ -21,6 +21,7 @@ export interface StockDisplaySettings {
 
 export interface StockDisplayData {
   stockLevelMessage: string;
+  stockLevelStatus?: 'error';
   backorderAvailabilityPrompt: string | null;
 }
 
@@ -36,6 +37,33 @@ function getBackorderAvailabilityPrompt(
     (!!availableForBackorder || unlimitedBackorder)
     ? backorderAvailabilityPrompt
     : null;
+}
+
+function getStockLevelMessage(
+  stockQuantity: number | undefined,
+  warningLevel: number | undefined,
+  formatStock: (quantity: number) => string,
+): Pick<StockDisplayData, 'stockLevelMessage' | 'stockLevelStatus'> {
+  // Keep zero/unknown quantities and backorder-only availability on the existing path.
+  if (stockQuantity !== undefined && stockQuantity > 0) {
+    const isLowStock =
+      warningLevel !== undefined && warningLevel > 0 && stockQuantity <= warningLevel;
+
+    if (isLowStock && process.env.ENABLE_LOW_STOCK_MESSAGE === 'true') {
+      return {
+        stockLevelMessage: `ONLY ${stockQuantity} IN STOCK`,
+        stockLevelStatus: 'error',
+      };
+    }
+
+    if (!isLowStock && process.env.ENABLE_IN_STOCK_MESSAGE === 'true') {
+      return {
+        stockLevelMessage: 'IN STOCK',
+      };
+    }
+  }
+
+  return { stockLevelMessage: formatStock(stockQuantity ?? 0) };
 }
 
 export function getStockDisplayData(
@@ -93,7 +121,7 @@ export function getStockDisplayData(
   }
 
   return {
-    stockLevelMessage: formatStock(stockQuantity ?? 0),
+    ...getStockLevelMessage(stockQuantity, warningLevel, formatStock),
     backorderAvailabilityPrompt: availabilityMessage,
   };
 }
