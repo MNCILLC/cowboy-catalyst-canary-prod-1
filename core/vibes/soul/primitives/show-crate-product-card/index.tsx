@@ -123,7 +123,7 @@ export function ShowCrateProductCard({
         <Rating numberOfReviews={numberOfReviews} rating={rating} />
       )}
       <div className="mt-auto flex flex-col gap-4">
-        <ButtonLink className="w-full" href={href} shape="rounded" variant="tertiary">
+        <ButtonLink className="w-full p-0" href={href} shape="rounded" variant="tertiary">
           {t('learnMore')}
           <span className="sr-only">: {title}</span>
         </ButtonLink>
