@@ -39,7 +39,7 @@ export interface Product {
   inventoryMessage?: string;
   stockDisplayData?: {
     stockLevelMessage: string;
-    stockLevelStatus?: 'error';
+    stockLevelStatus?: 'error' | 'success';
     backorderAvailabilityPrompt: string | null;
   } | null;
   numberOfReviews?: number;
