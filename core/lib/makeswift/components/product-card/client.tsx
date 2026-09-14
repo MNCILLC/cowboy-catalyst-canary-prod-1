@@ -4,6 +4,7 @@ import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import {
   BcProductSchema,
   useBcProductToVibesProduct,
@@ -34,7 +35,7 @@ export function MakeswiftProductCard({ className, entityId, badge, ...props }: P
     return <ProductCardSkeleton className={className} />;
   }
 
-  if (hasZeroPrice(data)) {
+  if (!isShowCrateProduct(data) && hasZeroPrice(data)) {
     return null;
   }
 

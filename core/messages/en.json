@@ -628,6 +628,8 @@
   },
   "Components": {
     "ProductCard": {
+      "learnMore": "Learn More",
+      "callForPricing": "Call for Pricing",
       "moreOffers": "+{count, plural, =1 {# more offer} other {# more offers}}"
     },
     "Header": {

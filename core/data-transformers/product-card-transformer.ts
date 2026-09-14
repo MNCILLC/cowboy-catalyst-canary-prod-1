@@ -9,6 +9,7 @@ import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
+import { isShowCrateProduct, showCrateProductTransformer } from './show-crate-product-transformer';
 
 interface ProductCardStockDisplay {
   settings?: StockDisplaySettings | null;
@@ -61,6 +62,7 @@ export const singleProductCardTransformer = (
   stockDisplay?: ProductCardStockDisplay,
 ): Product => {
   return {
+    ...showCrateProductTransformer(product),
     id: product.entityId.toString(),
     title: product.name,
     descriptionHtml: 'description' in product ? product.description : undefined,
@@ -89,7 +91,10 @@ export const singleProductCardTransformer = (
     image: product.defaultImage
       ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
       : undefined,
-    price: pricesTransformer(product, format, taxDisplay),
+    price:
+      isShowCrateProduct(product) && hasZeroPrice(product)
+        ? undefined
+        : pricesTransformer(product, format, taxDisplay),
     subtitle: product.brand?.name ?? undefined,
     rating: product.reviewSummary.averageRating,
     numberOfReviews: product.reviewSummary.numberOfReviews,
@@ -127,7 +132,7 @@ export const productCardTransformer = (
   stockDisplay?: ProductCardStockDisplay,
 ): Product[] => {
   return products
-    .filter((product) => !hasZeroPrice(product))
+    .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
     .map((product) =>
       singleProductCardTransformer(
         product,
