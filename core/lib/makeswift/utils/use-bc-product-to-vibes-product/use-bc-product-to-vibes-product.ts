@@ -3,7 +3,11 @@ import { useCallback } from 'react';
 import { string, z } from 'zod';
 
 import { Product } from '@/vibes/soul/primitives/product-card';
-import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
+import {
+  isShowCrateProduct,
+  showCrateProductTransformer,
+} from '~/data-transformers/show-crate-product-transformer';
 
 const priceSchema = z.object({
   value: z.number(),
@@ -22,6 +26,18 @@ const PricesSchema = z.object({
 });
 
 export const BcProductSchema = z.object({
+  showDescription: z.string(),
+  showMetafields: z.object({
+    edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
+  }),
+  showCustomFields: z.object({
+    pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+    edges: z
+      .array(
+        z.object({ node: z.object({ entityId: z.number(), name: z.string(), value: z.string() }) }),
+      )
+      .nullable(),
+  }),
   entityId: z.number(),
   name: z.string(),
   defaultImage: z.object({ altText: z.string(), url: string() }).nullable(),
@@ -41,9 +57,13 @@ export function useBcProductToVibesProduct(): (product: BcProductSchema) => Prod
   return useCallback(
     (product) => {
       const { entityId, name, defaultImage, brand, path } = product;
-      const price = pricesTransformer(product, format);
+      const price =
+        isShowCrateProduct(product) && hasZeroPrice(product)
+          ? undefined
+          : pricesTransformer(product, format);
 
       return {
+        ...showCrateProductTransformer(product),
         id: entityId.toString(),
         title: name,
         href: path,

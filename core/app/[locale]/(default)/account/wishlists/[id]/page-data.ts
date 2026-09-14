@@ -1,8 +1,8 @@
 import { cache } from 'react';
 
 import { getSessionCustomerAccessToken } from '~/auth';
-import { client } from '~/client';
 import { graphql } from '~/client/graphql';
+import { showCrateClient as client } from '~/client/show-crate-client';
 import { TAGS } from '~/client/tags';
 import { WishlistPaginatedItemsFragment } from '~/components/wishlist/fragment';
 import { getPreferredCurrencyCode } from '~/lib/currency';

@@ -4,7 +4,9 @@ import { client } from '~/client';
 import { PricingFragment } from '~/client/fragments/pricing';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
+import { showCrateClient } from '~/client/show-crate-client';
 import { FeaturedProductsCarouselFragment } from '~/components/featured-products-carousel/fragment';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 import { ProductVariantsInventoryFragment } from '~/components/product-variants-inventory/fragment';
 
 import { ProductSchemaFragment } from './_components/product-schema/fragment';
@@ -426,6 +428,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
           optionValueIds: $optionValueIds
           useDefaultOptionSelections: $useDefaultOptionSelections
         ) {
+          ...ShowCrateProductCardFragment
           ...PricingFragment
           relatedProducts(first: 8) {
             edges {
@@ -438,12 +441,12 @@ const ProductPricingAndRelatedProductsQuery = graphql(
       }
     }
   `,
-  [PricingFragment, FeaturedProductsCarouselFragment],
+  [PricingFragment, FeaturedProductsCarouselFragment, ShowCrateProductCardFragment],
 );
 
 export const getProductPricingAndRelatedProducts = cache(
   async (variables: Variables, customerAccessToken?: string) => {
-    const { data } = await client.fetch({
+    const { data } = await showCrateClient.fetch({
       document: ProductPricingAndRelatedProductsQuery,
       variables,
       customerAccessToken,

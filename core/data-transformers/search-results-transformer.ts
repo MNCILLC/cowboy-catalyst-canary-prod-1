@@ -4,7 +4,9 @@ import { getFormatter, getTranslations } from 'next-intl/server';
 import { SearchResult } from '@/vibes/soul/primitives/navigation';
 import { SearchProductFragment } from '~/components/header/_actions/fragment';
 
-import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
+import { hasZeroPrice, TaxDisplay } from './prices-transformer';
+import { singleProductCardTransformer } from './product-card-transformer';
+import { isShowCrateProduct } from './show-crate-product-transformer';
 
 export async function searchResultsTransformer(
   searchProducts: Array<ResultOf<typeof SearchProductFragment>>,
@@ -12,24 +14,16 @@ export async function searchResultsTransformer(
 ): Promise<SearchResult[]> {
   const format = await getFormatter();
   const t = await getTranslations('Components.Header.Search');
-  const visibleProducts = searchProducts.filter((product) => !hasZeroPrice(product));
+  const visibleProducts = searchProducts.filter(
+    (product) => isShowCrateProduct(product) || !hasZeroPrice(product),
+  );
 
   const productResults: SearchResult = {
     type: 'products',
     title: t('products'),
-    products: visibleProducts.map((product) => {
-      const price = pricesTransformer(product, format, taxDisplay);
-
-      return {
-        id: product.entityId.toString(),
-        title: product.name,
-        href: product.path,
-        image: product.defaultImage
-          ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
-          : undefined,
-        price,
-      };
-    }),
+    products: visibleProducts.map((product) =>
+      singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
+    ),
   };
 
   const categoryResults: SearchResult = {

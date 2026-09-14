@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { z } from 'zod';
 
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 
 import {
   BcProductSchema,
@@ -68,7 +69,9 @@ export function useProducts({ collection, collectionLimit = 20, additionalProduc
     () =>
       isLoading
         ? null
-        : combinedProducts.filter((product) => !hasZeroPrice(product)).map(bcProductToVibesProduct),
+        : combinedProducts
+            .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
+            .map(bcProductToVibesProduct),
     [isLoading, combinedProducts, bcProductToVibesProduct],
   );
 
