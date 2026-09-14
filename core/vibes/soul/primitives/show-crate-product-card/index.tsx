@@ -81,19 +81,24 @@ export function ShowCrateProductCard({
               {title}
             </Link>
           </h3>
+          {!!stockMessage && (
+            <div className="mt-1">
+              <Badge className="max-w-full break-words" shape="pill" variant="info">
+                {stockMessage}
+              </Badge>
+            </div>
+          )}
+          <PriceLabel
+            className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
+            colorScheme={colorScheme}
+            price={price ?? t('callForPricing')}
+          />
           {!!badge && (
             <div className="mt-0">
               <Badge>{badge}</Badge>
             </div>
           )}
         </div>
-        {!!stockMessage && (
-          <div className="mt-0">
-            <Badge className="max-w-full break-words" shape="pill" variant="info">
-              {stockMessage}
-            </Badge>
-          </div>
-        )}
       </div>
       {!!stockDisplayData?.backorderAvailabilityPrompt && (
         <p className="text-sm opacity-75">{stockDisplayData.backorderAvailabilityPrompt}</p>
@@ -104,15 +109,10 @@ export function ShowCrateProductCard({
       {/* {!!showDescription && (
         <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
       )} */}
-      <PriceLabel
-        className="[&_abbr]:cursor-default [&_abbr]:no-underline"
-        colorScheme={colorScheme}
-        price={price ?? t('callForPricing')}
-      />
       {showFeatures.length > 0 && (
-        <ul className="space-y-3 border-t border-contrast-100 pt-6">
+        <ul className="mt-0 space-y-1 border-t border-contrast-100 pt-2">
           {showFeatures.map((feature) => (
-            <li className="flex items-start gap-3 text-base leading-relaxed" key={feature.id}>
+            <li className="flex items-start gap-3 text-sm leading-relaxed" key={feature.id}>
               <CircleCheck
                 aria-hidden="true"
                 className="mt-1 size-5 shrink-0 text-[var(--product-card-focus,hsl(var(--primary)))]"
