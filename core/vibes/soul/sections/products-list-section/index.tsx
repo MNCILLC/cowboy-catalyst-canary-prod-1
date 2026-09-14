@@ -23,6 +23,7 @@ import {
 
 interface Props {
   showFilters?: boolean;
+  showSort?: boolean;
   enableListView?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
@@ -58,6 +59,7 @@ interface Props {
 
 export function ProductsListSection({
   showFilters = true,
+  showSort = true,
   enableListView = true,
   initialView,
   addToCartAction,
@@ -130,24 +132,26 @@ export function ProductsListSection({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2">
-                  <Stream
-                    fallback={<SortingSkeleton />}
-                    value={Streamable.all([
-                      streamableSortLabel,
-                      streamableSortOptions,
-                      streamableSortPlaceholder,
-                    ])}
-                  >
-                    {([label, options, placeholder]) => (
-                      <Sorting
-                        defaultValue={sortDefaultValue}
-                        label={label}
-                        options={options}
-                        paramName={sortParamName}
-                        placeholder={placeholder}
-                      />
-                    )}
-                  </Stream>
+                  {showSort && (
+                    <Stream
+                      fallback={<SortingSkeleton />}
+                      value={Streamable.all([
+                        streamableSortLabel,
+                        streamableSortOptions,
+                        streamableSortPlaceholder,
+                      ])}
+                    >
+                      {([label, options, placeholder]) => (
+                        <Sorting
+                          defaultValue={sortDefaultValue}
+                          label={label}
+                          options={options}
+                          paramName={sortParamName}
+                          placeholder={placeholder}
+                        />
+                      )}
+                    </Stream>
+                  )}
                   <ProductViewSwitcher />
                 </div>
                 {showFilters && (
