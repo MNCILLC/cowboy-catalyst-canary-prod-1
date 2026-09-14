@@ -110,7 +110,7 @@ export function ShowCrateProductCard({
         <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
       )} */}
       {showFeatures.length > 0 && (
-        <ul className="mt-0 space-y-1 border-t border-contrast-100 pt-2">
+        <ul className="-mt-4 space-y-1 border-t border-contrast-100 pt-2">
           {showFeatures.map((feature) => (
             <li className="flex items-start gap-3 text-xs leading-relaxed" key={feature.id}>
               <CircleCheck aria-hidden="true" className="mt-1 size-3 shrink-0 text-blue-700" />
