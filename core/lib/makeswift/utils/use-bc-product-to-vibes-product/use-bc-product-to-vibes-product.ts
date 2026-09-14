@@ -31,7 +31,6 @@ export const BcProductSchema = z.object({
     edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
   }),
   showCustomFields: z.object({
-    pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
     edges: z
       .array(
         z.object({ node: z.object({ entityId: z.number(), name: z.string(), value: z.string() }) }),

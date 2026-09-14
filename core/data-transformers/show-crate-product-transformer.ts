@@ -15,18 +15,31 @@ export function showCrateProductTransformer(
   product: ShowCrateProduct,
 ): Pick<Product, 'isShow' | 'showFeatures' | 'showDescription'> {
   const isShow = isShowCrateProduct(product);
+  const configuredFieldNames = removeEdgesAndNodes(product.showMetafields).find(
+    ({ key }) => key === 'product_card_custom_fields',
+  )?.value;
+  const fieldNames = [
+    ...new Set(
+      (configuredFieldNames ?? '')
+        .split(';')
+        .map((name) => name.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const customFields = removeEdgesAndNodes(product.showCustomFields);
 
   return {
     isShow,
     showDescription: isShow ? product.showDescription.trim() || undefined : undefined,
     showFeatures: isShow
-      ? removeEdgesAndNodes(product.showCustomFields)
-          .filter(({ value }) => value.trim() !== '')
-          .map(({ entityId, name, value }) => ({
-            id: entityId.toString(),
-            name: name.trim(),
-            value: value.trim(),
-          }))
+      ? fieldNames.flatMap((name) =>
+          customFields
+            .filter((field) => field.name.trim() === name && field.value.trim() !== '')
+            .map(({ entityId, value }) => ({
+              id: entityId.toString(),
+              value: value.trim(),
+            })),
+        )
       : undefined,
   };
 }

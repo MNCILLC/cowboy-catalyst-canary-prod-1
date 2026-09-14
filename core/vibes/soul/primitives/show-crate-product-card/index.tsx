@@ -33,7 +33,6 @@ export function ShowCrateProductCard({
     href,
     price,
     showFeatures = [],
-    showDescription,
     stockDisplayData,
     inventoryMessage,
     rating,
@@ -116,10 +115,7 @@ export function ShowCrateProductCard({
                 aria-hidden="true"
                 className="mt-1 size-5 shrink-0 text-[var(--product-card-focus,hsl(var(--primary)))]"
               />
-              <span className="min-w-0 whitespace-pre-line break-words">
-                {!!feature.name && <span className="font-medium">{feature.name}: </span>}
-                {feature.value}
-              </span>
+              <span className="min-w-0 whitespace-pre-line break-words">{feature.value}</span>
             </li>
           ))}
         </ul>

@@ -4,7 +4,11 @@ export const ShowCrateProductCardFragment = graphql(`
   fragment ShowCrateProductCardFragment on Product {
     entityId
     showDescription: plainTextDescription(characterLimit: 240)
-    showMetafields: metafields(namespace: "custom", keys: ["is_show"], first: 1) {
+    showMetafields: metafields(
+      namespace: "custom"
+      keys: ["is_show", "product_card_custom_fields"]
+      first: 2
+    ) {
       edges {
         node {
           key
@@ -13,10 +17,6 @@ export const ShowCrateProductCardFragment = graphql(`
       }
     }
     showCustomFields: customFields(first: 50) {
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
       edges {
         node {
           entityId

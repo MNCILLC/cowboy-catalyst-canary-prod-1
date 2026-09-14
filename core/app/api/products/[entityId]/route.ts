@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { hasLocale } from 'next-intl';
 
 import { getSessionCustomerAccessToken } from '~/auth';
+import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
-import { showCrateClient as client } from '~/client/show-crate-client';
 import { routing } from '~/i18n/routing';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { MakeswiftProductFragment } from '~/lib/makeswift/utils/use-bc-product-to-vibes-product/fragment';

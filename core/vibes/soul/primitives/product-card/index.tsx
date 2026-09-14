@@ -24,7 +24,7 @@ import { ProductCardDescription } from './description';
 export interface Product {
   isShow?: boolean;
   showDescription?: string;
-  showFeatures?: Array<{ id: string; name: string; value: string }>;
+  showFeatures?: Array<{ id: string; value: string }>;
   id: string;
   title: string;
   packing?: string;

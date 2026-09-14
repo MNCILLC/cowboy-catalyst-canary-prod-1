@@ -1,9 +1,9 @@
 import { cache } from 'react';
 
+import { client } from '~/client';
 import { PaginationFragment } from '~/client/fragments/pagination';
 import { graphql } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
-import { showCrateClient as client } from '~/client/show-crate-client';
 import { TAGS } from '~/client/tags';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemFragment } from '~/components/wishlist/fragment';

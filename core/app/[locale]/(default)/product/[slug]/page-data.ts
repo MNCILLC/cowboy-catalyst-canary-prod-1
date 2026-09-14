@@ -4,7 +4,6 @@ import { client } from '~/client';
 import { PricingFragment } from '~/client/fragments/pricing';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
-import { showCrateClient } from '~/client/show-crate-client';
 import { FeaturedProductsCarouselFragment } from '~/components/featured-products-carousel/fragment';
 import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 import { ProductVariantsInventoryFragment } from '~/components/product-variants-inventory/fragment';
@@ -446,7 +445,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
 
 export const getProductPricingAndRelatedProducts = cache(
   async (variables: Variables, customerAccessToken?: string) => {
-    const { data } = await showCrateClient.fetch({
+    const { data } = await client.fetch({
       document: ProductPricingAndRelatedProductsQuery,
       variables,
       customerAccessToken,
