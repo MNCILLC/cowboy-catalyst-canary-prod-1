@@ -48,6 +48,7 @@ export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData
 
 export interface StockDisplayData {
   stockLevelMessage?: string | null;
+  stockLevelStatus?: 'error';
   backorderAvailabilityPrompt?: string | null;
 }
 
@@ -266,7 +267,12 @@ export function ProductDetailForm<F extends Field>({
                     : 'translate-y-[calc(100%+4px)]',
                 )}
               >
-                <div className="flex-none whitespace-nowrap font-semibold text-black">
+                <div
+                  className={clsx(
+                    'flex-none whitespace-nowrap font-semibold',
+                    stockDisplayData.stockLevelStatus === 'error' ? 'text-error' : 'text-black',
+                  )}
+                >
                   {stockDisplayData.stockLevelMessage}
                 </div>
                 {!!stockDisplayData.backorderAvailabilityPrompt && (

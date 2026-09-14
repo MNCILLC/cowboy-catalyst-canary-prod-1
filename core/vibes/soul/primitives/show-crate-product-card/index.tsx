@@ -39,6 +39,7 @@ export function ShowCrateProductCard({
     rating,
     numberOfReviews,
   } = product;
+  const stockLevelStatus = stockDisplayData?.stockLevelStatus ?? 'info';
   const stockMessage = stockDisplayData?.stockLevelMessage || inventoryMessage;
 
   return (
@@ -84,9 +85,11 @@ export function ShowCrateProductCard({
                 )}
                 {!!stockMessage && (
                   <Badge
-                    className="ml-auto max-w-full break-words bg-neutral-300 text-right"
+                    className={clsx('ml-auto max-w-full break-words text-right', {
+                      'bg-neutral-300': stockLevelStatus !== 'error',
+                    })}
                     shape="pill"
-                    variant="info"
+                    variant={stockLevelStatus}
                   >
                     {stockMessage}
                   </Badge>
