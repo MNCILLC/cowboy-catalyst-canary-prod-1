@@ -16,11 +16,16 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { Rating } from '../rating';
+import { ShowCrateProductCard } from '../show-crate-product-card';
 
 import { Compare } from './compare';
 import { ProductCardDescription } from './description';
 
 export interface Product {
+  isShow?: boolean;
+  showName?: string;
+  showDescription?: string;
+  showFeatures?: Array<{ id: string; value: string }>;
   id: string;
   title: string;
   packing?: string;
@@ -82,7 +87,15 @@ export interface ProductCardProps {
  * }
  * ```
  */
-export function ProductCard({
+export function ProductCard(props: ProductCardProps) {
+  if (props.product.isShow) {
+    return <ShowCrateProductCard {...props} />;
+  }
+
+  return <StandardProductCard {...props} />;
+}
+
+function StandardProductCard({
   product: {
     id,
     title,

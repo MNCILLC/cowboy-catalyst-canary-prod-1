@@ -5,6 +5,7 @@ import { PricingFragment } from '~/client/fragments/pricing';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { FeaturedProductsCarouselFragment } from '~/components/featured-products-carousel/fragment';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 import { ProductVariantsInventoryFragment } from '~/components/product-variants-inventory/fragment';
 
 import { ProductSchemaFragment } from './_components/product-schema/fragment';
@@ -426,6 +427,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
           optionValueIds: $optionValueIds
           useDefaultOptionSelections: $useDefaultOptionSelections
         ) {
+          ...ShowCrateProductCardFragment
           ...PricingFragment
           relatedProducts(first: 8) {
             edges {
@@ -438,7 +440,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
       }
     }
   `,
-  [PricingFragment, FeaturedProductsCarouselFragment],
+  [PricingFragment, FeaturedProductsCarouselFragment, ShowCrateProductCardFragment],
 );
 
 export const getProductPricingAndRelatedProducts = cache(
