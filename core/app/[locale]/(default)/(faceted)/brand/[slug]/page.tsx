@@ -251,6 +251,7 @@ export default async function Brand(props: Props) {
       removeLabel={t('Compare.remove')}
       resetFiltersLabel={t('FacetedSearch.resetFilters')}
       showCompare={productComparisonsEnabled}
+      showFilters={process.env.HIDE_PRODUCT_FILTERS !== 'true'}
       showRating={showRating}
       sortDefaultValue="featured"
       sortLabel={t('Search.title')}

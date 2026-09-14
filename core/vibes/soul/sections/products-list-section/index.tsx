@@ -22,6 +22,7 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  showFilters?: boolean;
   enableListView?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
@@ -56,6 +57,7 @@ interface Props {
 }
 
 export function ProductsListSection({
+  showFilters = true,
   enableListView = true,
   initialView,
   addToCartAction,
@@ -148,46 +150,50 @@ export function ProductsListSection({
                   </Stream>
                   <ProductViewSwitcher />
                 </div>
-                <div className="block @3xl:hidden">
-                  <SidePanel.Root>
-                    <SidePanel.Trigger asChild>
-                      <Button size="medium" variant="secondary">
-                        {filterLabel}
-                        <span className="hidden @xl:block">
-                          <Sliders size={20} />
-                        </span>
-                      </Button>
-                    </SidePanel.Trigger>
-                    <Stream value={streamableFiltersPanelTitle}>
-                      {(filtersPanelTitle) => (
-                        <SidePanel.Content title={filtersPanelTitle}>
-                          <FiltersPanel
-                            filters={filters}
-                            paginationInfo={paginationInfo}
-                            rangeFilterApplyLabel={rangeFilterApplyLabel}
-                            resetFiltersLabel={resetFiltersLabel}
-                          />
-                        </SidePanel.Content>
-                      )}
-                    </Stream>
-                  </SidePanel.Root>
-                </div>
+                {showFilters && (
+                  <div className="block @3xl:hidden">
+                    <SidePanel.Root>
+                      <SidePanel.Trigger asChild>
+                        <Button size="medium" variant="secondary">
+                          {filterLabel}
+                          <span className="hidden @xl:block">
+                            <Sliders size={20} />
+                          </span>
+                        </Button>
+                      </SidePanel.Trigger>
+                      <Stream value={streamableFiltersPanelTitle}>
+                        {(filtersPanelTitle) => (
+                          <SidePanel.Content title={filtersPanelTitle}>
+                            <FiltersPanel
+                              filters={filters}
+                              paginationInfo={paginationInfo}
+                              rangeFilterApplyLabel={rangeFilterApplyLabel}
+                              resetFiltersLabel={resetFiltersLabel}
+                            />
+                          </SidePanel.Content>
+                        )}
+                      </Stream>
+                    </SidePanel.Root>
+                  </div>
+                )}
               </div>
             </div>
           </div>
           <div className="flex items-stretch gap-8 @4xl:gap-10">
-            <aside className="hidden w-52 @3xl:block @4xl:w-60">
-              <Stream value={streamableFiltersPanelTitle}>
-                {(filtersPanelTitle) => <h2 className="sr-only">{filtersPanelTitle}</h2>}
-              </Stream>
-              <FiltersPanel
-                className="sticky top-4"
-                filters={filters}
-                paginationInfo={paginationInfo}
-                rangeFilterApplyLabel={rangeFilterApplyLabel}
-                resetFiltersLabel={resetFiltersLabel}
-              />
-            </aside>
+            {showFilters && (
+              <aside className="hidden w-52 @3xl:block @4xl:w-60">
+                <Stream value={streamableFiltersPanelTitle}>
+                  {(filtersPanelTitle) => <h2 className="sr-only">{filtersPanelTitle}</h2>}
+                </Stream>
+                <FiltersPanel
+                  className="sticky top-4"
+                  filters={filters}
+                  paginationInfo={paginationInfo}
+                  rangeFilterApplyLabel={rangeFilterApplyLabel}
+                  resetFiltersLabel={resetFiltersLabel}
+                />
+              </aside>
+            )}
 
             <div className="group-has-data-pending/products-list-section:animate-pulse min-w-0 flex-1">
               {productListBanner}
