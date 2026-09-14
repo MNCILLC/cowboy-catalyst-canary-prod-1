@@ -43,7 +43,7 @@ export function ShowCrateProductCard({
   return (
     <article
       className={clsx(
-        'flex h-full min-w-0 flex-col gap-6 overflow-hidden rounded-2xl border border-contrast-300 bg-slate-300 p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm @container',
+        'relative flex h-full min-w-0 scale-100 flex-col overflow-hidden rounded-2xl border border-contrast-300 bg-slate-300 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm transition-transform duration-500 ease-out @container hover:z-10 hover:scale-[1.02] motion-reduce:transform-none motion-reduce:transition-none',
         {
           light:
             'bg-[var(--product-card-light-offset,hsl(var(--background)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
@@ -54,88 +54,98 @@ export function ShowCrateProductCard({
       )}
       data-layout={layout}
     >
-      <div className="flex flex-wrap items-start gap-4">
-        {image != null && (
-          <div className="relative size-16 shrink-0 overflow-hidden rounded-lg @xs:size-24">
-            <Image
-              alt={image.alt}
-              className="object-contain"
-              fill
-              preload={imagePriority}
-              sizes={imageSizes}
-              src={image.src}
-            />
-          </div>
-        )}
-        <div className="min-w-0 flex-1 basis-32">
-          {!!subtitle && (
-            <p className="mb-1 text-sm font-medium uppercase tracking-wide opacity-75">
-              {subtitle}
-            </p>
+      <div className="relative flex min-h-0 flex-1 flex-col gap-6 p-4">
+        <div className="flex flex-wrap items-start gap-4">
+          {image != null && (
+            <div className="relative size-16 shrink-0 overflow-hidden rounded-lg @xs:size-24">
+              <Image
+                alt={image.alt}
+                className="object-contain"
+                fill
+                preload={imagePriority}
+                sizes={imageSizes}
+                src={image.src}
+              />
+            </div>
           )}
-          <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
-            <Link
-              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              href={href}
-            >
+          <div className="min-w-0 flex-1 basis-32">
+            {!!subtitle && (
+              <p className="mb-1 text-sm font-medium uppercase tracking-wide opacity-75">
+                {subtitle}
+              </p>
+            )}
+            <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
               {title}
-            </Link>
-          </h3>
-          {!!stockMessage && (
-            <div className="mt-1">
-              <Badge className="max-w-full break-words" shape="pill" variant="info">
-                {stockMessage}
-              </Badge>
-            </div>
-          )}
-          <PriceLabel
-            className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
-            colorScheme={colorScheme}
-            price={price ?? t('callForPricing')}
-          />
-          {!!badge && (
-            <div className="mt-0">
-              <Badge>{badge}</Badge>
-            </div>
-          )}
+            </h3>
+            {!!stockMessage && (
+              <div className="mt-1">
+                <Badge className="max-w-full break-words" shape="pill" variant="info">
+                  {stockMessage}
+                </Badge>
+              </div>
+            )}
+            <PriceLabel
+              className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
+              colorScheme={colorScheme}
+              price={price ?? t('callForPricing')}
+            />
+            {!!badge && (
+              <div className="mt-0">
+                <Badge>{badge}</Badge>
+              </div>
+            )}
+          </div>
+        </div>
+        {!!stockDisplayData?.backorderAvailabilityPrompt && (
+          <p className="text-sm opacity-75">{stockDisplayData.backorderAvailabilityPrompt}</p>
+        )}
+        {!!inventoryMessage && inventoryMessage !== stockMessage && (
+          <p className="text-sm opacity-75">{inventoryMessage}</p>
+        )}
+        {/* {!!showDescription && (
+          <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
+        )} */}
+        {showFeatures.length > 0 && (
+          <ul className="-mt-4 space-y-1 border-t border-contrast-100 pt-2">
+            {showFeatures.map((feature) => (
+              <li className="flex items-start gap-3 text-xs leading-relaxed" key={feature.id}>
+                <CircleCheck aria-hidden="true" className="mt-1 size-3 shrink-0 text-blue-700" />
+                <span className="min-w-0 whitespace-pre-line break-words">{feature.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {showRating && typeof rating === 'number' && rating > 0 && (
+          <Rating numberOfReviews={numberOfReviews} rating={rating} />
+        )}
+        <Link
+          aria-label={title}
+          className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--product-card-focus,hsl(var(--primary)))]"
+          href={href}
+        />
+        <div className="relative z-20 mt-auto">
+          <ButtonLink
+            className="w-full"
+            href={href}
+            shape="rounded"
+            size="small"
+            variant="tertiary"
+          >
+            {t('learnMore')}
+            <span className="sr-only">: {title}</span>
+          </ButtonLink>
         </div>
       </div>
-      {!!stockDisplayData?.backorderAvailabilityPrompt && (
-        <p className="text-sm opacity-75">{stockDisplayData.backorderAvailabilityPrompt}</p>
-      )}
-      {!!inventoryMessage && inventoryMessage !== stockMessage && (
-        <p className="text-sm opacity-75">{inventoryMessage}</p>
-      )}
-      {/* {!!showDescription && (
-        <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
-      )} */}
-      {showFeatures.length > 0 && (
-        <ul className="-mt-4 space-y-1 border-t border-contrast-100 pt-2">
-          {showFeatures.map((feature) => (
-            <li className="flex items-start gap-3 text-xs leading-relaxed" key={feature.id}>
-              <CircleCheck aria-hidden="true" className="mt-1 size-3 shrink-0 text-blue-700" />
-              <span className="min-w-0 whitespace-pre-line break-words">{feature.value}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {showRating && typeof rating === 'number' && rating > 0 && (
-        <Rating numberOfReviews={numberOfReviews} rating={rating} />
-      )}
-      <div className="mt-auto flex flex-col gap-4">
-        <ButtonLink className="w-full p-0" href={href} shape="rounded" variant="tertiary">
-          {t('learnMore')}
-          <span className="sr-only">: {title}</span>
-        </ButtonLink>
-        {showCompare && (
+      {showCompare && (
+        <div className="px-4 pb-4">
           <Compare
             colorScheme={colorScheme}
             label={compareLabel}
             paramName={compareParamName}
             product={{ id, title, href, image }}
           />
-        )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }
