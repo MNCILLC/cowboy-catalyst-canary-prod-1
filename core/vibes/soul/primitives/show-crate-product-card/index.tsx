@@ -43,7 +43,7 @@ export function ShowCrateProductCard({
   return (
     <article
       className={clsx(
-        'flex h-full min-w-0 flex-col gap-6 overflow-hidden rounded-2xl border border-contrast-100 p-6 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm @container',
+        'flex h-full min-w-0 flex-col gap-6 overflow-hidden rounded-2xl border border-contrast-300 bg-slate-300 p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm @container',
         {
           light:
             'bg-[var(--product-card-light-offset,hsl(var(--background)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
@@ -82,15 +82,17 @@ export function ShowCrateProductCard({
             </Link>
           </h3>
           {!!badge && (
-            <div className="mt-2">
+            <div className="mt-0">
               <Badge>{badge}</Badge>
             </div>
           )}
         </div>
         {!!stockMessage && (
-          <Badge className="max-w-full break-words" shape="pill" variant="info">
-            {stockMessage}
-          </Badge>
+          <div className="mt-0">
+            <Badge className="max-w-full break-words" shape="pill" variant="info">
+              {stockMessage}
+            </Badge>
+          </div>
         )}
       </div>
       {!!stockDisplayData?.backorderAvailabilityPrompt && (
