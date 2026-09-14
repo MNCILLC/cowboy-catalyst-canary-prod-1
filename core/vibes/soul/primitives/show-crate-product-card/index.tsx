@@ -112,11 +112,8 @@ export function ShowCrateProductCard({
       {showFeatures.length > 0 && (
         <ul className="mt-0 space-y-1 border-t border-contrast-100 pt-2">
           {showFeatures.map((feature) => (
-            <li className="flex items-start gap-3 text-sm leading-relaxed" key={feature.id}>
-              <CircleCheck
-                aria-hidden="true"
-                className="mt-1 size-5 shrink-0 text-[var(--product-card-focus,hsl(var(--primary)))]"
-              />
+            <li className="flex items-start gap-3 text-xs leading-relaxed" key={feature.id}>
+              <CircleCheck aria-hidden="true" className="mt-1 size-3 shrink-0 text-blue-700" />
               <span className="min-w-0 whitespace-pre-line break-words">{feature.value}</span>
             </li>
           ))}
