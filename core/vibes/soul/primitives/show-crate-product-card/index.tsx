@@ -73,7 +73,7 @@ export function ShowCrateProductCard({
               {subtitle}
             </p>
           )}
-          <h3 className="break-words font-[family-name:var(--font-family-heading)] text-2xl font-semibold leading-tight">
+          <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
             <Link
               className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               href={href}
@@ -103,7 +103,7 @@ export function ShowCrateProductCard({
         <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
       )} */}
       <PriceLabel
-        className="text-2xl [&_abbr]:cursor-default [&_abbr]:no-underline"
+        className="[&_abbr]:cursor-default [&_abbr]:no-underline"
         colorScheme={colorScheme}
         price={price ?? t('callForPricing')}
       />
