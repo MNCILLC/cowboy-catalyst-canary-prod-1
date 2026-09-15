@@ -7,6 +7,7 @@ import { SearchParams } from 'nuqs/server';
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
+import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
@@ -131,6 +132,8 @@ export default async function Product({ params, searchParams }: Props) {
   ) {
     return notFound();
   }
+
+  const isShow = isShowCrateProduct(visibilityPricing);
 
   const streamableProduct = Streamable.from(async () => {
     const variables = {
@@ -364,7 +367,7 @@ export default async function Product({ params, searchParams }: Props) {
     };
   });
 
-  const streameableAccordions = Streamable.from(async () => {
+  const streamableSpecifications = Streamable.from(async () => {
     const product = await streamableProduct;
 
     const customFields = removeEdgesAndNodes(product.customFields);
@@ -372,7 +375,7 @@ export default async function Product({ params, searchParams }: Props) {
     const hasWeight =
       weightValue != null && String(weightValue).trim() !== '' && Number(weightValue) !== 0;
 
-    const specifications = [
+    return [
       {
         name: t('ProductDetails.Accordions.sku'),
         value: product.sku,
@@ -390,9 +393,16 @@ export default async function Product({ params, searchParams }: Props) {
         value: field.value,
       })),
     ];
+  });
+
+  const streameableAccordions = Streamable.from(async () => {
+    const [product, specifications] = await Streamable.all([
+      streamableProduct,
+      streamableSpecifications,
+    ]);
 
     return [
-      ...(specifications.length
+      ...(!isShow && specifications.length
         ? [
             {
               title: t('ProductDetails.Accordions.specifications'),
@@ -509,6 +519,14 @@ export default async function Product({ params, searchParams }: Props) {
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
+          galleryContent={
+            isShow ? (
+              <ShowProductSpecifications
+                specifications={streamableSpecifications}
+                title={t('ProductDetails.Accordions.specifications')}
+              />
+            ) : undefined
+          }
           incrementLabel={t('ProductDetails.increaseQuantity')}
           loadMoreImagesAction={getMoreProductImages}
           prefetch={true}
@@ -557,16 +575,18 @@ export default async function Product({ params, searchParams }: Props) {
         {(videos) => videos.length > 0 && <ProductVideos videos={videos} />}
       </Stream>
 
-      <FeaturedProductCarousel
-        cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
-        emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
-        emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
-        nextLabel={t('RelatedProducts.nextProducts')}
-        previousLabel={t('RelatedProducts.previousProducts')}
-        products={streameableRelatedProducts}
-        scrollbarLabel={t('RelatedProducts.scrollbar')}
-        title={t('RelatedProducts.title')}
-      />
+      {!isShow && (
+        <FeaturedProductCarousel
+          cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
+          emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
+          emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
+          nextLabel={t('RelatedProducts.nextProducts')}
+          previousLabel={t('RelatedProducts.previousProducts')}
+          products={streameableRelatedProducts}
+          scrollbarLabel={t('RelatedProducts.scrollbar')}
+          title={t('RelatedProducts.title')}
+        />
+      )}
 
       {showRating && (
         <div id="reviews">

@@ -1,5 +1,4 @@
 import { clsx } from 'clsx';
-import { CircleCheck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
@@ -8,6 +7,7 @@ import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProductCardProps } from '@/vibes/soul/primitives/product-card';
 import { Compare } from '@/vibes/soul/primitives/product-card/compare';
 import { Rating } from '@/vibes/soul/primitives/rating';
+import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
@@ -122,16 +122,10 @@ export function ShowCrateProductCard({
         {/* {!!showDescription && (
           <p className="break-words text-base leading-relaxed opacity-75">{showDescription}</p>
         )} */}
-        {showFeatures.length > 0 && (
-          <ul className="-mt-4 space-y-1 border-t border-contrast-100 pt-2">
-            {showFeatures.map((feature) => (
-              <li className="flex items-start gap-3 text-xs leading-relaxed" key={feature.id}>
-                <CircleCheck aria-hidden="true" className="mt-1 size-3 shrink-0 text-blue-700" />
-                <span className="min-w-0 whitespace-pre-line break-words">{feature.value}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ShowCrateFeatures
+          className="-mt-4 border-t border-contrast-100 pt-2"
+          features={showFeatures}
+        />
         {showRating && typeof rating === 'number' && rating > 0 && (
           <Rating numberOfReviews={numberOfReviews} rating={rating} />
         )}
