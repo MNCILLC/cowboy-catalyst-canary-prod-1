@@ -8,6 +8,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
 import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
+import { ShowAudience } from '@/vibes/soul/sections/product-detail/show-audience';
 import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
@@ -105,7 +106,7 @@ export default async function Product({ params, searchParams }: Props) {
 
   const productId = Number(slug);
 
-  const [{ product: baseProduct, settings }, recaptchaSiteKey] = await Promise.all([
+  const [{ product: baseProduct, settings, batfeMessage }, recaptchaSiteKey] = await Promise.all([
     getProduct(productId, customerAccessToken),
     getRecaptchaSiteKey(),
   ]);
@@ -139,6 +140,10 @@ export default async function Product({ params, searchParams }: Props) {
 
   const isShow = isShowCrateProduct(visibilityPricing);
   const includedItems = (removeEdgesAndNodes(baseProduct.includedItems).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const intendedAudience = (removeEdgesAndNodes(baseProduct.intendedAudience).at(0)?.value ?? '')
     .split(';')
     .map((item) => item.trim())
     .filter(Boolean);
@@ -592,7 +597,20 @@ export default async function Product({ params, searchParams }: Props) {
       </Stream>
 
       {isShow && (
-        <IncludedItems items={includedItems} title={t('ProductDetails.includedItemsTitle')} />
+        <>
+          <IncludedItems items={includedItems} title={t('ProductDetails.includedItemsTitle')} />
+          <ShowAudience
+            items={intendedAudience}
+            message={
+              batfeMessage.trim() ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: rewriteWysiwygContentUrls(batfeMessage) }}
+                />
+              ) : undefined
+            }
+            title={t('ProductDetails.intendedAudienceTitle')}
+          />
+        </>
       )}
 
       {!isShow && (
