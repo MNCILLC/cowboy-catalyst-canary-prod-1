@@ -1,3 +1,4 @@
+import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
 import { cache } from 'react';
 
 import { client } from '~/client';
@@ -172,6 +173,24 @@ export const getProductPageMetadata = cache(
 const ProductQuery = graphql(
   `
     query ProductQuery($entityId: Int!) {
+      channel {
+        batfeMessage: metafields(namespace: "custom_site", keys: ["batfe_message"], first: 1) {
+          edges {
+            node {
+              value
+            }
+          }
+        }
+      }
+      store {
+        batfeMessage: metafields(namespace: "custom_site", keys: ["batfe_message"], first: 1) {
+          edges {
+            node {
+              value
+            }
+          }
+        }
+      }
       site {
         settings {
           reviews {
@@ -205,6 +224,20 @@ const ProductQuery = graphql(
               }
             }
           }
+          includedItems: metafields(namespace: "custom", keys: ["included_items"], first: 1) {
+            edges {
+              node {
+                value
+              }
+            }
+          }
+          intendedAudience: metafields(namespace: "custom", keys: ["intended_audience"], first: 1) {
+            edges {
+              node {
+                value
+              }
+            }
+          }
           ...ProductOptionsFragment
         }
       }
@@ -221,7 +254,14 @@ export const getProduct = cache(async (entityId: number, customerAccessToken?: s
     fetchOptions: customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } },
   });
 
-  return data.site;
+  return {
+    ...data.site,
+    // Prefer the current storefront's message, falling back to the store-wide value.
+    batfeMessage:
+      removeEdgesAndNodes(data.channel.batfeMessage).at(0)?.value ??
+      removeEdgesAndNodes(data.store.batfeMessage).at(0)?.value ??
+      '',
+  };
 });
 
 const StreamableProductVariantInventoryBySkuQuery = graphql(`
