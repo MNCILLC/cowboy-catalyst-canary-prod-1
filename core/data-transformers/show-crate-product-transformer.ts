@@ -11,14 +11,12 @@ export const isShowCrateProduct = (product: ShowCrateProduct): boolean =>
     ({ key, value }) => key === 'is_show' && value.trim().toLowerCase() === 'true',
   );
 
-export function showCrateProductTransformer(
-  product: ShowCrateProduct,
-): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription'> {
-  const isShow = isShowCrateProduct(product);
+export function getShowCrateCustomFieldNames(product: ShowCrateProduct): string[] {
   const configuredFieldNames = removeEdgesAndNodes(product.showMetafields).find(
     ({ key }) => key === 'product_card_custom_fields',
   )?.value;
-  const fieldNames = [
+
+  return [
     ...new Set(
       (configuredFieldNames ?? '')
         .split(';')
@@ -26,6 +24,13 @@ export function showCrateProductTransformer(
         .filter(Boolean),
     ),
   ];
+}
+
+export function showCrateProductTransformer(
+  product: ShowCrateProduct,
+): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription'> {
+  const isShow = isShowCrateProduct(product);
+  const fieldNames = getShowCrateCustomFieldNames(product);
   const customFields = removeEdgesAndNodes(product.showCustomFields);
 
   return {

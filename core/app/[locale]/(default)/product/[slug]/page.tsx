@@ -9,6 +9,7 @@ import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-
 import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
 import { ShowAudience } from '@/vibes/soul/sections/product-detail/show-audience';
+import { ShowComparison } from '@/vibes/soul/sections/product-detail/show-comparison';
 import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
@@ -16,6 +17,7 @@ import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-tran
 import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
+import { showComparisonTransformer } from '~/data-transformers/show-comparison-transformer';
 import {
   isShowCrateProduct,
   showCrateProductTransformer,
@@ -45,6 +47,7 @@ import {
   getStreamableProductInventory,
   getStreamableProductVariantInventory,
 } from './page-data';
+import { getShowComparisonProducts } from './show-comparison-data';
 
 interface Props {
   params: Promise<{ slug: string; locale: string }>;
@@ -103,6 +106,7 @@ export default async function Product({ params, searchParams }: Props) {
 
   const t = await getTranslations('Product');
   const format = await getFormatter();
+  const productCardT = await getTranslations('Components.ProductCard');
 
   const productId = Number(slug);
 
@@ -120,6 +124,15 @@ export default async function Product({ params, searchParams }: Props) {
   }
 
   const currencyCode = await getPreferredCurrencyCode();
+  const streamableShowComparison = Streamable.from(async () => {
+    const result = await getShowComparisonProducts(
+      process.env.SHOW_COMPARISON_CATEGORY_PATH?.trim() || '/july-4th',
+      currencyCode,
+      customerAccessToken,
+    );
+
+    return showComparisonTransformer(result.products, format, result.taxDisplay);
+  });
   const visibilityVariables = {
     entityId: productId,
     optionValueIds,
@@ -610,6 +623,17 @@ export default async function Product({ params, searchParams }: Props) {
             }
             title={t('ProductDetails.intendedAudienceTitle')}
           />
+          <Stream fallback={null} value={streamableShowComparison}>
+            {(data) => (
+              <ShowComparison
+                data={data}
+                featureLabel={t('ProductDetails.Comparison.feature')}
+                priceLabel={t('ProductDetails.Comparison.price')}
+                title={t('ProductDetails.Comparison.title')}
+                unavailablePriceLabel={productCardT('callForPricing')}
+              />
+            )}
+          </Stream>
         </>
       )}
 

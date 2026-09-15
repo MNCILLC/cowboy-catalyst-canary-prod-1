@@ -535,6 +535,11 @@
       "showVideosTitle": "See the show in action",
       "includedItemsTitle": "What's in the crate",
       "intendedAudienceTitle": "Who this show is for",
+      "Comparison": {
+        "title": "Find the right fit",
+        "feature": "Feature",
+        "price": "Price"
+      },
       "hideVideos": "Hide videos",
       "showVideos": "Show videos",
       "Submit": {
