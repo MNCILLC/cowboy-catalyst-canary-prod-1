@@ -1,4 +1,6 @@
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- The overflow region needs focus for keyboard scrolling. */
+import { clsx } from 'clsx';
+
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { Link } from '~/components/link';
 
@@ -14,6 +16,7 @@ export interface ShowComparisonData {
 }
 
 interface Props {
+  currentProductId: string;
   data: ShowComparisonData;
   title: string;
   featureLabel: string;
@@ -22,6 +25,7 @@ interface Props {
 }
 
 export function ShowComparison({
+  currentProductId,
   data: { products, features },
   title,
   featureLabel,
@@ -51,11 +55,15 @@ export function ShowComparison({
                 </th>
                 {products.map((product) => (
                   <th
-                    className="min-w-40 px-6 py-5 text-center text-xs font-semibold"
+                    className={clsx(
+                      'min-w-40 px-6 py-5 text-center text-xs font-semibold',
+                      product.id === currentProductId && 'bg-blue-700',
+                    )}
                     key={product.id}
                     scope="col"
                   >
                     <Link
+                      aria-current={product.id === currentProductId ? 'page' : undefined}
                       className="rounded underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                       href={product.href}
                     >
@@ -72,7 +80,13 @@ export function ShowComparison({
                     {feature}
                   </th>
                   {products.map((product) => (
-                    <td className="px-6 py-4 text-center" key={product.id}>
+                    <td
+                      className={clsx(
+                        'px-6 py-4 text-center',
+                        product.id === currentProductId && 'bg-blue-50',
+                      )}
+                      key={product.id}
+                    >
                       {product.fields.find((field) => field.name === feature)?.value ?? '—'}
                     </td>
                   ))}
@@ -83,7 +97,13 @@ export function ShowComparison({
                   {priceLabel}
                 </th>
                 {products.map((product) => (
-                  <td className="px-6 py-5 text-center" key={product.id}>
+                  <td
+                    className={clsx(
+                      'px-6 py-5 text-center',
+                      product.id === currentProductId && 'bg-blue-100',
+                    )}
+                    key={product.id}
+                  >
                     <PriceLabel price={product.price ?? unavailablePriceLabel} />
                   </td>
                 ))}

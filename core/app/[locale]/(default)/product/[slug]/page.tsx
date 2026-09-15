@@ -626,6 +626,7 @@ export default async function Product({ params, searchParams }: Props) {
           <Stream fallback={null} value={streamableShowComparison}>
             {(data) => (
               <ShowComparison
+                currentProductId={baseProduct.entityId.toString()}
                 data={data}
                 featureLabel={t('ProductDetails.Comparison.feature')}
                 priceLabel={t('ProductDetails.Comparison.price')}
