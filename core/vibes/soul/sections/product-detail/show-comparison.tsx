@@ -46,12 +46,12 @@ export function ShowComparison({
             <caption className="sr-only">{title}</caption>
             <thead className="bg-slate-900 text-white">
               <tr>
-                <th className="px-6 py-5 font-semibold" scope="col">
+                <th className="px-6 py-5 text-xs font-semibold uppercase" scope="col">
                   {featureLabel}
                 </th>
                 {products.map((product) => (
                   <th
-                    className="min-w-40 px-6 py-5 text-center font-semibold"
+                    className="min-w-40 px-6 py-5 text-center text-xs font-semibold"
                     key={product.id}
                     scope="col"
                   >
@@ -65,7 +65,7 @@ export function ShowComparison({
                 ))}
               </tr>
             </thead>
-            <tbody className="text-xs">
+            <tbody className="whitespace-normal break-words text-xs">
               {features.map((feature) => (
                 <tr className="border-t border-stone-200 even:bg-stone-50" key={feature}>
                   <th className="px-6 py-4 font-medium" scope="row">
