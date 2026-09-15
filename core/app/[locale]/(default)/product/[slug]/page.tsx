@@ -6,14 +6,22 @@ import { SearchParams } from 'nuqs/server';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
+import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
+import { ShowAudience } from '@/vibes/soul/sections/product-detail/show-audience';
+import { ShowComparison } from '@/vibes/soul/sections/product-detail/show-comparison';
+import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
-import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+import { showComparisonTransformer } from '~/data-transformers/show-comparison-transformer';
+import {
+  isShowCrateProduct,
+  showCrateProductTransformer,
+} from '~/data-transformers/show-crate-product-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
@@ -39,6 +47,7 @@ import {
   getStreamableProductInventory,
   getStreamableProductVariantInventory,
 } from './page-data';
+import { getShowComparisonProducts } from './show-comparison-data';
 
 interface Props {
   params: Promise<{ slug: string; locale: string }>;
@@ -97,10 +106,11 @@ export default async function Product({ params, searchParams }: Props) {
 
   const t = await getTranslations('Product');
   const format = await getFormatter();
+  const productCardT = await getTranslations('Components.ProductCard');
 
   const productId = Number(slug);
 
-  const [{ product: baseProduct, settings }, recaptchaSiteKey] = await Promise.all([
+  const [{ product: baseProduct, settings, batfeMessage }, recaptchaSiteKey] = await Promise.all([
     getProduct(productId, customerAccessToken),
     getRecaptchaSiteKey(),
   ]);
@@ -114,6 +124,15 @@ export default async function Product({ params, searchParams }: Props) {
   }
 
   const currencyCode = await getPreferredCurrencyCode();
+  const streamableShowComparison = Streamable.from(async () => {
+    const result = await getShowComparisonProducts(
+      process.env.SHOW_COMPARISON_CATEGORY_PATH?.trim() || '/july-4th',
+      currencyCode,
+      customerAccessToken,
+    );
+
+    return showComparisonTransformer(result.products, format, result.taxDisplay);
+  });
   const visibilityVariables = {
     entityId: productId,
     optionValueIds,
@@ -131,6 +150,16 @@ export default async function Product({ params, searchParams }: Props) {
   ) {
     return notFound();
   }
+
+  const isShow = isShowCrateProduct(visibilityPricing);
+  const includedItems = (removeEdgesAndNodes(baseProduct.includedItems).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const intendedAudience = (removeEdgesAndNodes(baseProduct.intendedAudience).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const streamableProduct = Streamable.from(async () => {
     const variables = {
@@ -364,7 +393,7 @@ export default async function Product({ params, searchParams }: Props) {
     };
   });
 
-  const streameableAccordions = Streamable.from(async () => {
+  const streamableSpecifications = Streamable.from(async () => {
     const product = await streamableProduct;
 
     const customFields = removeEdgesAndNodes(product.customFields);
@@ -372,7 +401,7 @@ export default async function Product({ params, searchParams }: Props) {
     const hasWeight =
       weightValue != null && String(weightValue).trim() !== '' && Number(weightValue) !== 0;
 
-    const specifications = [
+    return [
       {
         name: t('ProductDetails.Accordions.sku'),
         value: product.sku,
@@ -390,9 +419,16 @@ export default async function Product({ params, searchParams }: Props) {
         value: field.value,
       })),
     ];
+  });
+
+  const streameableAccordions = Streamable.from(async () => {
+    const [product, specifications] = await Streamable.all([
+      streamableProduct,
+      streamableSpecifications,
+    ]);
 
     return [
-      ...(specifications.length
+      ...(!isShow && specifications.length
         ? [
             {
               title: t('ProductDetails.Accordions.specifications'),
@@ -509,6 +545,15 @@ export default async function Product({ params, searchParams }: Props) {
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
+          galleryContent={
+            isShow ? (
+              <ShowProductSpecifications
+                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
+                textSize="base"
+                title={t('ProductDetails.Accordions.specifications')}
+              />
+            ) : undefined
+          }
           incrementLabel={t('ProductDetails.increaseQuantity')}
           loadMoreImagesAction={getMoreProductImages}
           prefetch={true}
@@ -554,19 +599,57 @@ export default async function Product({ params, searchParams }: Props) {
       </ProductAnalyticsProvider>
 
       <Stream fallback={null} value={streamableVideos}>
-        {(videos) => videos.length > 0 && <ProductVideos videos={videos} />}
+        {(videos) =>
+          videos.length > 0 && (
+            <ProductVideos
+              title={isShow ? t('ProductDetails.showVideosTitle') : undefined}
+              videos={videos}
+            />
+          )
+        }
       </Stream>
 
-      <FeaturedProductCarousel
-        cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
-        emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
-        emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
-        nextLabel={t('RelatedProducts.nextProducts')}
-        previousLabel={t('RelatedProducts.previousProducts')}
-        products={streameableRelatedProducts}
-        scrollbarLabel={t('RelatedProducts.scrollbar')}
-        title={t('RelatedProducts.title')}
-      />
+      {isShow && (
+        <>
+          <IncludedItems items={includedItems} title={t('ProductDetails.includedItemsTitle')} />
+          <ShowAudience
+            items={intendedAudience}
+            message={
+              batfeMessage.trim() ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: rewriteWysiwygContentUrls(batfeMessage) }}
+                />
+              ) : undefined
+            }
+            title={t('ProductDetails.intendedAudienceTitle')}
+          />
+          <Stream fallback={null} value={streamableShowComparison}>
+            {(data) => (
+              <ShowComparison
+                currentProductId={baseProduct.entityId.toString()}
+                data={data}
+                featureLabel={t('ProductDetails.Comparison.feature')}
+                priceLabel={t('ProductDetails.Comparison.price')}
+                title={t('ProductDetails.Comparison.title')}
+                unavailablePriceLabel={productCardT('callForPricing')}
+              />
+            )}
+          </Stream>
+        </>
+      )}
+
+      {!isShow && (
+        <FeaturedProductCarousel
+          cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
+          emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
+          emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
+          nextLabel={t('RelatedProducts.nextProducts')}
+          previousLabel={t('RelatedProducts.previousProducts')}
+          products={streameableRelatedProducts}
+          scrollbarLabel={t('RelatedProducts.scrollbar')}
+          title={t('RelatedProducts.title')}
+        />
+      )}
 
       {showRating && (
         <div id="reviews">
