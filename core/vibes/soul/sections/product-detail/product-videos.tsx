@@ -17,6 +17,7 @@ export interface ProductVideo {
 export interface ProductVideosProps {
   videos: ProductVideo[];
   className?: string;
+  title?: string;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -40,8 +41,9 @@ export interface ProductVideosProps {
  * }
  * ```
  */
-export function ProductVideos({ videos, className }: ProductVideosProps) {
+export function ProductVideos({ videos, className, title }: ProductVideosProps) {
   const t = useTranslations('Product.ProductDetails');
+  const sectionTitle = title ?? t('videosTitle');
 
   // Resolve to YouTube ids up front; non-YouTube URLs are skipped (YouTube is
   // the only supported product-video provider).
@@ -60,11 +62,11 @@ export function ProductVideos({ videos, className }: ProductVideosProps) {
   if (!featured) return null;
 
   return (
-    <section aria-label={t('videosTitle')} className={clsx('@container', className)}>
-      <div className="mx-auto w-full max-w-screen-2xl px-4 py-10 @xl:px-6 @xl:py-14 @4xl:px-8 @4xl:py-20">
+    <section aria-label={sectionTitle} className={clsx('@container', className)}>
+      <div className="mx-auto w-full max-w-screen-2xl px-4 pb-10 @xl:px-6 @xl:pb-14 @4xl:px-8 @4xl:pb-20">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="font-[family-name:var(--product-detail-title-font-family,var(--font-family-heading))] text-2xl font-medium text-[var(--product-detail-primary-text,hsl(var(--foreground)))] @xl:text-3xl @4xl:text-4xl">
-            {t('videosTitle')}
+            {sectionTitle}
           </h2>
           <button
             aria-controls={panelId}

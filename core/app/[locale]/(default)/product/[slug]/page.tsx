@@ -576,7 +576,14 @@ export default async function Product({ params, searchParams }: Props) {
       </ProductAnalyticsProvider>
 
       <Stream fallback={null} value={streamableVideos}>
-        {(videos) => videos.length > 0 && <ProductVideos videos={videos} />}
+        {(videos) =>
+          videos.length > 0 && (
+            <ProductVideos
+              title={isShow ? t('ProductDetails.showVideosTitle') : undefined}
+              videos={videos}
+            />
+          )
+        }
       </Stream>
 
       {!isShow && (
