@@ -65,7 +65,12 @@ export function ProductVideos({ videos, className, title }: ProductVideosProps) 
     <section aria-label={sectionTitle} className={clsx('@container', className)}>
       <div className="mx-auto w-full max-w-screen-2xl px-4 pb-10 @xl:px-6 @xl:pb-14 @4xl:px-8 @4xl:pb-20">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-[family-name:var(--product-detail-title-font-family,var(--font-family-heading))] text-2xl font-medium text-[var(--product-detail-primary-text,hsl(var(--foreground)))] @xl:text-3xl @4xl:text-4xl">
+          <h2
+            className={clsx(
+              'font-[family-name:var(--product-detail-title-font-family,var(--font-family-heading))] text-2xl font-medium text-[var(--product-detail-primary-text,hsl(var(--foreground)))] @xl:text-3xl @4xl:text-4xl',
+              title != null && 'uppercase',
+            )}
+          >
             {sectionTitle}
           </h2>
           <button
