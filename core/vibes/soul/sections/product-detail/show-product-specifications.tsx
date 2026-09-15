@@ -1,31 +1,22 @@
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Accordion, AccordionItem } from '@/vibes/soul/primitives/accordion';
-import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
+import {
+  ShowCrateFeatures,
+  type ShowCrateFeaturesTextSize,
+} from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
 
 interface Props {
   title: string;
-  specifications: Streamable<Array<{ name: string; value: string }>>;
+  specifications: Streamable<Array<{ id: string; value: string }>>;
+  textSize?: ShowCrateFeaturesTextSize;
 }
 
-export function ShowProductSpecifications({ title, specifications }: Props) {
+export function ShowProductSpecifications({ title, specifications, textSize = 'base' }: Props) {
   return (
-    <Accordion
-      className="border-t border-[var(--product-detail-border,hsl(var(--contrast-100)))] pt-4"
-      defaultValue={['specifications']}
-      type="multiple"
-    >
+    <Accordion className="" defaultValue={['specifications']} type="multiple">
       <AccordionItem title={title} value="specifications">
         <Stream fallback={null} value={specifications}>
-          {(fields) => (
-            <ShowCrateFeatures
-              features={fields
-                .filter((field) => field.value.trim() !== '')
-                .map((field, index) => ({
-                  id: index.toString(),
-                  value: `${field.name}: ${field.value}`,
-                }))}
-            />
-          )}
+          {(fields) => <ShowCrateFeatures features={fields} textSize={textSize} />}
         </Stream>
       </AccordionItem>
     </Accordion>

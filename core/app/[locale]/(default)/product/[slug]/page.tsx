@@ -14,7 +14,10 @@ import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-tran
 import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
-import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+import {
+  isShowCrateProduct,
+  showCrateProductTransformer,
+} from '~/data-transformers/show-crate-product-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
@@ -522,7 +525,8 @@ export default async function Product({ params, searchParams }: Props) {
           galleryContent={
             isShow ? (
               <ShowProductSpecifications
-                specifications={streamableSpecifications}
+                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
+                textSize="base"
                 title={t('ProductDetails.Accordions.specifications')}
               />
             ) : undefined

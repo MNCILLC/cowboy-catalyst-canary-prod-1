@@ -144,8 +144,8 @@ export function ProductDetail<F extends Field>({
           {(product) =>
             product && (
               <div className="grid grid-cols-1 items-stretch gap-x-8 gap-y-8 @2xl:grid-cols-2 @5xl:gap-x-12">
-                <div className="group/product-gallery hidden @2xl:block">
-                  {galleryContent ?? (
+                {galleryContent == null && (
+                  <div className="group/product-gallery hidden @2xl:block">
                     <Stream fallback={<ProductGallerySkeleton />} value={product.images}>
                       {(imagesData) => (
                         <ProductGallery
@@ -156,8 +156,8 @@ export function ProductDetail<F extends Field>({
                         />
                       )}
                     </Stream>
-                  )}
-                </div>
+                  </div>
+                )}
                 {/* Product Details */}
                 <div className="text-[var(--product-detail-primary-text,hsl(var(--foreground)))]">
                   {Boolean(product.subtitle) && (
@@ -237,8 +237,8 @@ export function ProductDetail<F extends Field>({
                       </Stream>
                     </div>
                   )}
-                  <div className="group/product-gallery mb-8 @2xl:hidden">
-                    {galleryContent ?? (
+                  {galleryContent == null && (
+                    <div className="group/product-gallery mb-8 @2xl:hidden">
                       <Stream fallback={<ProductGallerySkeleton />} value={product.images}>
                         {(imagesData) => (
                           <ProductGallery
@@ -250,8 +250,8 @@ export function ProductDetail<F extends Field>({
                           />
                         )}
                       </Stream>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   <div className="group/product-summary">
                     <Stream fallback={<ProductSummarySkeleton />} value={product.summary}>
                       {(summary) =>
@@ -340,6 +340,7 @@ export function ProductDetail<F extends Field>({
                     </Stream>
                   </div>
                 </div>
+                {galleryContent != null && <div>{galleryContent}</div>}
               </div>
             )
           }
