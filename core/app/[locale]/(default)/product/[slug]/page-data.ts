@@ -205,6 +205,13 @@ const ProductQuery = graphql(
               }
             }
           }
+          includedItems: metafields(namespace: "custom", keys: ["included_items"], first: 1) {
+            edges {
+              node {
+                value
+              }
+            }
+          }
           ...ProductOptionsFragment
         }
       }

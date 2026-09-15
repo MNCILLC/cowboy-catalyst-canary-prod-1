@@ -6,6 +6,7 @@ import { SearchParams } from 'nuqs/server';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
+import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
 import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
@@ -137,6 +138,10 @@ export default async function Product({ params, searchParams }: Props) {
   }
 
   const isShow = isShowCrateProduct(visibilityPricing);
+  const includedItems = (removeEdgesAndNodes(baseProduct.includedItems).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const streamableProduct = Streamable.from(async () => {
     const variables = {
@@ -585,6 +590,10 @@ export default async function Product({ params, searchParams }: Props) {
           )
         }
       </Stream>
+
+      {isShow && (
+        <IncludedItems items={includedItems} title={t('ProductDetails.includedItemsTitle')} />
+      )}
 
       {!isShow && (
         <FeaturedProductCarousel
