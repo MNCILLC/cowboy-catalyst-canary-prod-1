@@ -22,20 +22,34 @@ const fetcher = (url: string) =>
     .then(ProductListSchema.parse);
 
 interface Props {
-  collection: 'none' | 'best-selling' | 'newest' | 'featured';
+  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
+  categoryId?: string;
   collectionLimit?: number;
   additionalProductIds: string[];
 }
 
-export function useProducts({ collection, collectionLimit = 20, additionalProductIds }: Props): {
+export function useProducts({
+  collection,
+  categoryId,
+  collectionLimit = 20,
+  additionalProductIds,
+}: Props): {
   products: Product[] | null;
   isLoading: boolean;
 } {
   const bcProductToVibesProduct = useBcProductToVibesProduct();
   const locale = useLocale();
+  const collectionParams = new URLSearchParams({
+    locale,
+    limit: String(Math.min(50, Math.max(1, Math.floor(collectionLimit) || 20))),
+  });
+
+  if (collection === 'category' && categoryId) collectionParams.set('categoryId', categoryId);
+
+  const hasCollection = collection !== 'none' && (collection !== 'category' || Boolean(categoryId));
 
   const { data: collectionData, isLoading: isCollectionLoading } = useSWR(
-    collection !== 'none' ? `/api/products/group/${collection}?locale=${locale}` : null,
+    hasCollection ? `/api/products/group/${collection}?${collectionParams.toString()}` : null,
     fetcher,
   );
 
