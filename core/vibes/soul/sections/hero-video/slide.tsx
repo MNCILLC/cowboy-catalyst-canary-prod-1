@@ -17,6 +17,12 @@ export interface HeroVideoSlide {
   buttonColor?: 'primary' | 'secondary' | 'tertiary' | 'ghost';
   buttonHexColor?: string;
   buttonLink?: { href?: string; target?: string; onClick?: MouseEventHandler };
+  showSecondaryButton?: boolean;
+  secondaryButtonText?: string;
+  secondaryButtonTextColor?: string;
+  secondaryButtonColor?: HeroVideoSlide['buttonColor'];
+  secondaryButtonHexColor?: string;
+  secondaryButtonLink?: HeroVideoSlide['buttonLink'];
 }
 
 function buttonStyle(hex: string, variant: string): CSSProperties | undefined {
@@ -45,6 +51,40 @@ function buttonStyle(hex: string, variant: string): CSSProperties | undefined {
   };
 
   return variables;
+}
+
+function HeroSlideButton({
+  show = false,
+  text = '',
+  textColor,
+  variant = 'primary',
+  hexColor = '',
+  link,
+}: {
+  show?: boolean;
+  text?: string;
+  textColor?: string;
+  variant?: HeroVideoSlide['buttonColor'];
+  hexColor?: string;
+  link?: HeroVideoSlide['buttonLink'];
+}) {
+  if (!show || !text) return null;
+
+  return (
+    <div className="mt-6">
+      <ButtonLink
+        href={link?.href ?? '#'}
+        onClick={link?.onClick}
+        prefetch="none"
+        rel={link?.target === '_blank' ? 'noopener noreferrer' : undefined}
+        style={{ ...buttonStyle(hexColor.trim(), variant), color: textColor }}
+        target={link?.target}
+        variant={variant}
+      >
+        <HeroHtml inline value={text} />
+      </ButtonLink>
+    </div>
+  );
 }
 
 export function HeroSlide({
@@ -93,23 +133,22 @@ export function HeroSlide({
             <HeroHtml value={slide.description ?? ''} />
           </div>
         )}
-        {(slide.showButton ?? true) && Boolean(slide.buttonText) && (
-          <ButtonLink
-            className="mt-6"
-            href={slide.buttonLink?.href ?? '#'}
-            onClick={slide.buttonLink?.onClick}
-            prefetch="none"
-            rel={slide.buttonLink?.target === '_blank' ? 'noopener noreferrer' : undefined}
-            style={{
-              ...buttonStyle(slide.buttonHexColor?.trim() ?? '', slide.buttonColor ?? 'primary'),
-              color: slide.buttonTextColor,
-            }}
-            target={slide.buttonLink?.target}
-            variant={slide.buttonColor ?? 'primary'}
-          >
-            <HeroHtml inline value={slide.buttonText ?? ''} />
-          </ButtonLink>
-        )}
+        <HeroSlideButton
+          hexColor={slide.buttonHexColor}
+          link={slide.buttonLink}
+          show={slide.showButton ?? true}
+          text={slide.buttonText}
+          textColor={slide.buttonTextColor}
+          variant={slide.buttonColor}
+        />
+        <HeroSlideButton
+          hexColor={slide.secondaryButtonHexColor}
+          link={slide.secondaryButtonLink}
+          show={slide.showSecondaryButton}
+          text={slide.secondaryButtonText}
+          textColor={slide.secondaryButtonTextColor}
+          variant={slide.secondaryButtonColor ?? 'secondary'}
+        />
       </div>
     </div>
   );

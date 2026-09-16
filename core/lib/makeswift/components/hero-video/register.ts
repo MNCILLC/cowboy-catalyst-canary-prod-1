@@ -88,6 +88,35 @@ runtime.registerComponent(HeroVideo, {
             description:
               'Open page, Open URL, Compose email, Call phone, or Scroll to element. Use Open in a new tab for page and URL links.',
           }),
+          showSecondaryButton: Checkbox({ label: 'Show secondary button', defaultValue: false }),
+          secondaryButtonText: TextArea({
+            label: 'Secondary button text (text or HTML)',
+            defaultValue: 'Learn more',
+          }),
+          secondaryButtonTextColor: Color({
+            label: 'Secondary button text color',
+            description: 'Leave unset to use the theme or automatic contrast color.',
+          }),
+          secondaryButtonColor: Select({
+            label: 'Secondary button color',
+            options: [
+              { value: 'primary', label: 'Primary' },
+              { value: 'secondary', label: 'Secondary' },
+              { value: 'tertiary', label: 'Tertiary' },
+              { value: 'ghost', label: 'Ghost' },
+            ],
+            defaultValue: 'secondary',
+          }),
+          secondaryButtonHexColor: TextInput({
+            label: 'Secondary button hex color override',
+            description:
+              'Optional #RGB or #RRGGBB color. Leave blank to use the selected theme color.',
+          }),
+          secondaryButtonLink: Link({
+            label: 'Secondary button link',
+            description:
+              'Open page, Open URL, Compose email, Call phone, or Scroll to element. Use Open in a new tab for page and URL links.',
+          }),
         },
       }),
       getItemLabel(slide) {

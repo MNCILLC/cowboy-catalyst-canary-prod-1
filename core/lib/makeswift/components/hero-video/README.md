@@ -42,6 +42,12 @@ Add and reorder items under **Slides**. Each slide includes:
   Call phone, or Scroll to element. Page and URL links include the native
   **Open in a new tab** checkbox.
 
+Each slide also has a **Show secondary button** checkbox, off by default. The
+secondary button appears below the existing button and has independent text/HTML,
+text color, theme color, hex color override, and native link settings (including
+Open in a new tab). It follows the slide's alignment and can be shown even when
+the first button is hidden. Its theme color defaults to Secondary.
+
 HTML supports common text formatting, paragraphs, headings, lists, and links.
 Scripts, event handlers, and embedded media are removed. Button HTML is limited
 to inline formatting to avoid nested interactive elements.
