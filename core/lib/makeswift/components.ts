@@ -4,6 +4,7 @@ import './components/card/register';
 import './components/card-carousel/register';
 import './components/carousel/register';
 import './components/customer-group-slot/register';
+import './components/hero-video/register';
 import './components/product-card/register';
 import './components/product-detail/register';
 import './components/products-carousel/register';
