@@ -42,7 +42,6 @@ export function HeroVideo({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [viewport, setViewport] = useState<{ width: number; left: number }>();
-  const [metadata, setMetadata] = useState<{ source: string; ratio: number }>();
   const [failedSource, setFailedSource] = useState<string>();
   const [selected, setSelected] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(true);
@@ -57,8 +56,7 @@ export function HeroVideo({
   const slidesPlaying = (slidePlayback ?? (autoplay && !reducedMotion)) && slides.length > 1;
   const videoShouldPlay = (videoPlayback ?? !reducedMotion) && pageVisible;
   const interval = Math.max(1, Number.isFinite(duration) ? duration : 5) * 1000;
-  const ratio =
-    parseAspectRatio(aspectRatio) ?? (metadata?.source === source ? metadata.ratio : 16 / 9);
+  const ratioOverride = parseAspectRatio(aspectRatio);
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -132,30 +130,30 @@ export function HeroVideo({
         style={{
           width: viewport?.width ?? '100%',
           marginLeft: viewport ? -viewport.left : 0,
-          aspectRatio: ratio,
+          aspectRatio: source === '' ? (ratioOverride ?? 16 / 9) : ratioOverride,
         }}
       >
         {source !== '' && (
           <video
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            className={clsx(
+              'pointer-events-none block w-full max-w-none object-cover',
+              ratioOverride === undefined ? 'h-auto' : 'absolute inset-0 h-full',
+            )}
             key={source}
             loop
             muted
             onError={() => setFailedSource(source)}
-            onLoadedMetadata={(event) => {
-              const { videoWidth, videoHeight } = event.currentTarget;
-
-              setFailedSource(undefined);
-              if (videoWidth > 0 && videoHeight > 0)
-                setMetadata({ source, ratio: videoWidth / videoHeight });
-            }}
+            onLoadedMetadata={() => setFailedSource(undefined)}
             onPause={() => setVideoPlaying(false)}
             onPlay={() => setVideoPlaying(true)}
             playsInline
             preload="metadata"
             ref={videoRef}
             src={source}
+            // In native mode the in-flow video sizes the section, even when metadata
+            // loaded before hydration. The fallback applies only until it has a ratio.
+            style={{ aspectRatio: 'auto 16 / 9' }}
             tabIndex={-1}
           />
         )}

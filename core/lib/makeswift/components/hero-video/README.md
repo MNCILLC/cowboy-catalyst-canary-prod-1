@@ -15,8 +15,9 @@ extends to the viewport edges, including when placed inside a padded content box
 
 The video is muted, loops, and stays mounted when text slides change. The section
 uses 16:9 until video metadata is available. Invalid ratio values fall back to the
-native ratio. A missing or failed video leaves a black background under the
-overlay, with slide content still available.
+native ratio. Native sizing comes directly from the video element, including when
+the video loads before React hydrates the page. A missing or failed video leaves a
+black background under the overlay, with slide content still available.
 
 Uploads use Makeswift's Files library, the agreed media workflow for this
 component. This component does not upload files to BigCommerce Image Manager.
