@@ -13,6 +13,7 @@ export interface HeroVideoSlide {
   verticalAlign?: 'top' | 'center' | 'bottom';
   showButton?: boolean;
   buttonText?: string;
+  buttonTextColor?: string;
   buttonColor?: 'primary' | 'secondary' | 'tertiary' | 'ghost';
   buttonHexColor?: string;
   buttonLink?: { href?: string; target?: string; onClick?: MouseEventHandler };
@@ -99,7 +100,10 @@ export function HeroSlide({
             onClick={slide.buttonLink?.onClick}
             prefetch="none"
             rel={slide.buttonLink?.target === '_blank' ? 'noopener noreferrer' : undefined}
-            style={buttonStyle(slide.buttonHexColor?.trim() ?? '', slide.buttonColor ?? 'primary')}
+            style={{
+              ...buttonStyle(slide.buttonHexColor?.trim() ?? '', slide.buttonColor ?? 'primary'),
+              color: slide.buttonTextColor,
+            }}
             target={slide.buttonLink?.target}
             variant={slide.buttonColor ?? 'primary'}
           >

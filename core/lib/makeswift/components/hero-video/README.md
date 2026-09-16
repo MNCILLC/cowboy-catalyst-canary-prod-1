@@ -32,6 +32,8 @@ Add and reorder items under **Slides**. Each slide includes:
 - Horizontal alignment: left, center, or right.
 - Vertical alignment: top, center, or bottom.
 - **Show button** and button text accepting plain text or inline HTML.
+- **Button text color**, directly below Button text. Leave unset to use the theme
+  or automatic contrast color; a chosen color overrides either default.
 - Button color: Primary, Secondary, Tertiary, or Ghost.
 - Optional **Button hex color override**, accepting `#RGB` or `#RRGGBB`. This
   overrides the variant's background and border and chooses black or white text

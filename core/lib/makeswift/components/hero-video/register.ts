@@ -64,6 +64,10 @@ runtime.registerComponent(HeroVideo, {
           }),
           showButton: Checkbox({ label: 'Show button', defaultValue: true }),
           buttonText: TextArea({ label: 'Button text (text or HTML)', defaultValue: 'Learn more' }),
+          buttonTextColor: Color({
+            label: 'Button text color',
+            description: 'Leave unset to use the theme or automatic contrast color.',
+          }),
           buttonColor: Select({
             label: 'Button color',
             options: [
