@@ -146,3 +146,33 @@ export function paginateMetafieldMatches(
     },
   };
 }
+
+export interface ProductAttributeFilter {
+  paramName: string;
+  label: string;
+  options: MetafieldFilterOption[];
+}
+
+export function getProductAttributes(
+  metafields: MetafieldValue[],
+  filters: ProductAttributeFilter[] = [],
+) {
+  return productFilterDefinitions.flatMap(({ productKey }) => {
+    const filter = filters.find(({ paramName }) => paramName === `mf_${productKey}`);
+
+    if (!filter) return [];
+
+    const values = [
+      ...new Set(
+        metafields
+          .filter(({ key }) => key === productKey)
+          .flatMap(({ value }) => parseAttributeValues(value))
+          .filter((value) => value.trim()),
+      ),
+    ].map(
+      (value) => filter.options.find((option) => option.value === value) ?? { value, label: value },
+    );
+
+    return values.length ? [{ key: productKey, label: filter.label, values }] : [];
+  });
+}

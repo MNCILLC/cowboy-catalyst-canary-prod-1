@@ -18,6 +18,7 @@ import { Link } from '~/components/link';
 import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
 
+import { ProductCardAttributes } from './attributes';
 import { Compare } from './compare';
 
 export interface Product {
@@ -29,6 +30,11 @@ export interface Product {
   title: string;
   packing?: string;
   descriptionHtml?: string;
+  attributes?: Array<{
+    key: string;
+    label: string;
+    values: Array<{ value: string; label: string; swatchColor?: string }>;
+  }>;
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -100,6 +106,7 @@ function StandardProductCard({
     id,
     title,
     packing,
+    attributes,
     subtitle,
     badge,
     price,
@@ -339,6 +346,7 @@ function StandardProductCard({
             {actionsPlacement.details}
           </div>
         </div>
+        <ProductCardAttributes attributes={attributes} layout={layout} />
         {href !== '#' && (
           <Link
             aria-label={title}

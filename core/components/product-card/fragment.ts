@@ -8,6 +8,26 @@ export const ProductCardFragment = graphql(
       entityId
       name
       description
+      attributeMetafields: metafields(
+        namespace: "custom_product"
+        keys: [
+          "colors"
+          "effects"
+          "firing_patterns"
+          "calibers"
+          "performance_heights"
+          "durations"
+          "ignition_types"
+        ]
+        first: 7
+      ) {
+        edges {
+          node {
+            key
+            value
+          }
+        }
+      }
       packingFields: customFields(names: ["packing", "Packing", "PACKING"], first: 1) {
         edges {
           node {

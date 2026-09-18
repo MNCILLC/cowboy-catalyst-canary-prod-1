@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   getMetafieldSelections,
+  getProductAttributes,
   matchesMetafieldSelections,
   paginateMetafieldMatches,
   parseAttributeValues,
@@ -108,4 +109,37 @@ test('empty results and stale/invalid cursors stay valid and bounded', () => {
     ).ids.length,
     50,
   );
+});
+
+test('card attributes resolve labels and swatches, retain unknown values, and ignore malformed or empty groups', () => {
+  assert.deepEqual(
+    getProductAttributes(
+      [
+        { key: 'colors', value: '["dark-green","dark-green","unknown",""]' },
+        { key: 'effects', value: 'invalid' },
+        { key: 'durations', value: '[]' },
+        { key: 'unrelated', value: '["hidden"]' },
+      ],
+      [
+        {
+          paramName: 'mf_colors',
+          label: 'Colors',
+          options: [{ value: 'dark-green', label: 'Dark Green', swatchColor: '#006400' }],
+        },
+        { paramName: 'mf_effects', label: 'Effects', options: [] },
+        { paramName: 'mf_durations', label: 'Durations', options: [] },
+      ],
+    ),
+    [
+      {
+        key: 'colors',
+        label: 'Colors',
+        values: [
+          { value: 'dark-green', label: 'Dark Green', swatchColor: '#006400' },
+          { value: 'unknown', label: 'unknown' },
+        ],
+      },
+    ],
+  );
+  assert.deepEqual(getProductAttributes([], []), []);
 });
