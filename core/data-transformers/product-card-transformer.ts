@@ -6,6 +6,7 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import { getProductAttributes, ProductAttributeFilter } from '~/lib/product-metafield-filters';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
@@ -53,6 +54,18 @@ const getInventoryMessage = (
   return inventoryByLocation?.backorderMessage ?? undefined;
 };
 
+const productAttributesTransformer = (
+  product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
+  filters?: ProductAttributeFilter[],
+) => {
+  if (process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES !== 'true') return [];
+
+  return getProductAttributes(
+    'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
+    filters,
+  );
+};
+
 export const singleProductCardTransformer = (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   format: ExistingResultType<typeof getFormatter>,
@@ -60,11 +73,13 @@ export const singleProductCardTransformer = (
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
+  attributeFilters?: ProductAttributeFilter[],
 ): Product => {
   return {
     ...showCrateProductTransformer(product),
     id: product.entityId.toString(),
     title: product.name,
+    attributes: productAttributesTransformer(product, attributeFilters),
     descriptionHtml: 'description' in product ? product.description : undefined,
     packing:
       'packingFields' in product
@@ -130,6 +145,7 @@ export const productCardTransformer = (
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
+  attributeFilters?: ProductAttributeFilter[],
 ): Product[] => {
   return products
     .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
@@ -141,6 +157,7 @@ export const productCardTransformer = (
         showBackorderMessage,
         taxDisplay,
         stockDisplay,
+        attributeFilters,
       ),
     );
 };
