@@ -19,7 +19,6 @@ import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
 
 import { Compare } from './compare';
-import { ProductCardDescription } from './description';
 
 export interface Product {
   isShow?: boolean;
@@ -101,7 +100,6 @@ function StandardProductCard({
     id,
     title,
     packing,
-    descriptionHtml,
     subtitle,
     badge,
     price,
@@ -285,11 +283,6 @@ function StandardProductCard({
               {title}
             </span>
             <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
-            <ProductCardDescription
-              colorScheme={colorScheme}
-              description={descriptionHtml}
-              layout={layout}
-            />
             {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
