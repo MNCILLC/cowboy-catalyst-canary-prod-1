@@ -52,7 +52,7 @@ export const getMetafieldFilters = cache(async () => {
 
   return productFilterDefinitions.flatMap(({ siteKey, productKey }) => {
     const field = fields.find((item) => item.namespace === 'custom_site' && item.key === siteKey);
-    const options = field ? parseFilterOptions(field.value) : [];
+    const options = field ? parseFilterOptions(field.value, productKey === 'colors') : [];
 
     return options.length
       ? [

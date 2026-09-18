@@ -33,8 +33,9 @@ export interface ToggleGroupFilter {
   options: Array<{ label: string; value: string; disabled?: boolean }>;
 }
 
-export interface CheckboxGroupFilter extends Omit<ToggleGroupFilter, 'type'> {
+export interface CheckboxGroupFilter extends Omit<ToggleGroupFilter, 'type' | 'options'> {
   type: 'checkbox-group';
+  options: Array<{ label: string; value: string; disabled?: boolean; swatchColor?: string }>;
 }
 
 export interface RatingFilter {
@@ -205,7 +206,18 @@ export function FiltersPanelInner({
                         }
                         disabled={option.disabled}
                         key={option.value}
-                        label={option.label}
+                        label={
+                          <span className="inline-flex items-center gap-2">
+                            {option.swatchColor != null && (
+                              <span
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0 rounded-sm border border-contrast-300"
+                                style={{ backgroundColor: option.swatchColor }}
+                              />
+                            )}
+                            {option.label}
+                          </span>
+                        }
                         onCheckedChange={(checked) => {
                           startTransition(async () => {
                             const selected = new Set<string>(

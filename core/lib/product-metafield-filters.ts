@@ -14,6 +14,7 @@ export const productFilterDefinitions = [
 export interface MetafieldFilterOption {
   label: string;
   value: string;
+  swatchColor?: string;
 }
 
 export interface MetafieldValue {
@@ -21,7 +22,7 @@ export interface MetafieldValue {
   value: string;
 }
 
-export function parseFilterOptions(value: string): MetafieldFilterOption[] {
+export function parseFilterOptions(value: string, includeColor = false): MetafieldFilterOption[] {
   try {
     const parsed: unknown = JSON.parse(value);
 
@@ -44,7 +45,22 @@ export function parseFilterOptions(value: string): MetafieldFilterOption[] {
       )
         return;
 
-      options.push({ label: option.label, value: option.value });
+      const swatchColor = includeColor
+        ? [
+            'hex_value' in option ? option.hex_value : undefined,
+            'color_value' in option ? option.color_value : undefined,
+          ].find(
+            (color): color is string =>
+              typeof color === 'string' &&
+              /^#(?:[\da-f]{3}|[\da-f]{4}|[\da-f]{6}|[\da-f]{8})$/i.test(color),
+          )
+        : undefined;
+
+      options.push({
+        label: option.label,
+        value: option.value,
+        ...(swatchColor ? { swatchColor } : {}),
+      });
       seen.add(option.value);
     });
 
