@@ -7,6 +7,7 @@ import {
   PublicSearchParamsSchema,
   PublicToPrivateParams,
 } from '~/app/[locale]/(default)/(faceted)/fetch-faceted-search';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { ExistingResultType } from '~/client/util';
 
 export const facetsTransformer = async ({
@@ -21,7 +22,8 @@ export const facetsTransformer = async ({
   const t = await getTranslations('Faceted.FacetedSearch.Facets');
   const { filters } = PublicToPrivateParams.parse(searchParams);
 
-  return allFacets.map((facet) => {
+  const metafieldFilters = await getMetafieldFilters();
+  const nativeFilters = allFacets.map((facet) => {
     const refinedFacet = refinedFacets.find((f) => f.displayName === facet.displayName);
 
     if (refinedFacet == null) {
@@ -218,4 +220,6 @@ export const facetsTransformer = async ({
 
     return null;
   });
+
+  return [...metafieldFilters, ...nativeFilters];
 };

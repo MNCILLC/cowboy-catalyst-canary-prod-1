@@ -149,6 +149,15 @@
     "FacetedSearch": {
       "filters": "Filters",
       "resetFilters": "Reset filters",
+      "Metafields": {
+        "colors": "Colors",
+        "effects": "Effects",
+        "firing_patterns": "Firing patterns",
+        "calibers": "Calibers",
+        "performance_heights": "Performance heights",
+        "durations": "Durations",
+        "ignition_types": "Ignition types"
+      },
       "Range": {
         "apply": "Apply"
       },

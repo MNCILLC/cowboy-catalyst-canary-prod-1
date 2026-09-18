@@ -5,6 +5,7 @@ import { Badge } from '@/vibes/soul/primitives/badge';
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProductCardProps } from '@/vibes/soul/primitives/product-card';
+import { ProductCardAttributes } from '@/vibes/soul/primitives/product-card/attributes';
 import { Compare } from '@/vibes/soul/primitives/product-card/compare';
 import { Rating } from '@/vibes/soul/primitives/rating';
 import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
@@ -157,6 +158,11 @@ export function ShowCrateProductCard({
           />
         </div>
       )}
+      <ProductCardAttributes
+        attributes={product.attributes}
+        className="px-4 pb-4"
+        layout={layout}
+      />
     </article>
   );
 }

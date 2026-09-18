@@ -18,8 +18,8 @@ import { Link } from '~/components/link';
 import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
 
+import { ProductCardAttributes } from './attributes';
 import { Compare } from './compare';
-import { ProductCardDescription } from './description';
 
 export interface Product {
   isShow?: boolean;
@@ -30,6 +30,11 @@ export interface Product {
   title: string;
   packing?: string;
   descriptionHtml?: string;
+  attributes?: Array<{
+    key: string;
+    label: string;
+    values: Array<{ value: string; label: string; swatchColor?: string }>;
+  }>;
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -101,7 +106,7 @@ function StandardProductCard({
     id,
     title,
     packing,
-    descriptionHtml,
+    attributes,
     subtitle,
     badge,
     price,
@@ -143,6 +148,8 @@ function StandardProductCard({
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
       detailsContent: '',
+      titleRow: '',
+      title: '',
       actions: 'ml-1 mt-auto',
       compare: '',
       badge: 'absolute left-3 top-3',
@@ -163,7 +170,9 @@ function StandardProductCard({
       placeholder: 'p-2 text-sm',
       details: 'min-h-0 min-w-0 self-stretch',
       detailsContent: 'flex min-h-0 w-full flex-col',
-      actions: 'ml-auto flex flex-col items-end gap-3',
+      titleRow: 'grid grid-cols-2 items-start gap-x-4 gap-y-2 @lg:grid-cols-3',
+      title: 'col-span-2 min-w-0 @lg:col-span-1',
+      actions: 'relative z-10 ml-auto mt-3 flex flex-col items-end gap-3',
       compare: 'relative z-10 w-fit',
       badge: 'mb-1 self-start',
     },
@@ -183,13 +192,6 @@ function StandardProductCard({
       stockDisplayData={stockDisplayData}
     />
   );
-  const inventoryPlacement = {
-    grid: { details: inventory, actions: null },
-    list: {
-      details: null,
-      actions: <div className="w-full min-w-0 max-w-xs">{inventory}</div>,
-    },
-  }[layout];
   const priceElement = price != null && (
     <PriceLabel
       className="[&_abbr]:cursor-default [&_abbr]:no-underline"
@@ -212,14 +214,32 @@ function StandardProductCard({
       compareImage: null,
       compareActions: compareElement,
       priceDetails: priceElement,
-      priceActions: null,
+      inventoryDetails: inventory,
+      headerDetails: null,
     },
     list: {
       compareImage: compareElement,
       compareActions: null,
       priceDetails: null,
-      priceActions: priceElement,
+      inventoryDetails: null,
+      headerDetails: (
+        <>
+          <div className="min-w-0 @lg:justify-self-center">{inventory}</div>
+          <div className="min-w-0 text-right">{priceElement}</div>
+        </>
+      ),
     },
+  }[layout];
+
+  const actionsElement = [purchaseAction, controlPlacement.compareActions].some(Boolean) && (
+    <div className={clsx('shrink-0', layoutStyles.actions)}>
+      {purchaseAction}
+      {controlPlacement.compareActions}
+    </div>
+  );
+  const actionsPlacement = {
+    grid: { details: null, outside: actionsElement },
+    list: { details: actionsElement, outside: null },
   }[layout];
 
   return (
@@ -273,23 +293,22 @@ function StandardProductCard({
             )}
           >
             {layout === 'list' && badgeElement}
-            <span
-              className={clsx(
-                'line-clamp-2 font-semibold',
-                {
-                  light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-                  dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
-                }[colorScheme],
-              )}
-            >
-              {title}
-            </span>
+            <div className={layoutStyles.titleRow}>
+              <span
+                className={clsx(
+                  'line-clamp-2 font-semibold',
+                  layoutStyles.title,
+                  {
+                    light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+                    dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
+                  }[colorScheme],
+                )}
+              >
+                {title}
+              </span>
+              {controlPlacement.headerDetails}
+            </div>
             <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
-            <ProductCardDescription
-              colorScheme={colorScheme}
-              description={descriptionHtml}
-              layout={layout}
-            />
             {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
@@ -323,9 +342,11 @@ function StandardProductCard({
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
-            {inventoryPlacement.details}
+            {controlPlacement.inventoryDetails}
+            {actionsPlacement.details}
           </div>
         </div>
+        <ProductCardAttributes attributes={attributes} layout={layout} />
         {href !== '#' && (
           <Link
             aria-label={title}
@@ -343,19 +364,7 @@ function StandardProductCard({
           </Link>
         )}
       </div>
-      {[
-        controlPlacement.priceActions,
-        purchaseAction,
-        inventoryPlacement.actions,
-        controlPlacement.compareActions,
-      ].some(Boolean) && (
-        <div className={clsx('shrink-0', layoutStyles.actions)}>
-          {controlPlacement.priceActions}
-          {purchaseAction}
-          {inventoryPlacement.actions}
-          {controlPlacement.compareActions}
-        </div>
-      )}
+      {actionsPlacement.outside}
     </article>
   );
 }
