@@ -57,11 +57,14 @@ const getInventoryMessage = (
 const productAttributesTransformer = (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   filters?: ProductAttributeFilter[],
-) =>
-  getProductAttributes(
+) => {
+  if (process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES !== 'true') return [];
+
+  return getProductAttributes(
     'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
     filters,
   );
+};
 
 export const singleProductCardTransformer = (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
