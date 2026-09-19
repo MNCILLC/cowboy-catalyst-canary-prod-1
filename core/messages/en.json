@@ -149,6 +149,11 @@
     "FacetedSearch": {
       "filters": "Filters",
       "resetFilters": "Reset filters",
+      "Applied": {
+        "label": "Applied filters",
+        "remove": "Remove {label}: {value}",
+        "clearAll": "Clear all"
+      },
       "Metafields": {
         "colors": "Colors",
         "effects": "Effects",

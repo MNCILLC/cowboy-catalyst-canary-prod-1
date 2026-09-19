@@ -14,6 +14,7 @@ import {
   ProductViewProvider,
   ProductViewSwitcher,
 } from '@/vibes/soul/sections/product-list/view';
+import { AppliedFilters } from '@/vibes/soul/sections/products-list-section/applied-filters';
 import { Filter, FiltersPanel } from '@/vibes/soul/sections/products-list-section/filters-panel';
 import {
   Sorting,
@@ -201,6 +202,7 @@ export function ProductsListSection({
 
             <div className="group-has-data-pending/products-list-section:animate-pulse min-w-0 flex-1">
               {productListBanner}
+              <AppliedFilters filters={filters} paginationInfo={paginationInfo} />
               <ProductList
                 addToCartAction={addToCartAction}
                 compareHref={compareHref}

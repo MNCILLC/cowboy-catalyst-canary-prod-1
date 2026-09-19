@@ -30,12 +30,18 @@ export interface ToggleGroupFilter {
   type: 'toggle-group';
   paramName: string;
   label: string;
-  options: Array<{ label: string; value: string; disabled?: boolean }>;
+  options: Array<{ label: string; appliedLabel?: string; value: string; disabled?: boolean }>;
 }
 
 export interface CheckboxGroupFilter extends Omit<ToggleGroupFilter, 'type' | 'options'> {
   type: 'checkbox-group';
-  options: Array<{ label: string; value: string; disabled?: boolean; swatchColor?: string }>;
+  options: Array<{
+    label: string;
+    appliedLabel?: string;
+    value: string;
+    disabled?: boolean;
+    swatchColor?: string;
+  }>;
 }
 
 export interface RatingFilter {

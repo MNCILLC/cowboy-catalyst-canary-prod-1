@@ -26,13 +26,9 @@ export const facetsTransformer = async ({
   const nativeFilters = allFacets.map((facet) => {
     const refinedFacet = refinedFacets.find((f) => f.displayName === facet.displayName);
 
-    if (refinedFacet == null) {
-      return null;
-    }
-
     if (facet.__typename === 'CategorySearchFilter') {
       const refinedCategorySearchFilter =
-        refinedFacet.__typename === 'CategorySearchFilter' ? refinedFacet : null;
+        refinedFacet?.__typename === 'CategorySearchFilter' ? refinedFacet : null;
 
       return {
         type: 'toggle-group' as const,
@@ -52,6 +48,7 @@ export const facetsTransformer = async ({
 
           return {
             label,
+            appliedLabel: category.name,
             value: category.entityId.toString(),
             disabled,
           };
@@ -61,7 +58,7 @@ export const facetsTransformer = async ({
 
     if (facet.__typename === 'BrandSearchFilter') {
       const refinedBrandSearchFilter =
-        refinedFacet.__typename === 'BrandSearchFilter' ? refinedFacet : null;
+        refinedFacet?.__typename === 'BrandSearchFilter' ? refinedFacet : null;
 
       return {
         type: 'toggle-group' as const,
@@ -81,6 +78,7 @@ export const facetsTransformer = async ({
 
           return {
             label,
+            appliedLabel: brand.name,
             value: brand.entityId.toString(),
             disabled,
           };
@@ -90,7 +88,7 @@ export const facetsTransformer = async ({
 
     if (facet.__typename === 'ProductAttributeSearchFilter') {
       const refinedProductAttributeSearchFilter =
-        refinedFacet.__typename === 'ProductAttributeSearchFilter' ? refinedFacet : null;
+        refinedFacet?.__typename === 'ProductAttributeSearchFilter' ? refinedFacet : null;
 
       return {
         type: 'toggle-group' as const,
@@ -114,6 +112,7 @@ export const facetsTransformer = async ({
 
           return {
             label,
+            appliedLabel: attribute.value,
             value: attribute.value,
             disabled,
           };
@@ -123,7 +122,7 @@ export const facetsTransformer = async ({
 
     if (facet.__typename === 'RatingSearchFilter') {
       const refinedRatingSearchFilter =
-        refinedFacet.__typename === 'RatingSearchFilter' ? refinedFacet : null;
+        refinedFacet?.__typename === 'RatingSearchFilter' ? refinedFacet : null;
       const isSelected = filters.rating?.minRating != null;
 
       return {
@@ -137,7 +136,7 @@ export const facetsTransformer = async ({
 
     if (facet.__typename === 'PriceSearchFilter') {
       const refinedPriceSearchFilter =
-        refinedFacet.__typename === 'PriceSearchFilter' ? refinedFacet : null;
+        refinedFacet?.__typename === 'PriceSearchFilter' ? refinedFacet : null;
       const isSelected = filters.price?.minPrice != null || filters.price?.maxPrice != null;
 
       return {
@@ -154,7 +153,7 @@ export const facetsTransformer = async ({
 
     if (facet.freeShipping) {
       const refinedFreeShippingSearchFilter =
-        refinedFacet.__typename === 'OtherSearchFilter' && refinedFacet.freeShipping
+        refinedFacet?.__typename === 'OtherSearchFilter' && refinedFacet.freeShipping
           ? refinedFacet
           : null;
       const isSelected = filters.isFreeShipping === true;
@@ -176,7 +175,7 @@ export const facetsTransformer = async ({
 
     if (facet.isFeatured) {
       const refinedIsFeaturedSearchFilter =
-        refinedFacet.__typename === 'OtherSearchFilter' && refinedFacet.isFeatured
+        refinedFacet?.__typename === 'OtherSearchFilter' && refinedFacet.isFeatured
           ? refinedFacet
           : null;
       const isSelected = filters.isFeatured === true;
@@ -198,7 +197,7 @@ export const facetsTransformer = async ({
 
     if (facet.isInStock) {
       const refinedIsInStockSearchFilter =
-        refinedFacet.__typename === 'OtherSearchFilter' && refinedFacet.isInStock
+        refinedFacet?.__typename === 'OtherSearchFilter' && refinedFacet.isInStock
           ? refinedFacet
           : null;
       const isSelected = filters.hideOutOfStock === true;
