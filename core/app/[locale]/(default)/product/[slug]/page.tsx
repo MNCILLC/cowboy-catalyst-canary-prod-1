@@ -6,12 +6,14 @@ import { SearchParams } from 'nuqs/server';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
+import { EnhancedProductAttributes } from '@/vibes/soul/sections/product-detail/enhanced-product-attributes';
 import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
 import { ShowAudience } from '@/vibes/soul/sections/product-detail/show-audience';
 import { ShowComparison } from '@/vibes/soul/sections/product-detail/show-comparison';
 import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
@@ -25,6 +27,7 @@ import {
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
+import { getProductAttributes, productFilterDefinitions } from '~/lib/product-metafield-filters';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 import { getStockDisplayData } from '~/lib/stock-display';
@@ -40,6 +43,7 @@ import { WishlistButton } from './_components/wishlist-button';
 import { WishlistButtonForm } from './_components/wishlist-button/form';
 import {
   getProduct,
+  getProductAttributeMetafields,
   getProductPageMetadata,
   getProductPricingAndRelatedProducts,
   getStreamableInventorySettingsQuery,
@@ -152,6 +156,7 @@ export default async function Product({ params, searchParams }: Props) {
   }
 
   const isShow = isShowCrateProduct(visibilityPricing);
+  const enhancedAttributesEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
   const includedItems = (removeEdgesAndNodes(baseProduct.includedItems).at(0)?.value ?? '')
     .split(';')
     .map((item) => item.trim())
@@ -428,6 +433,33 @@ export default async function Product({ params, searchParams }: Props) {
     ];
   });
 
+  const streamableEnhancedAttributes = Streamable.from(async () => {
+    if (!enhancedAttributesEnabled) return [];
+
+    const [metafields, specifications, filters, attributeT] = await Promise.all([
+      getProductAttributeMetafields(productId, customerAccessToken),
+      streamableSpecifications,
+      getMetafieldFilters(),
+      getTranslations('Faceted.FacetedSearch.Metafields'),
+    ]);
+    // Keep attributes visible even when no filter options are configured for a key.
+    const attributeDefinitions = productFilterDefinitions.map(({ productKey }) => ({
+      paramName: `mf_${productKey}`,
+      label: attributeT(productKey),
+      options: filters.find(({ paramName }) => paramName === `mf_${productKey}`)?.options ?? [],
+    }));
+    const attributes = getProductAttributes(metafields, attributeDefinitions);
+
+    return [
+      ...specifications,
+      ...attributes.map(({ key, label, values }) => ({
+        name: label,
+        value: values.map(({ label: valueLabel }) => valueLabel).join(', '),
+        ...(key === 'colors' ? { colors: values } : {}),
+      })),
+    ].filter(({ name, value }) => name.trim() && value.trim());
+  });
+
   const streameableAccordions = Streamable.from(async () => {
     const [product, specifications] = await Streamable.all([
       streamableProduct,
@@ -435,7 +467,7 @@ export default async function Product({ params, searchParams }: Props) {
     ]);
 
     return [
-      ...(!isShow && specifications.length
+      ...(!enhancedAttributesEnabled && !isShow && specifications.length
         ? [
             {
               title: t('ProductDetails.Accordions.specifications'),
@@ -552,8 +584,9 @@ export default async function Product({ params, searchParams }: Props) {
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
+          galleryAspectRatio={enhancedAttributesEnabled ? '4:3' : '4:5'}
           galleryContent={
-            isShow ? (
+            isShow && !enhancedAttributesEnabled ? (
               <ShowProductSpecifications
                 specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
                 textSize="base"
@@ -604,6 +637,17 @@ export default async function Product({ params, searchParams }: Props) {
           }
         />
       </ProductAnalyticsProvider>
+
+      {enhancedAttributesEnabled && (
+        <Stream fallback={null} value={streamableEnhancedAttributes}>
+          {(attributes) => (
+            <EnhancedProductAttributes
+              attributes={attributes}
+              title={t('ProductDetails.Accordions.specifications')}
+            />
+          )}
+        </Stream>
+      )}
 
       <Stream fallback={null} value={streamableVideos}>
         {(videos) =>

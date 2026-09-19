@@ -3,6 +3,7 @@ import { cache } from 'react';
 
 import { client } from '~/client';
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProductAttributesFragment } from '~/client/fragments/product-attributes';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { FeaturedProductsCarouselFragment } from '~/components/featured-products-carousel/fragment';
@@ -523,3 +524,29 @@ export const getStreamableInventorySettingsQuery = cache(async (customerAccessTo
 
   return data.site.settings?.inventory;
 });
+
+const ProductAttributesQuery = graphql(
+  `
+    query ProductAttributesQuery($entityId: Int!) {
+      site {
+        product(entityId: $entityId) {
+          ...ProductAttributesFragment
+        }
+      }
+    }
+  `,
+  [ProductAttributesFragment],
+);
+
+export const getProductAttributeMetafields = cache(
+  async (entityId: number, customerAccessToken?: string) => {
+    const { data } = await client.fetch({
+      document: ProductAttributesQuery,
+      variables: { entityId },
+      customerAccessToken,
+      fetchOptions: customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } },
+    });
+
+    return data.site.product ? removeEdgesAndNodes(data.site.product.attributeMetafields) : [];
+  },
+);
