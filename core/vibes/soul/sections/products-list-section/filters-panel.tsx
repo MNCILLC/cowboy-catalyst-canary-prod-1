@@ -76,6 +76,7 @@ export type Filter =
 
 interface Props {
   className?: string;
+  defaultExpanded?: boolean;
   filters: Streamable<Filter[]>;
   resetFiltersLabel?: Streamable<string>;
   paginationInfo?: Streamable<CursorPaginationInfo>;
@@ -94,6 +95,7 @@ function getParamCountLabel(params: Record<string, string | null | string[]>, ke
 
 export function FiltersPanel({
   className,
+  defaultExpanded,
   filters: streamableFilters,
   resetFiltersLabel,
   rangeFilterApplyLabel,
@@ -103,6 +105,7 @@ export function FiltersPanel({
       {(filters) => (
         <FiltersPanelInner
           className={className}
+          defaultExpanded={defaultExpanded}
           filters={filters}
           rangeFilterApplyLabel={rangeFilterApplyLabel}
           resetFiltersLabel={resetFiltersLabel}
@@ -114,6 +117,7 @@ export function FiltersPanel({
 
 export function FiltersPanelInner({
   className,
+  defaultExpanded = false,
   filters,
   resetFiltersLabel: streamableResetFiltersLabel,
   rangeFilterApplyLabel: streamableRangeFilterApplyLabel,
@@ -142,7 +146,7 @@ export function FiltersPanelInner({
 
     filters
       .filter((filter) => filter.type !== 'link-group')
-      .slice(0, 3)
+      .slice(0, defaultExpanded ? undefined : 3)
       .forEach((filter) => {
         initial.add(filter.label.toLowerCase());
       });

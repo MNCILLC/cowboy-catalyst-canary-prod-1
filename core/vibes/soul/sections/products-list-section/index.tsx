@@ -23,6 +23,7 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  defaultExpandedFilters?: boolean;
   showFilters?: boolean;
   showAppliedFilters?: boolean;
   showSort?: boolean;
@@ -60,6 +61,7 @@ interface Props {
 }
 
 export function ProductsListSection({
+  defaultExpandedFilters = false,
   showFilters = true,
   showAppliedFilters = false,
   showSort = true,
@@ -172,6 +174,7 @@ export function ProductsListSection({
                         {(filtersPanelTitle) => (
                           <SidePanel.Content title={filtersPanelTitle}>
                             <FiltersPanel
+                              defaultExpanded={defaultExpandedFilters}
                               filters={filters}
                               paginationInfo={paginationInfo}
                               rangeFilterApplyLabel={rangeFilterApplyLabel}
@@ -194,6 +197,7 @@ export function ProductsListSection({
                 </Stream>
                 <FiltersPanel
                   className="sticky top-4"
+                  defaultExpanded={defaultExpandedFilters}
                   filters={filters}
                   paginationInfo={paginationInfo}
                   rangeFilterApplyLabel={rangeFilterApplyLabel}

@@ -287,6 +287,7 @@ export default async function Category(props: Props) {
         breadcrumbs={breadcrumbs}
         compareLabel={t('Compare.compare')}
         compareProducts={streamableCompareProducts}
+        defaultExpandedFilters={!isCustomProductFilteringEnabled}
         emptyStateSubtitle={t('Category.Empty.subtitle')}
         emptyStateTitle={t('Category.Empty.title')}
         enableListView={isProductListViewEnabled}

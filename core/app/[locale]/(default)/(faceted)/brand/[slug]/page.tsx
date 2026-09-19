@@ -236,6 +236,7 @@ export default async function Brand(props: Props) {
       addToCartAction={addToCart}
       compareLabel={t('Compare.compare')}
       compareProducts={streamableCompareProducts}
+      defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Brand.Empty.subtitle')}
       emptyStateTitle={t('Brand.Empty.title')}
       enableListView={isProductListViewEnabled}
