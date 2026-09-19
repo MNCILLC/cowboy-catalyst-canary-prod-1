@@ -9,11 +9,13 @@ import { ProductsListSection } from '@/vibes/soul/sections/products-list-section
 import { getFilterParsers } from '@/vibes/soul/sections/products-list-section/filter-parsers';
 import { addToCart } from '~/app/[locale]/(default)/compare/_actions/add-to-cart';
 import { getSessionCustomerAccessToken } from '~/auth';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
 import { pageInfoTransformer } from '~/data-transformers/page-info-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { getPreferredProductView, isProductListViewEnabled } from '~/lib/product-view';
 
@@ -145,6 +147,7 @@ export default async function Search(props: Props) {
         settings: settings?.inventory,
         formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
       },
+      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ? await getMetafieldFilters() : [],
     );
   });
 
@@ -258,6 +261,7 @@ export default async function Search(props: Props) {
       ]}
       compareLabel={t('Compare.compare')}
       compareProducts={streamableCompareProducts}
+      defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Search.Empty.subtitle')}
       emptyStateTitle={streamableEmptyStateTitle}
       enableListView={isProductListViewEnabled}
@@ -275,6 +279,7 @@ export default async function Search(props: Props) {
       rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
       removeLabel={t('Compare.remove')}
       resetFiltersLabel={t('FacetedSearch.resetFilters')}
+      showAppliedFilters={isCustomProductFilteringEnabled}
       showCompare={productComparisonsEnabled}
       showFilters={process.env.HIDE_PRODUCT_FILTERS !== 'true'}
       showRating={showRating}

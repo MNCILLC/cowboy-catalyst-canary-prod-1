@@ -14,6 +14,7 @@ import {
   ProductViewProvider,
   ProductViewSwitcher,
 } from '@/vibes/soul/sections/product-list/view';
+import { AppliedFilters } from '@/vibes/soul/sections/products-list-section/applied-filters';
 import { Filter, FiltersPanel } from '@/vibes/soul/sections/products-list-section/filters-panel';
 import {
   Sorting,
@@ -22,7 +23,9 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  defaultExpandedFilters?: boolean;
   showFilters?: boolean;
+  showAppliedFilters?: boolean;
   showSort?: boolean;
   enableListView?: boolean;
   initialView?: ProductView;
@@ -58,7 +61,9 @@ interface Props {
 }
 
 export function ProductsListSection({
+  defaultExpandedFilters = false,
   showFilters = true,
+  showAppliedFilters = false,
   showSort = true,
   enableListView = true,
   initialView,
@@ -169,6 +174,7 @@ export function ProductsListSection({
                         {(filtersPanelTitle) => (
                           <SidePanel.Content title={filtersPanelTitle}>
                             <FiltersPanel
+                              defaultExpanded={defaultExpandedFilters}
                               filters={filters}
                               paginationInfo={paginationInfo}
                               rangeFilterApplyLabel={rangeFilterApplyLabel}
@@ -191,6 +197,7 @@ export function ProductsListSection({
                 </Stream>
                 <FiltersPanel
                   className="sticky top-4"
+                  defaultExpanded={defaultExpandedFilters}
                   filters={filters}
                   paginationInfo={paginationInfo}
                   rangeFilterApplyLabel={rangeFilterApplyLabel}
@@ -201,6 +208,9 @@ export function ProductsListSection({
 
             <div className="group-has-data-pending/products-list-section:animate-pulse min-w-0 flex-1">
               {productListBanner}
+              {showAppliedFilters && (
+                <AppliedFilters filters={filters} paginationInfo={paginationInfo} />
+              )}
               <ProductList
                 addToCartAction={addToCartAction}
                 compareHref={compareHref}
