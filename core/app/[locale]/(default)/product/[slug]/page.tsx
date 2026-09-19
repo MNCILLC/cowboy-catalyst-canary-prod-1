@@ -314,11 +314,18 @@ export default async function Product({ params, searchParams }: Props) {
       streamableInventorySettings,
     ]);
 
-    return getStockDisplayData(
+    const stockDisplayData = getStockDisplayData(
       product.inventory.hasVariantInventory ? variant?.inventory : product.inventory,
       inventorySetting,
       (quantity) => t('ProductDetails.currentStock', { quantity }),
     );
+
+    return stockDisplayData
+      ? {
+          ...stockDisplayData,
+          enhanced: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+        }
+      : null;
   });
 
   const streamableBackorderDisplayData = Streamable.from(async () => {

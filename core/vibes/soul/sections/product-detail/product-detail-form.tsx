@@ -29,6 +29,7 @@ import { Select } from '@/vibes/soul/form/select';
 import { SwatchRadioGroup } from '@/vibes/soul/form/swatch-radio-group';
 import { Textarea } from '@/vibes/soul/form/textarea';
 import { Button } from '@/vibes/soul/primitives/button';
+import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
 import { usePathname, useRouter } from '~/i18n/routing';
@@ -47,6 +48,7 @@ interface State<F extends Field> {
 export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData>;
 
 export interface StockDisplayData {
+  enhanced?: boolean;
   stockLevelMessage?: string | null;
   stockLevelStatus?: 'error' | 'success';
   backorderAvailabilityPrompt?: string | null;
@@ -267,14 +269,21 @@ export function ProductDetailForm<F extends Field>({
                     : 'translate-y-[calc(100%+4px)]',
                 )}
               >
-                <div
-                  className={clsx(
-                    'flex-none whitespace-nowrap font-semibold',
-                    stockDisplayData.stockLevelStatus === 'error' ? 'text-error' : 'text-black',
-                  )}
-                >
-                  {stockDisplayData.stockLevelMessage}
-                </div>
+                {stockDisplayData.enhanced ? (
+                  <EnhancedStockLevel
+                    message={stockDisplayData.stockLevelMessage}
+                    status={stockDisplayData.stockLevelStatus}
+                  />
+                ) : (
+                  <div
+                    className={clsx(
+                      'flex-none whitespace-nowrap font-semibold',
+                      stockDisplayData.stockLevelStatus === 'error' ? 'text-error' : 'text-black',
+                    )}
+                  >
+                    {stockDisplayData.stockLevelMessage}
+                  </div>
+                )}
                 {!!stockDisplayData.backorderAvailabilityPrompt && (
                   <div className="flex-none whitespace-nowrap border-s border-gray-300 pl-2.5">
                     {stockDisplayData.backorderAvailabilityPrompt}
