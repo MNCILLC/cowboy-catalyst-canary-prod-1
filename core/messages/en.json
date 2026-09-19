@@ -154,7 +154,7 @@
         "effects": "Effects",
         "firing_patterns": "Firing patterns",
         "calibers": "Calibers",
-        "performance_heights": "Performance heights",
+        "performance_height": "Height",
         "duration": "Duration",
         "ignition_types": "Ignition types"
       },

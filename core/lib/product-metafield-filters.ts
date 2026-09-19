@@ -5,7 +5,7 @@ export const productFilterDefinitions = [
   { siteKey: 'caliber_filters', productKey: 'calibers' },
   {
     siteKey: 'performance_height_filters',
-    productKey: 'performance_heights',
+    productKey: 'performance_height',
   },
   { siteKey: 'duration_filters', productKey: 'duration' },
   { siteKey: 'ignition_type_filters', productKey: 'ignition_types' },
@@ -144,7 +144,10 @@ export function matchesMetafieldSelections(
 ): boolean {
   return selections.every(({ key, values }) => {
     if (values.length === 0) return true;
-    if (key === 'duration') return matchesDurationSelection(metafields, values, filters);
+
+    if (key === 'duration' || key === 'performance_height') {
+      return matchesNumericSelection(key, metafields, values, filters);
+    }
 
     const attributes = metafields
       .filter((field) => field.key === key)
@@ -154,16 +157,19 @@ export function matchesMetafieldSelections(
   });
 }
 
-function matchesDurationSelection(
+function matchesNumericSelection(
+  productKey: string,
   metafields: MetafieldValue[],
   values: string[],
   filters: ProductAttributeFilter[],
 ): boolean {
-  const duration = parseNumericAttribute(metafields.find(({ key }) => key === 'duration')?.value);
+  const numericValue = parseNumericAttribute(
+    metafields.find(({ key }) => key === productKey)?.value,
+  );
 
-  if (duration === undefined) return false;
+  if (numericValue === undefined) return false;
 
-  const options = filters.find(({ paramName }) => paramName === 'mf_duration')?.options ?? [];
+  const options = filters.find(({ paramName }) => paramName === `mf_${productKey}`)?.options ?? [];
 
   return options.some((option) => {
     const range = parseFilterRange(option);
@@ -171,8 +177,8 @@ function matchesDurationSelection(
     return (
       values.includes(option.value) &&
       range !== undefined &&
-      duration >= range.min &&
-      (range.max === null || duration <= range.max)
+      numericValue >= range.min &&
+      (range.max === null || numericValue <= range.max)
     );
   });
 }
@@ -237,10 +243,16 @@ function getAttributeOptions(
   metafields: MetafieldValue[],
   filter: ProductAttributeFilter,
 ): MetafieldFilterOption[] {
-  if (productKey === 'duration') {
-    const duration = parseNumericAttribute(metafields.find(({ key }) => key === productKey)?.value);
+  if (productKey === 'duration' || productKey === 'performance_height') {
+    const numericValue = parseNumericAttribute(
+      metafields.find(({ key }) => key === productKey)?.value,
+    );
 
-    return duration === undefined ? [] : [{ value: String(duration), label: `${duration} sec` }];
+    const unit = productKey === 'performance_height' ? 'ft' : 'sec';
+
+    return numericValue === undefined
+      ? []
+      : [{ value: String(numericValue), label: `${numericValue} ${unit}` }];
   }
 
   return [

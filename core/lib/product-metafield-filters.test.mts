@@ -323,3 +323,128 @@ test('numeric durations render as seconds with a singular label, and invalid dat
     assert.deepEqual(getProductAttributes([{ key: 'duration', value }], durationFilters), []);
   }
 });
+
+const heightFilters = [
+  {
+    paramName: 'mf_performance_height',
+    label: 'Height',
+    options: parseFilterOptions(
+      JSON.stringify([
+        { label: '0 - 100 ft', value: '0-100-ft', min: 0, max: 100 },
+        { label: '101 - 150 ft', value: '101-150-ft', min: 101, max: 150 },
+        { label: '151 - 200 ft', value: '151-200-ft', min: 151, max: 200 },
+        { label: '201 - 250 ft', value: '201-250-ft', min: 201, max: 250 },
+        { label: '251 - 300 ft', value: '251-300-ft', min: 251, max: 300 },
+        { label: '301+ ft', value: '301-plus-ft', min: 301, max: null },
+      ]),
+    ),
+  },
+];
+
+function matchesHeight(value: string, selected: string[]) {
+  return matchesMetafieldSelections(
+    [{ key: 'performance_height', value }],
+    [{ key: 'performance_height', values: selected }],
+    heightFilters,
+  );
+}
+
+test('all height ranges use inclusive numeric bounds, including the open-ended 301+ range', () => {
+  for (const option of heightFilters[0].options) {
+    assert.equal(matchesHeight(String(option.min), [option.value]), true);
+    assert.equal(matchesHeight(String(option.min - 1), [option.value]), false);
+    if (option.max !== null) {
+      assert.equal(matchesHeight(String(option.max), [option.value]), true);
+      assert.equal(matchesHeight(String(option.max + 1), [option.value]), false);
+    }
+  }
+  assert.equal(matchesHeight('350', ['301-plus-ft']), true);
+  assert.equal(matchesHeight('5000', ['301-plus-ft']), true);
+  assert.equal(matchesHeight('150', ['101-150-ft']), true);
+  assert.equal(matchesHeight('150', ['151-200-ft']), false);
+});
+
+test('height ranges are ORed and combine with duration and list attributes using AND', () => {
+  for (const height of [101, 150, 151, 200]) {
+    assert.equal(matchesHeight(String(height), ['101-150-ft', '151-200-ft']), true);
+  }
+  assert.equal(matchesHeight('201', ['101-150-ft', '151-200-ft']), false);
+  const fields = [
+    { key: 'performance_height', value: '175' },
+    { key: 'duration', value: '20' },
+    { key: 'colors', value: '["blue"]' },
+  ];
+  const selected = [
+    { key: 'performance_height', values: ['101-150-ft', '151-200-ft'] },
+    { key: 'duration', values: ['medium'] },
+    { key: 'colors', values: ['blue', 'red'] },
+  ];
+  assert.equal(
+    matchesMetafieldSelections(fields, selected, [...heightFilters, ...durationFilters]),
+    true,
+  );
+  for (const key of ['performance_height', 'duration', 'colors']) {
+    const mismatch = fields.map((field) =>
+      field.key === key ? { ...field, value: key === 'colors' ? '["green"]' : '500' } : field,
+    );
+    assert.equal(
+      matchesMetafieldSelections(mismatch, selected, [...heightFilters, ...durationFilters]),
+      false,
+    );
+  }
+});
+
+test('invalid, missing, and legacy height data do not match numeric ranges', () => {
+  for (const value of ['[175]', '"175"', '["151-200-ft"]', '', 'null', '-1', 'true']) {
+    assert.equal(matchesHeight(value, ['151-200-ft']), false);
+    assert.deepEqual(
+      getProductAttributes([{ key: 'performance_height', value }], heightFilters),
+      [],
+    );
+  }
+  assert.equal(
+    matchesMetafieldSelections(
+      [],
+      [{ key: 'performance_height', values: ['151-200-ft'] }],
+      heightFilters,
+    ),
+    false,
+  );
+  assert.equal(
+    matchesMetafieldSelections(
+      [{ key: 'performance_heights', value: '["151-200-ft"]' }],
+      [{ key: 'performance_height', values: ['151-200-ft'] }],
+      heightFilters,
+    ),
+    false,
+  );
+  assert.equal(matchesHeight('175', ['unknown']), false);
+  assert.equal(
+    matchesMetafieldSelections(
+      [{ key: 'performance_height', value: '175' }],
+      [{ key: 'performance_height', values: ['151-200-ft'] }],
+      [{ ...heightFilters[0], options: [{ value: '151-200-ft', label: 'Missing bounds' }] }],
+    ),
+    false,
+  );
+});
+
+test('cards display Height in feet while keeping Duration in seconds', () => {
+  assert.deepEqual(
+    getProductAttributes(
+      [
+        { key: 'performance_height', value: '175' },
+        { key: 'duration', value: '20' },
+      ],
+      [...heightFilters, ...durationFilters],
+    ),
+    [
+      { key: 'performance_height', label: 'Height', values: [{ value: '175', label: '175 ft' }] },
+      { key: 'duration', label: 'Duration', values: [{ value: '20', label: '20 sec' }] },
+    ],
+  );
+  assert.deepEqual(
+    getProductAttributes([{ key: 'performance_height', value: '0' }], heightFilters),
+    [{ key: 'performance_height', label: 'Height', values: [{ value: '0', label: '0 ft' }] }],
+  );
+});
