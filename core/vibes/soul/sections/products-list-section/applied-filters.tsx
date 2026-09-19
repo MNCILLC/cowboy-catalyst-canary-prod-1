@@ -68,7 +68,7 @@ function AppliedFiltersInner({
       {chips.map((chip) => (
         <Button
           aria-label={t('remove', { label: chip.label, value: chip.valueLabel })}
-          className="max-w-full text-left"
+          className="max-w-full text-left [&>span:first-child]:min-h-8 [&>span:first-child]:py-1.5"
           key={chip.id}
           onClick={() => {
             startTransition(async () => {
@@ -78,7 +78,7 @@ function AppliedFiltersInner({
           size="small"
           variant="tertiary"
         >
-          <span className="min-w-0 break-words font-normal">
+          <span className="min-w-0 break-words text-xs font-normal">
             {chip.label}: <strong className="font-semibold">{chip.valueLabel}</strong>
           </span>
           <X aria-hidden="true" className="shrink-0" size={16} />
@@ -90,7 +90,7 @@ function AppliedFiltersInner({
             await setParams(clearAppliedFilters(filters, cursorParams));
           });
         }}
-        size="small"
+        size="x-small"
         variant="ghost"
       >
         {t('clearAll')}
