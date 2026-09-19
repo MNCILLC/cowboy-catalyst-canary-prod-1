@@ -15,6 +15,7 @@ import { type Breadcrumb, Breadcrumbs } from '@/vibes/soul/sections/breadcrumbs'
 import {
   ProductGallery,
   ProductGalleryLoadMoreAction,
+  ProductGalleryProps,
 } from '@/vibes/soul/sections/product-detail/product-gallery';
 import { ReviewForm, SubmitReviewAction } from '@/vibes/soul/sections/reviews/review-form';
 
@@ -85,6 +86,7 @@ export interface ProductDetailProps<F extends Field> {
   recaptchaSiteKey?: string;
   wholesalePricingAlert?: ReactNode;
   galleryContent?: ReactNode;
+  galleryAspectRatio?: ProductGalleryProps['aspectRatio'];
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -131,6 +133,7 @@ export function ProductDetail<F extends Field>({
   recaptchaSiteKey,
   wholesalePricingAlert,
   galleryContent,
+  galleryAspectRatio = '4:5',
 }: ProductDetailProps<F>) {
   return (
     <section className="@container">
@@ -140,15 +143,22 @@ export function ProductDetail<F extends Field>({
             <Breadcrumbs breadcrumbs={breadcrumbs} />
           </div>
         )}
-        <Stream fallback={<ProductDetailSkeleton />} value={streamableProduct}>
+        <Stream
+          fallback={<ProductDetailSkeleton galleryAspectRatio={galleryAspectRatio} />}
+          value={streamableProduct}
+        >
           {(product) =>
             product && (
               <div className="grid grid-cols-1 items-stretch gap-x-8 gap-y-8 @2xl:grid-cols-2 @5xl:gap-x-12">
                 {galleryContent == null && (
                   <div className="group/product-gallery hidden @2xl:block">
-                    <Stream fallback={<ProductGallerySkeleton />} value={product.images}>
+                    <Stream
+                      fallback={<ProductGallerySkeleton aspectRatio={galleryAspectRatio} />}
+                      value={product.images}
+                    >
                       {(imagesData) => (
                         <ProductGallery
+                          aspectRatio={galleryAspectRatio}
                           images={imagesData.images}
                           loadMoreAction={loadMoreImagesAction}
                           pageInfo={imagesData.pageInfo}
@@ -239,9 +249,13 @@ export function ProductDetail<F extends Field>({
                   )}
                   {galleryContent == null && (
                     <div className="group/product-gallery mb-8 @2xl:hidden">
-                      <Stream fallback={<ProductGallerySkeleton />} value={product.images}>
+                      <Stream
+                        fallback={<ProductGallerySkeleton aspectRatio={galleryAspectRatio} />}
+                        value={product.images}
+                      >
                         {(imagesData) => (
                           <ProductGallery
+                            aspectRatio={galleryAspectRatio}
                             images={imagesData.images}
                             loadMoreAction={loadMoreImagesAction}
                             pageInfo={imagesData.pageInfo}
@@ -350,12 +364,12 @@ export function ProductDetail<F extends Field>({
   );
 }
 
-function ProductGallerySkeleton() {
+function ProductGallerySkeleton({ aspectRatio = '4:5' }: Pick<ProductGalleryProps, 'aspectRatio'>) {
   return (
     <Skeleton.Root className="group-has-[[data-pending]]/product-gallery:animate-pulse" pending>
       <div className="w-full overflow-hidden rounded-xl @xl:rounded-2xl">
-        <div className="flex">
-          <Skeleton.Box className="aspect-[4/5] h-full w-full shrink-0 grow-0 basis-full" />
+        <div className="flex" style={{ aspectRatio: aspectRatio.replace(':', '/') }}>
+          <Skeleton.Box className="w-full shrink-0 grow-0 basis-full" />
         </div>
       </div>
       <div className="mt-2 flex max-w-full gap-2 overflow-x-auto">
@@ -471,14 +485,18 @@ function ProductAccordionsSkeleton() {
   );
 }
 
-export function ProductDetailSkeleton() {
+export function ProductDetailSkeleton({
+  galleryAspectRatio = '4:5',
+}: {
+  galleryAspectRatio?: ProductGalleryProps['aspectRatio'];
+}) {
   return (
     <Skeleton.Root
       className="grid grid-cols-1 items-stretch gap-x-6 gap-y-8 group-has-[[data-pending]]/product-detail:animate-pulse @2xl:grid-cols-2 @5xl:gap-x-12"
       pending
     >
       <div className="hidden @2xl:block">
-        <ProductGallerySkeleton />
+        <ProductGallerySkeleton aspectRatio={galleryAspectRatio} />
       </div>
       <div>
         <Skeleton.Box className="mb-6 h-4 w-20 rounded-lg" />
@@ -487,7 +505,7 @@ export function ProductDetailSkeleton() {
         <PriceLabelSkeleton />
         <ProductSummarySkeleton />
         <div className="mb-8 @2xl:hidden">
-          <ProductGallerySkeleton />
+          <ProductGallerySkeleton aspectRatio={galleryAspectRatio} />
         </div>
         <ProductDetailFormSkeleton />
       </div>

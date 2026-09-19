@@ -584,6 +584,7 @@ export default async function Product({ params, searchParams }: Props) {
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
+          galleryAspectRatio={enhancedAttributesEnabled ? '4:3' : '4:5'}
           galleryContent={
             isShow && !enhancedAttributesEnabled ? (
               <ShowProductSpecifications

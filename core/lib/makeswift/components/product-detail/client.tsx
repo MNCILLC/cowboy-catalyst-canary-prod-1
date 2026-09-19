@@ -83,9 +83,15 @@ const ProductDetailImpl = ({
   );
 
   return (
-    <Stream fallback={<ProductDetailSkeleton />} value={streamableProduct}>
+    <Stream
+      fallback={<ProductDetailSkeleton galleryAspectRatio={props.galleryAspectRatio} />}
+      value={streamableProduct}
+    >
       {(product) => (
-        <Stream fallback={<ProductDetailSkeleton />} value={product.accordions}>
+        <Stream
+          fallback={<ProductDetailSkeleton galleryAspectRatio={props.galleryAspectRatio} />}
+          value={product.accordions}
+        >
           {(productAccordions) => (
             <ProductDetail
               {...{
