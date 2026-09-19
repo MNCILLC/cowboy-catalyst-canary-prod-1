@@ -11,7 +11,7 @@ export function ProductCardAttributes({
 
   return (
     <div className={clsx('col-span-full mt-3 w-full', className)}>
-      <dl className="grid grid-cols-1 gap-px overflow-hidden border border-[#454c52] bg-[#454c52] text-sm text-white @2xl:grid-cols-3">
+      <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-[#454c52] bg-[#454c52] text-sm text-white @2xl:grid-cols-3">
         {attributes.map(({ key, label, values }) => (
           <div
             className="grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline gap-x-3 bg-neutral-500 px-3 py-2"

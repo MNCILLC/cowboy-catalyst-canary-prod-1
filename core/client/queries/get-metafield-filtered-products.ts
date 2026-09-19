@@ -5,6 +5,7 @@ import { cache } from 'react';
 
 import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import {
@@ -123,9 +124,14 @@ export async function getMetafieldFilteredProducts(
   currencyCode?: CurrencyCode,
   customerAccessToken?: string,
 ) {
-  const candidates = await getCandidates(filters, sort, customerAccessToken);
+  const [candidates, metafieldFilters] = await Promise.all([
+    getCandidates(filters, sort, customerAccessToken),
+    getMetafieldFilters(),
+  ]);
   const ids = candidates
-    .filter((product) => matchesMetafieldSelections(product.metafields, selections))
+    .filter((product) =>
+      matchesMetafieldSelections(product.metafields, selections, metafieldFilters),
+    )
     .map((product) => product.entityId);
   const { ids: pageIds, ...page } = paginateMetafieldMatches(ids, pagination);
 
