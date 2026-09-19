@@ -1,6 +1,10 @@
 interface Props {
   title: string;
-  attributes: Array<{ name: string; value: string }>;
+  attributes: Array<{
+    name: string;
+    value: string;
+    colors?: Array<{ value: string; label: string; swatchColor?: string }>;
+  }>;
 }
 
 export function EnhancedProductAttributes({ title, attributes }: Props) {
@@ -13,13 +17,32 @@ export function EnhancedProductAttributes({ title, attributes }: Props) {
           {title}
         </h2>
         <dl className="grid grid-cols-1 gap-px overflow-hidden border border-contrast-200 bg-contrast-200 text-sm text-[var(--product-detail-primary-text,hsl(var(--foreground)))] @3xl:grid-cols-2 @3xl:text-base">
-          {attributes.map(({ name, value }, index) => (
+          {attributes.map(({ name, value, colors }, index) => (
             <div className="grid min-w-0 grid-cols-2 gap-px" key={`${name}-${index}`}>
               <dt className="min-w-0 break-words bg-contrast-100 px-4 py-4 font-semibold @xl:px-6 @xl:py-5">
                 {name}
               </dt>
               <dd className="min-w-0 break-words bg-background px-4 py-4 @xl:px-6 @xl:py-5">
-                {value}
+                {colors?.length
+                  ? colors.map(({ value: colorValue, label, swatchColor }, colorIndex) => (
+                      <span
+                        className="mr-1 inline-flex max-w-full items-center gap-1.5"
+                        key={colorValue}
+                      >
+                        {!!swatchColor && (
+                          <span
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 shrink-0 rounded-full border border-contrast-200"
+                            style={{ backgroundColor: swatchColor }}
+                          />
+                        )}
+                        <span className="min-w-0">
+                          {label}
+                          {colorIndex < colors.length - 1 ? ',' : ''}
+                        </span>
+                      </span>
+                    ))
+                  : value}
               </dd>
             </div>
           ))}
