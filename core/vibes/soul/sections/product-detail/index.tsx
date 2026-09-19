@@ -66,6 +66,7 @@ export interface ProductDetailProps<F extends Field> {
   action: ProductDetailFormAction<F>;
   fields: Streamable<F[]>;
   quantityLabel?: string;
+  quantityInCart?: Streamable<number>;
   incrementLabel?: string;
   decrementLabel?: string;
   emptySelectPlaceholder?: string;
@@ -113,6 +114,7 @@ export function ProductDetail<F extends Field>({
   breadcrumbs,
   promotionCallouts,
   quantityLabel,
+  quantityInCart,
   incrementLabel,
   decrementLabel,
   emptySelectPlaceholder,
@@ -318,6 +320,7 @@ export function ProductDetail<F extends Field>({
                           minQuantity={minQuantity ?? undefined}
                           prefetch={prefetch}
                           productId={product.id}
+                          quantityInCart={quantityInCart}
                           quantityLabel={quantityLabel}
                           stockDisplayData={stockDisplayData ?? undefined}
                         />

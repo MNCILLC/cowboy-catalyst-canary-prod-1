@@ -24,6 +24,7 @@ import {
   isShowCrateProduct,
   showCrateProductTransformer,
 } from '~/data-transformers/show-crate-product-transformer';
+import { getProductCartQuantity } from '~/lib/cart/get-product-cart-quantity';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
@@ -118,6 +119,11 @@ export default async function Product({ params, searchParams }: Props) {
     getProduct(productId, customerAccessToken),
     getRecaptchaSiteKey(),
   ]);
+
+  const quantityInCart =
+    process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+      ? Streamable.from(() => getProductCartQuantity(productId, customerAccessToken))
+      : undefined;
 
   const reviewsEnabled = Boolean(settings?.reviews.enabled && !settings.display.showProductRating);
   const showRating = Boolean(settings?.reviews.enabled && settings.display.showProductRating);
@@ -623,6 +629,7 @@ export default async function Product({ params, searchParams }: Props) {
           }}
           productId={baseProduct.entityId}
           promotionCallouts={promotionCallouts}
+          quantityInCart={quantityInCart}
           quantityLabel={t('ProductDetails.quantity')}
           recaptchaSiteKey={recaptchaSiteKey}
           reviewFormAction={submitReview}

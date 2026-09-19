@@ -28,10 +28,12 @@ import { RadioGroup } from '@/vibes/soul/form/radio-group';
 import { Select } from '@/vibes/soul/form/select';
 import { SwatchRadioGroup } from '@/vibes/soul/form/swatch-radio-group';
 import { Textarea } from '@/vibes/soul/form/textarea';
+import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Button } from '@/vibes/soul/primitives/button';
 import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
+import { Link } from '~/components/link';
 import { usePathname, useRouter } from '~/i18n/routing';
 
 import { revalidateCart } from './actions/revalidate-cart';
@@ -68,6 +70,7 @@ export interface ProductDetailFormProps<F extends Field> {
   productId: string;
   ctaLabel?: string;
   quantityLabel?: string;
+  quantityInCart?: Streamable<number>;
   incrementLabel?: string;
   decrementLabel?: string;
   emptySelectPlaceholder?: string;
@@ -86,6 +89,7 @@ export function ProductDetailForm<F extends Field>({
   productId,
   ctaLabel = 'Add to cart',
   quantityLabel = 'Quantity',
+  quantityInCart,
   incrementLabel = 'Increase quantity',
   decrementLabel = 'Decrease quantity',
   emptySelectPlaceholder = 'Select an option',
@@ -314,7 +318,7 @@ export function ProductDetailForm<F extends Field>({
             )}
           </div>
 
-          <div className="flex gap-x-3">
+          <div className="flex items-start gap-x-3">
             <NumberInput
               aria-label={quantityLabel}
               decrementLabel={decrementLabel}
@@ -328,7 +332,23 @@ export function ProductDetailForm<F extends Field>({
               required
               value={quantityControl.value}
             />
-            <SubmitButton disabled={ctaDisabled}>{ctaLabel}</SubmitButton>
+            <div className="flex flex-col items-start gap-2">
+              <SubmitButton disabled={ctaDisabled}>{ctaLabel}</SubmitButton>
+              {quantityInCart !== undefined && (
+                <div
+                  aria-live="polite"
+                  className="w-full text-center text-sm text-[var(--product-detail-secondary-text,hsl(var(--contrast-500)))]"
+                >
+                  <Stream fallback={null} value={quantityInCart}>
+                    {(quantity) => (
+                      <Link className="underline underline-offset-2" href="/cart">
+                        {t('quantityInCart', { quantity })}
+                      </Link>
+                    )}
+                  </Stream>
+                </div>
+              )}
+            </div>
             {additionalActions}
           </div>
         </div>
