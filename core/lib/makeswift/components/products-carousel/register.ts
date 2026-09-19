@@ -99,6 +99,11 @@ runtime.registerComponent(MSProductsCarousel, {
       label: 'Hide overflow',
       defaultValue: true,
     }),
+    showStockLevel: Checkbox({
+      label: 'Show stock level',
+      description: 'Show stock messages using the store inventory display settings.',
+      defaultValue: false,
+    }),
     showWholesalePricingBanner: Checkbox({
       label: 'Show wholesale pricing banner',
       defaultValue: true,

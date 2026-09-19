@@ -15,3 +15,9 @@ The category setting is only used for the Category collection. Other collection
 options remain available. Category products use BigCommerce's category product
 ordering and retain customer pricing, preferred currency, and existing product
 filtering.
+
+Enable **Show stock level** to display stock messages on the carousel's product
+cards, including **Additional products**. It defaults to off. Messages follow the
+store's inventory display settings and existing low-stock, in-stock, backorder,
+and enhanced display configuration. Quantities are omitted when unavailable or
+tracked per variant because a carousel card has no selected variant.

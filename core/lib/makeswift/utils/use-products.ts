@@ -24,6 +24,7 @@ const fetcher = (url: string) =>
 interface Props {
   collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
   categoryId?: string;
+  showStockLevel?: boolean;
   collectionLimit?: number;
   additionalProductIds: string[];
 }
@@ -32,12 +33,13 @@ export function useProducts({
   collection,
   categoryId,
   collectionLimit = 20,
+  showStockLevel = false,
   additionalProductIds,
 }: Props): {
   products: Product[] | null;
   isLoading: boolean;
 } {
-  const bcProductToVibesProduct = useBcProductToVibesProduct();
+  const bcProductToVibesProduct = useBcProductToVibesProduct(showStockLevel);
   const locale = useLocale();
   const collectionParams = new URLSearchParams({
     locale,
