@@ -36,13 +36,14 @@ export const DescriptionSource = {
   CatalogPlainText: 'CatalogPlainText',
   CatalogRichText: 'CatalogRichText',
   Custom: 'Custom',
+  CustomHtml: 'CustomHtml',
 } as const;
 
 type DescriptionSource = (typeof DescriptionSource)[keyof typeof DescriptionSource];
 
 interface EditableProps {
   summaryText: string | undefined;
-  description: { source: DescriptionSource; slot: ReactNode };
+  description: { source: DescriptionSource; slot: ReactNode; html?: string };
   accordions: Exclude<Awaited<VibesProductDetail['accordions']>, undefined>;
 }
 
@@ -57,16 +58,21 @@ const ProductDetailImpl = ({
     (product: ProductDetail): ProductDetail['description'] => {
       switch (description.source) {
         case DescriptionSource.CatalogPlainText:
-          return product.plainTextDescription;
+          return product.plainTextDescription ? (
+            <div className="whitespace-pre-line">{product.plainTextDescription}</div>
+          ) : null;
 
         case DescriptionSource.CatalogRichText:
           return product.description;
 
         case DescriptionSource.Custom:
           return description.slot;
+
+        case DescriptionSource.CustomHtml:
+          return description.html ?? '';
       }
     },
-    [description.source, description.slot],
+    [description.source, description.slot, description.html],
   );
 
   const getProductAccordions = useCallback(

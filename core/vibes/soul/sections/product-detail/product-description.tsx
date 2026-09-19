@@ -1,6 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
+import purify from 'dompurify';
 import { useTranslations } from 'next-intl';
 import { ReactNode, useEffect, useId, useRef, useState } from 'react';
 
@@ -16,6 +17,16 @@ export function ProductDescription({ children, label }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [overflows, setOverflows] = useState(false);
+  const [sanitizedHtml, setSanitizedHtml] = useState<{ source: string; html: string }>();
+
+  useEffect(() => {
+    if (typeof children !== 'string') return;
+
+    setSanitizedHtml({
+      source: children,
+      html: purify.sanitize(children, { USE_PROFILES: { html: true } }),
+    });
+  }, [children]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -43,6 +54,18 @@ export function ProductDescription({ children, label }: Props) {
     setExpanded((value) => !value);
   };
 
+  let renderedContent = children;
+
+  if (typeof children === 'string') {
+    // Match server rendering until the HTML can be sanitized in the browser.
+    renderedContent =
+      sanitizedHtml?.source === children ? (
+        <div dangerouslySetInnerHTML={{ __html: sanitizedHtml.html }} />
+      ) : (
+        <div>{children.replace(/<[^>]*>/g, '')}</div>
+      );
+  }
+
   return (
     <div className="border-t border-[var(--product-detail-border,hsl(var(--contrast-100)))] py-8">
       <div
@@ -60,7 +83,7 @@ export function ProductDescription({ children, label }: Props) {
           className="flow-root [&>div>*:first-child]:mt-0 [&>div>*:last-child]:mb-0"
           ref={contentRef}
         >
-          {children}
+          {renderedContent}
         </div>
       </div>
       {overflows && (

@@ -15,10 +15,12 @@ const description = Group({
         { label: 'Catalog (plain text)', value: DescriptionSource.CatalogPlainText },
         { label: 'Catalog (rich text)', value: DescriptionSource.CatalogRichText },
         { label: 'Custom', value: DescriptionSource.Custom },
+        { label: 'Custom (HTML)', value: DescriptionSource.CustomHtml },
       ],
       defaultValue: DescriptionSource.CatalogRichText,
     }),
     slot: Slot(),
+    html: TextArea({ label: 'HTML', defaultValue: '' }),
   },
 });
 
