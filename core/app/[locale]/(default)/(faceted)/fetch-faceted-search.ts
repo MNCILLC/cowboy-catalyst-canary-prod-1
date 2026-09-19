@@ -8,6 +8,7 @@ import { graphql, VariablesOf } from '~/client/graphql';
 import { getMetafieldFilteredProducts } from '~/client/queries/get-metafield-filtered-products';
 import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 import { getMetafieldSelections } from '~/lib/product-metafield-filters';
 
 const GetProductSearchResultsQuery = graphql(
@@ -417,7 +418,7 @@ export const fetchFacetedSearch = cache(
     customerAccessToken?: string,
   ) => {
     const { after, before, limit = 9, sort, filters } = PublicToPrivateParams.parse(params);
-    const selections = getMetafieldSelections(params);
+    const selections = isCustomProductFilteringEnabled ? getMetafieldSelections(params) : [];
 
     if (selections.length > 0) {
       const [search, products] = await Promise.all([

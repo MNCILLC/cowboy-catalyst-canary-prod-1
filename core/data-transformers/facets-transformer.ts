@@ -9,6 +9,7 @@ import {
 } from '~/app/[locale]/(default)/(faceted)/fetch-faceted-search';
 import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { ExistingResultType } from '~/client/util';
+import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 
 export const facetsTransformer = async ({
   refinedFacets,
@@ -22,7 +23,7 @@ export const facetsTransformer = async ({
   const t = await getTranslations('Faceted.FacetedSearch.Facets');
   const { filters } = PublicToPrivateParams.parse(searchParams);
 
-  const metafieldFilters = await getMetafieldFilters();
+  const metafieldFilters = isCustomProductFilteringEnabled ? await getMetafieldFilters() : [];
   const nativeFilters = allFacets.map((facet) => {
     const refinedFacet = refinedFacets.find((f) => f.displayName === facet.displayName);
 

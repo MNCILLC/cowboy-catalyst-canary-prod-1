@@ -24,6 +24,7 @@ import {
 
 interface Props {
   showFilters?: boolean;
+  showAppliedFilters?: boolean;
   showSort?: boolean;
   enableListView?: boolean;
   initialView?: ProductView;
@@ -60,6 +61,7 @@ interface Props {
 
 export function ProductsListSection({
   showFilters = true,
+  showAppliedFilters = false,
   showSort = true,
   enableListView = true,
   initialView,
@@ -202,7 +204,9 @@ export function ProductsListSection({
 
             <div className="group-has-data-pending/products-list-section:animate-pulse min-w-0 flex-1">
               {productListBanner}
-              <AppliedFilters filters={filters} paginationInfo={paginationInfo} />
+              {showAppliedFilters && (
+                <AppliedFilters filters={filters} paginationInfo={paginationInfo} />
+              )}
               <ProductList
                 addToCartAction={addToCartAction}
                 compareHref={compareHref}
