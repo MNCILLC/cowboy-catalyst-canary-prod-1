@@ -2,7 +2,7 @@ export const productFilterDefinitions = [
   { siteKey: 'color_filters', productKey: 'colors' },
   { siteKey: 'effect_filters', productKey: 'effects' },
   { siteKey: 'firing_pattern_filters', productKey: 'firing_patterns' },
-  { siteKey: 'caliber_filters', productKey: 'calibers' },
+  { siteKey: 'caliber_filters', productKey: 'caliber' },
   {
     siteKey: 'performance_height_filters',
     productKey: 'performance_height',
@@ -10,6 +10,12 @@ export const productFilterDefinitions = [
   { siteKey: 'duration_filters', productKey: 'duration' },
   { siteKey: 'ignition_type_filters', productKey: 'ignition_types' },
 ] as const;
+
+const numericAttributeUnits = new Map([
+  ['caliber', 'mm'],
+  ['performance_height', 'ft'],
+  ['duration', 'sec'],
+]);
 
 export interface MetafieldFilterOption {
   label: string;
@@ -145,7 +151,7 @@ export function matchesMetafieldSelections(
   return selections.every(({ key, values }) => {
     if (values.length === 0) return true;
 
-    if (key === 'duration' || key === 'performance_height') {
+    if (numericAttributeUnits.has(key)) {
       return matchesNumericSelection(key, metafields, values, filters);
     }
 
@@ -243,12 +249,12 @@ function getAttributeOptions(
   metafields: MetafieldValue[],
   filter: ProductAttributeFilter,
 ): MetafieldFilterOption[] {
-  if (productKey === 'duration' || productKey === 'performance_height') {
+  const unit = numericAttributeUnits.get(productKey);
+
+  if (unit !== undefined) {
     const numericValue = parseNumericAttribute(
       metafields.find(({ key }) => key === productKey)?.value,
     );
-
-    const unit = productKey === 'performance_height' ? 'ft' : 'sec';
 
     return numericValue === undefined
       ? []

@@ -448,3 +448,130 @@ test('cards display Height in feet while keeping Duration in seconds', () => {
     [{ key: 'performance_height', label: 'Height', values: [{ value: '0', label: '0 ft' }] }],
   );
 });
+
+const caliberFilters = [
+  {
+    paramName: 'mf_caliber',
+    label: 'Caliber',
+    options: parseFilterOptions(
+      JSON.stringify([
+        { label: '20 mm or less', value: '20-mm-or-less', min: 0, max: 20 },
+        ...[22, 25, 30, 38, 40, 45, 50].map((size) => ({
+          label: `${size} mm`,
+          value: `${size}-mm`,
+          min: size,
+          max: size,
+        })),
+        { label: '50+ mm', value: '50-plus-mm', min: 50, max: null },
+      ]),
+    ),
+  },
+];
+
+function matchesCaliber(value: string, selected: string[]) {
+  return matchesMetafieldSelections(
+    [{ key: 'caliber', value }],
+    [{ key: 'caliber', values: selected }],
+    caliberFilters,
+  );
+}
+
+test('caliber matches exact sizes and inclusive lower and open-ended ranges', () => {
+  for (const size of [22, 25, 30, 38, 40, 45, 50]) {
+    assert.equal(matchesCaliber(String(size), [`${size}-mm`]), true);
+    assert.equal(matchesCaliber(String(size - 1), [`${size}-mm`]), false);
+    assert.equal(matchesCaliber(String(size + 1), [`${size}-mm`]), false);
+  }
+  for (const size of [0, 10, 20])
+    assert.equal(matchesCaliber(String(size), ['20-mm-or-less']), true);
+  assert.equal(matchesCaliber('21', ['20-mm-or-less']), false);
+  assert.equal(matchesCaliber('49', ['50-plus-mm']), false);
+  for (const size of [50, 60, 100])
+    assert.equal(matchesCaliber(String(size), ['50-plus-mm']), true);
+  assert.equal(
+    matchesCaliber(
+      '23',
+      caliberFilters[0].options.map(({ value }) => value),
+    ),
+    false,
+  );
+});
+
+test('caliber options are ORed and combine with height, duration and colors using AND', () => {
+  for (const size of [22, 25]) assert.equal(matchesCaliber(String(size), ['22-mm', '25-mm']), true);
+  assert.equal(matchesCaliber('24', ['22-mm', '25-mm']), false);
+  const fields = [
+    { key: 'caliber', value: '25' },
+    { key: 'performance_height', value: '175' },
+    { key: 'duration', value: '20' },
+    { key: 'colors', value: '["red"]' },
+  ];
+  const selections = [
+    { key: 'caliber', values: ['22-mm', '25-mm'] },
+    { key: 'performance_height', values: ['151-200-ft'] },
+    { key: 'duration', values: ['medium'] },
+    { key: 'colors', values: ['red'] },
+  ];
+  const filters = [...caliberFilters, ...heightFilters, ...durationFilters];
+  assert.equal(matchesMetafieldSelections(fields, selections, filters), true);
+  for (const key of ['caliber', 'performance_height', 'duration', 'colors']) {
+    const mismatch = fields.map((field) =>
+      field.key === key ? { ...field, value: key === 'colors' ? '["green"]' : '999' } : field,
+    );
+    assert.equal(matchesMetafieldSelections(mismatch, selections, filters), false);
+  }
+});
+
+test('caliber rejects missing, legacy, and invalid values and requires site range bounds', () => {
+  for (const value of ['[25]', '"25"', '["25-mm"]', '', 'null', '-1', 'true']) {
+    assert.equal(matchesCaliber(value, ['25-mm']), false);
+    assert.deepEqual(getProductAttributes([{ key: 'caliber', value }], caliberFilters), []);
+  }
+  const selections = [{ key: 'caliber', values: ['25-mm'] }];
+  assert.equal(matchesMetafieldSelections([], selections, caliberFilters), false);
+  assert.equal(
+    matchesMetafieldSelections(
+      [{ key: 'calibers', value: '["25-mm"]' }],
+      selections,
+      caliberFilters,
+    ),
+    false,
+  );
+  assert.equal(matchesCaliber('25', ['missing']), false);
+  assert.equal(
+    matchesMetafieldSelections([{ key: 'caliber', value: '25' }], selections, [
+      { ...caliberFilters[0], options: [{ value: '25-mm', label: 'Missing bounds' }] },
+    ]),
+    false,
+  );
+  const customFilters = [
+    {
+      ...caliberFilters[0],
+      options: [{ value: '25-mm', label: 'Changed range', min: 24, max: 26 }],
+    },
+  ];
+  for (const value of ['24', '25', '26']) {
+    assert.equal(
+      matchesMetafieldSelections([{ key: 'caliber', value }], selections, customFilters),
+      true,
+    );
+  }
+});
+
+test('cards display Caliber in mm, Height in ft, and Duration in sec', () => {
+  assert.deepEqual(
+    getProductAttributes(
+      [
+        { key: 'caliber', value: '25' },
+        { key: 'performance_height', value: '175' },
+        { key: 'duration', value: '20' },
+      ],
+      [...caliberFilters, ...heightFilters, ...durationFilters],
+    ),
+    [
+      { key: 'caliber', label: 'Caliber', values: [{ value: '25', label: '25 mm' }] },
+      { key: 'performance_height', label: 'Height', values: [{ value: '175', label: '175 ft' }] },
+      { key: 'duration', label: 'Duration', values: [{ value: '20', label: '20 sec' }] },
+    ],
+  );
+});
