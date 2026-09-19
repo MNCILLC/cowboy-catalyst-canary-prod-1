@@ -10,6 +10,7 @@ import {
 } from 'storefront-kit/callout';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
+import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Image } from '~/components/image';
@@ -42,6 +43,7 @@ export interface Product {
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  useEnhancedStockDisplay?: boolean;
   stockDisplayData?: {
     stockLevelMessage: string;
     stockLevelStatus?: 'error' | 'success';
@@ -113,6 +115,7 @@ function StandardProductCard({
     image,
     href,
     inventoryMessage,
+    useEnhancedStockDisplay,
     stockDisplayData,
     rating,
     numberOfReviews,
@@ -190,6 +193,7 @@ function StandardProductCard({
       inventoryMessage={inventoryMessage}
       layout={layout}
       stockDisplayData={stockDisplayData}
+      useEnhancedStockDisplay={useEnhancedStockDisplay}
     />
   );
   const priceElement = price != null && (
@@ -389,8 +393,25 @@ function ProductCardInventory({
   inventoryMessage,
   layout,
   stockDisplayData,
-}: Pick<Product, 'inventoryMessage' | 'stockDisplayData'> &
+  useEnhancedStockDisplay,
+}: Pick<Product, 'inventoryMessage' | 'stockDisplayData' | 'useEnhancedStockDisplay'> &
   Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  if (useEnhancedStockDisplay) {
+    const stockMessage = stockDisplayData?.stockLevelMessage || inventoryMessage;
+
+    return (
+      <div className="space-y-1 text-sm">
+        <EnhancedStockLevel message={stockMessage} status={stockDisplayData?.stockLevelStatus} />
+        {!!stockDisplayData?.backorderAvailabilityPrompt && (
+          <p className="opacity-75">{stockDisplayData.backorderAvailabilityPrompt}</p>
+        )}
+        {!!inventoryMessage && inventoryMessage !== stockMessage && (
+          <p className="opacity-75">{inventoryMessage}</p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       {layout === 'list' && stockDisplayData && (
