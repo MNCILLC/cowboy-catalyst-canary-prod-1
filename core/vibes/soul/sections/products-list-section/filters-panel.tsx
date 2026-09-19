@@ -6,7 +6,7 @@
 
 import { clsx } from 'clsx';
 import { parseAsString, useQueryStates } from 'nuqs';
-import { useOptimistic, useState, useTransition } from 'react';
+import { useOptimistic, useSyncExternalStore, useTransition } from 'react';
 
 import { Checkbox } from '@/vibes/soul/form/checkbox';
 import { RangeInput } from '@/vibes/soul/form/range-input';
@@ -18,6 +18,13 @@ import { CursorPaginationInfo } from '@/vibes/soul/primitives/cursor-pagination'
 import { Rating } from '@/vibes/soul/primitives/rating';
 import { Link } from '~/components/link';
 
+import {
+  getFilterExpansionSnapshot,
+  getServerFilterExpansionSnapshot,
+  parseFilterExpansion,
+  saveFilterExpansion,
+  subscribeToFilterExpansion,
+} from './filter-expansion-state';
 import { getFilterParsers } from './filter-parsers';
 
 export interface LinkGroupFilter {
@@ -141,27 +148,26 @@ export function FiltersPanelInner({
   );
   const [isPending, startTransition] = useTransition();
   const [optimisticParams, setOptimisticParams] = useOptimistic(params);
-  const [expandedItems, setExpandedItems] = useState(() => {
-    const initial = new Set<string>();
-
-    filters
-      .filter((filter) => filter.type !== 'link-group')
-      .slice(0, defaultExpanded ? undefined : 3)
-      .forEach((filter) => {
-        initial.add(filter.label.toLowerCase());
-      });
-
-    return initial;
-  });
-
+  const expansionSnapshot = useSyncExternalStore(
+    subscribeToFilterExpansion,
+    getFilterExpansionSnapshot,
+    getServerFilterExpansionSnapshot,
+  );
+  const expansionPreferences = parseFilterExpansion(expansionSnapshot);
   const accordionItems = filters
     .filter((filter) => filter.type !== 'link-group')
-    .map((filter) => {
+    .map((filter, index) => {
+      // Parameter names stay stable across pages and translated display labels.
+      const key =
+        filter.type === 'range'
+          ? JSON.stringify([filter.minParamName, filter.maxParamName])
+          : filter.paramName;
+
       return {
-        key: filter.label.toLowerCase(),
-        value: filter.label.toLowerCase(),
+        key,
+        value: key,
         filter,
-        expanded: expandedItems.has(filter.label.toLowerCase()),
+        expanded: expansionPreferences[key] ?? (defaultExpanded || index < 3),
       };
     });
 
@@ -192,7 +198,16 @@ export function FiltersPanelInner({
       ))}
       <Accordion
         onValueChange={(items) => {
-          setExpandedItems(new Set(items));
+          const expanded = new Set(items);
+
+          // Save only deliberate changes, leaving defaults for untouched filters.
+          saveFilterExpansion(
+            Object.fromEntries(
+              accordionItems
+                .filter((item) => item.expanded !== expanded.has(item.value))
+                .map((item) => [item.key, expanded.has(item.value)]),
+            ),
+          );
         }}
         type="multiple"
         value={accordionItems.filter((item) => item.expanded).map((item) => item.value)}
