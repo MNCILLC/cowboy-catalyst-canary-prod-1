@@ -167,7 +167,7 @@ export function FiltersPanelInner({
         key,
         value: key,
         filter,
-        expanded: expansionPreferences[key] ?? (defaultExpanded || index < 3),
+        expanded: expansionPreferences[key] ?? (defaultExpanded || index === 0),
       };
     });
 
