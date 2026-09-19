@@ -1,4 +1,5 @@
 import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
+import { getTranslations } from 'next-intl/server';
 import { cache } from 'react';
 
 import { getSessionCustomerAccessToken } from '~/auth';
@@ -8,11 +9,52 @@ import { graphql, ResultOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { getStockDisplayData } from '~/lib/stock-display';
+
+const ProductStockSettingsFragment = graphql(`
+  fragment ProductStockSettingsFragment on Settings {
+    inventory {
+      defaultOutOfStockMessage
+      showOutOfStockMessage
+      stockLevelDisplay
+      showBackorderAvailabilityPrompt
+      backorderAvailabilityPrompt
+      showQuantityOnBackorder
+      showBackorderMessage
+    }
+  }
+`);
+
+async function withStockDisplay(
+  products: Array<ResultOf<typeof ProductCardFragment>>,
+  settings: ResultOf<typeof ProductStockSettingsFragment> | null | undefined,
+  locale?: string,
+) {
+  const t = locale
+    ? await getTranslations({ locale, namespace: 'Product.ProductDetails' })
+    : await getTranslations('Product.ProductDetails');
+
+  return products.map((product) => ({
+    ...product,
+    useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+    stockDisplayData: getStockDisplayData(
+      // Cards have no selected variant, so a combined quantity would be misleading.
+      product.inventory.hasVariantInventory
+        ? { isInStock: product.inventory.isInStock }
+        : product.inventory,
+      settings?.inventory,
+      (quantity) => t('currentStock', { quantity }),
+    ),
+  }));
+}
 
 const GetBestSellingProductsQuery = graphql(
   `
     query getBestSellingProducts($currencyCode: currencyCode, $limit: Int) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         bestSellingProducts(first: $limit) {
           edges {
             node {
@@ -31,13 +73,16 @@ const GetBestSellingProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetFeaturedProductsQuery = graphql(
   `
     query getFeaturedProducts($currencyCode: currencyCode, $limit: Int) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         featuredProducts(first: $limit) {
           edges {
             node {
@@ -56,13 +101,16 @@ const GetFeaturedProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetNewestProductsQuery = graphql(
   `
     query getNewestProducts($currencyCode: currencyCode, $limit: Int) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         newestProducts(first: $limit) {
           edges {
             node {
@@ -81,13 +129,16 @@ const GetNewestProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetProductsByIds = graphql(
   `
     query GetProductsByIds($entityIds: [Int!], $currencyCode: currencyCode) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         products(entityIds: $entityIds) {
           edges {
             node {
@@ -106,13 +157,16 @@ const GetProductsByIds = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetCategoryProductsQuery = graphql(
   `
     query GetCategoryProducts($categoryId: Int!, $limit: Int, $currencyCode: currencyCode) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         category(entityId: $categoryId) {
           products(first: $limit) {
             edges {
@@ -133,7 +187,7 @@ const GetCategoryProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 export type GetProductsResponse = Array<
@@ -164,7 +218,11 @@ const getBestSellingProducts = cache(
 
       return {
         status: 'success',
-        products: removeEdgesAndNodes(bestSellingProducts),
+        products: await withStockDisplay(
+          removeEdgesAndNodes(bestSellingProducts),
+          response.data.site.settings,
+          locale,
+        ),
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -198,7 +256,11 @@ const getFeaturedProducts = cache(
 
       return {
         status: 'success',
-        products: removeEdgesAndNodes(featuredProducts),
+        products: await withStockDisplay(
+          removeEdgesAndNodes(featuredProducts),
+          response.data.site.settings,
+          locale,
+        ),
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -231,7 +293,11 @@ const getNewestProducts = cache(async ({ locale, limit }: { locale?: string; lim
 
     return {
       status: 'success',
-      products: removeEdgesAndNodes(newestProducts),
+      products: await withStockDisplay(
+        removeEdgesAndNodes(newestProducts),
+        response.data.site.settings,
+        locale,
+      ),
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -262,7 +328,11 @@ const getProductsByIds = cache(
 
       return {
         status: 'success',
-        products: removeEdgesAndNodes(products),
+        products: await withStockDisplay(
+          removeEdgesAndNodes(products),
+          response.data.site.settings,
+          locale,
+        ),
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -303,7 +373,11 @@ const getCategoryProducts = cache(
 
       return {
         status: 'success',
-        products: category ? removeEdgesAndNodes(category.products) : [],
+        products: await withStockDisplay(
+          category ? removeEdgesAndNodes(category.products) : [],
+          response.data.site.settings,
+          locale,
+        ),
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
