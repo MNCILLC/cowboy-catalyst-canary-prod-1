@@ -19,7 +19,8 @@
     "prelint": "next typegen",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test:product-filters": "node --test lib/product-metafield-filters.test.mts"
+    "test:product-filters": "node --test lib/product-metafield-filters.test.mts",
+    "test:applied-filters": "node --test lib/applied-product-filters.test.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

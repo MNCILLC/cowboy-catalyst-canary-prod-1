@@ -2,24 +2,68 @@ export const productFilterDefinitions = [
   { siteKey: 'color_filters', productKey: 'colors' },
   { siteKey: 'effect_filters', productKey: 'effects' },
   { siteKey: 'firing_pattern_filters', productKey: 'firing_patterns' },
-  { siteKey: 'caliber_filters', productKey: 'calibers' },
+  { siteKey: 'caliber_filters', productKey: 'caliber' },
   {
     siteKey: 'performance_height_filters',
-    productKey: 'performance_heights',
+    productKey: 'performance_height',
   },
-  { siteKey: 'duration_filters', productKey: 'durations' },
+  { siteKey: 'duration_filters', productKey: 'duration' },
   { siteKey: 'ignition_type_filters', productKey: 'ignition_types' },
 ] as const;
+
+const numericAttributeUnits = new Map([
+  ['caliber', 'mm'],
+  ['performance_height', 'ft'],
+  ['duration', 'sec'],
+]);
 
 export interface MetafieldFilterOption {
   label: string;
   value: string;
   swatchColor?: string;
+  min?: number;
+  max?: number | null;
 }
 
 export interface MetafieldValue {
   key: string;
   value: string;
+}
+
+// A null maximum represents an open-ended range. Missing or invalid bounds do not match.
+function parseFilterRange(option: unknown): { min: number; max: number | null } | undefined {
+  if (
+    typeof option !== 'object' ||
+    option === null ||
+    !('min' in option) ||
+    typeof option.min !== 'number' ||
+    !Number.isFinite(option.min) ||
+    option.min < 0 ||
+    !('max' in option)
+  )
+    return undefined;
+
+  if (option.max === null) return { min: option.min, max: null };
+
+  if (typeof option.max !== 'number' || !Number.isFinite(option.max) || option.max < option.min) {
+    return undefined;
+  }
+
+  return { min: option.min, max: option.max };
+}
+
+export function parseNumericAttribute(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    return typeof parsed === 'number' && Number.isFinite(parsed) && parsed >= 0
+      ? parsed
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function parseFilterOptions(value: string, includeColor = false): MetafieldFilterOption[] {
@@ -60,6 +104,7 @@ export function parseFilterOptions(value: string, includeColor = false): Metafie
         label: option.label,
         value: option.value,
         ...(swatchColor ? { swatchColor } : {}),
+        ...parseFilterRange(option),
       });
       seen.add(option.value);
     });
@@ -101,15 +146,46 @@ export function getMetafieldSelections(params: Record<string, unknown>) {
 export function matchesMetafieldSelections(
   metafields: MetafieldValue[],
   selections: Array<{ key: string; values: string[] }>,
+  filters: ProductAttributeFilter[] = [],
 ): boolean {
   return selections.every(({ key, values }) => {
     if (values.length === 0) return true;
+
+    if (numericAttributeUnits.has(key)) {
+      return matchesNumericSelection(key, metafields, values, filters);
+    }
 
     const attributes = metafields
       .filter((field) => field.key === key)
       .flatMap((field) => parseAttributeValues(field.value));
 
     return values.some((value) => attributes.includes(value));
+  });
+}
+
+function matchesNumericSelection(
+  productKey: string,
+  metafields: MetafieldValue[],
+  values: string[],
+  filters: ProductAttributeFilter[],
+): boolean {
+  const numericValue = parseNumericAttribute(
+    metafields.find(({ key }) => key === productKey)?.value,
+  );
+
+  if (numericValue === undefined) return false;
+
+  const options = filters.find(({ paramName }) => paramName === `mf_${productKey}`)?.options ?? [];
+
+  return options.some((option) => {
+    const range = parseFilterRange(option);
+
+    return (
+      values.includes(option.value) &&
+      range !== undefined &&
+      numericValue >= range.min &&
+      (range.max === null || numericValue <= range.max)
+    );
   });
 }
 
@@ -162,17 +238,37 @@ export function getProductAttributes(
 
     if (!filter) return [];
 
-    const values = [
-      ...new Set(
-        metafields
-          .filter(({ key }) => key === productKey)
-          .flatMap(({ value }) => parseAttributeValues(value))
-          .filter((value) => value.trim()),
-      ),
-    ].map(
-      (value) => filter.options.find((option) => option.value === value) ?? { value, label: value },
-    );
+    const values = getAttributeOptions(productKey, metafields, filter);
 
     return values.length ? [{ key: productKey, label: filter.label, values }] : [];
   });
+}
+
+function getAttributeOptions(
+  productKey: string,
+  metafields: MetafieldValue[],
+  filter: ProductAttributeFilter,
+): MetafieldFilterOption[] {
+  const unit = numericAttributeUnits.get(productKey);
+
+  if (unit !== undefined) {
+    const numericValue = parseNumericAttribute(
+      metafields.find(({ key }) => key === productKey)?.value,
+    );
+
+    return numericValue === undefined
+      ? []
+      : [{ value: String(numericValue), label: `${numericValue} ${unit}` }];
+  }
+
+  return [
+    ...new Set(
+      metafields
+        .filter(({ key }) => key === productKey)
+        .flatMap(({ value }) => parseAttributeValues(value))
+        .filter((value) => value.trim()),
+    ),
+  ].map(
+    (value) => filter.options.find((option) => option.value === value) ?? { value, label: value },
+  );
 }

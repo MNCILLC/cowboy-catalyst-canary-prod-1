@@ -14,9 +14,9 @@ export const ProductCardFragment = graphql(
           "colors"
           "effects"
           "firing_patterns"
-          "calibers"
-          "performance_heights"
-          "durations"
+          "caliber"
+          "performance_height"
+          "duration"
           "ignition_types"
         ]
         first: 7
