@@ -37,6 +37,14 @@ export const BcProductSchema = z.object({
       )
       .nullable(),
   }),
+  stockDisplayData: z
+    .object({
+      stockLevelMessage: z.string(),
+      stockLevelStatus: z.enum(['error', 'success']).optional(),
+      backorderAvailabilityPrompt: z.string().nullable(),
+    })
+    .nullish(),
+  useEnhancedStockDisplay: z.boolean().optional(),
   entityId: z.number(),
   name: z.string(),
   defaultImage: z.object({ altText: z.string(), url: string() }).nullable(),
@@ -50,7 +58,9 @@ export type BcProductSchema = z.infer<typeof BcProductSchema>;
 
 export type { Product };
 
-export function useBcProductToVibesProduct(): (product: BcProductSchema) => Product {
+export function useBcProductToVibesProduct(
+  showStockLevel = false,
+): (product: BcProductSchema) => Product {
   const format = useFormatter();
 
   return useCallback(
@@ -69,8 +79,10 @@ export function useBcProductToVibesProduct(): (product: BcProductSchema) => Prod
         image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
         price,
         subtitle: brand?.name,
+        stockDisplayData: showStockLevel ? product.stockDisplayData : undefined,
+        useEnhancedStockDisplay: showStockLevel && product.useEnhancedStockDisplay,
       };
     },
-    [format],
+    [format, showStockLevel],
   );
 }

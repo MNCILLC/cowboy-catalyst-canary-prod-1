@@ -71,6 +71,7 @@ export interface ProductCardProps {
   compareParamName?: string;
   product: Product;
   showRating?: boolean;
+  showStockLevel?: boolean;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -122,6 +123,7 @@ function StandardProductCard({
     promotions,
   },
   showRating = false,
+  showStockLevel = false,
   layout = 'grid',
   purchaseAction,
   colorScheme = 'light',
@@ -192,6 +194,7 @@ function StandardProductCard({
       colorScheme={colorScheme}
       inventoryMessage={inventoryMessage}
       layout={layout}
+      showStockLevel={showStockLevel}
       stockDisplayData={stockDisplayData}
       useEnhancedStockDisplay={useEnhancedStockDisplay}
     />
@@ -390,12 +393,13 @@ function ProductCardBadges({
 
 function ProductCardInventory({
   colorScheme,
+  showStockLevel,
   inventoryMessage,
   layout,
   stockDisplayData,
   useEnhancedStockDisplay,
 }: Pick<Product, 'inventoryMessage' | 'stockDisplayData' | 'useEnhancedStockDisplay'> &
-  Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
+  Required<Pick<ProductCardProps, 'colorScheme' | 'layout' | 'showStockLevel'>>) {
   if (useEnhancedStockDisplay) {
     const stockMessage = stockDisplayData?.stockLevelMessage || inventoryMessage;
 
@@ -414,7 +418,7 @@ function ProductCardInventory({
 
   return (
     <>
-      {layout === 'list' && stockDisplayData && (
+      {(layout === 'list' || showStockLevel) && stockDisplayData && (
         <div
           className={clsx(
             'flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
@@ -448,7 +452,8 @@ function ProductCardInventory({
           }[colorScheme],
         )}
       >
-        {layout === 'list' && inventoryMessage === stockDisplayData?.stockLevelMessage
+        {(layout === 'list' || showStockLevel) &&
+        inventoryMessage === stockDisplayData?.stockLevelMessage
           ? null
           : inventoryMessage}
       </span>

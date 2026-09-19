@@ -29,6 +29,7 @@ export function MSProductsCarousel({
   limit,
   additionalProducts = [],
   hideOverflow,
+  showStockLevel = false,
   showWholesalePricingBanner = true,
   ...props
 }: MSProductsCarouselProps) {
@@ -38,6 +39,7 @@ export function MSProductsCarousel({
     collection,
     categoryId,
     collectionLimit: maxProducts,
+    showStockLevel,
     additionalProductIds,
   });
   const showBanner = useWholesalePricingBannerVisibility(showWholesalePricingBanner);
@@ -59,6 +61,7 @@ export function MSProductsCarousel({
           className="w-full"
           hideOverflow={hideOverflow}
           products={products.slice(0, maxProducts)}
+          showStockLevel={showStockLevel}
         />
       </div>
     </div>
