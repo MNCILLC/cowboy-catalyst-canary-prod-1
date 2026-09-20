@@ -30,6 +30,7 @@ interface Props {
   enableListView?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
+  cartQuantities?: Streamable<Record<string, number>>;
   breadcrumbs?: Streamable<Breadcrumb[]>;
   title?: Streamable<string | null>;
   totalCount: Streamable<string>;
@@ -68,6 +69,7 @@ export function ProductsListSection({
   enableListView = true,
   initialView,
   addToCartAction,
+  cartQuantities,
   breadcrumbs: streamableBreadcrumbs,
   title = 'Products',
   totalCount,
@@ -213,6 +215,7 @@ export function ProductsListSection({
               )}
               <ProductList
                 addToCartAction={addToCartAction}
+                cartQuantities={cartQuantities}
                 compareHref={compareHref}
                 compareLabel={compareLabel}
                 compareParamName={compareParamName}

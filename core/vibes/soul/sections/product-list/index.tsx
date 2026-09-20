@@ -16,11 +16,13 @@ import {
   ProductCardSkeleton,
 } from '@/vibes/soul/primitives/product-card';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
+import { Link } from '~/components/link';
 
 import { useProductView } from './view';
 
 interface ProductListProps {
   addToCartAction?: CompareAddToCartAction;
+  cartQuantities?: Streamable<Record<string, number>>;
   products: Streamable<Product[]>;
   showRating?: boolean;
   compareProducts?: Streamable<Product[]>;
@@ -57,6 +59,7 @@ interface ProductListProps {
  */
 export function ProductList({
   addToCartAction,
+  cartQuantities,
   products: streamableProducts,
   showRating,
   className,
@@ -145,6 +148,23 @@ export function ProductList({
                         <AddToCartForm
                           addToCartAction={addToCartAction}
                           addToCartLabel={t('addToCart')}
+                          cartQuantityLink={
+                            cartQuantities !== undefined && (
+                              <Stream fallback={null} value={cartQuantities}>
+                                {(quantities) => {
+                                  const quantity = quantities[product.id] ?? 0;
+
+                                  return quantity > 0 ? (
+                                    <div aria-live="polite" className="w-full text-center text-xs">
+                                      <Link className="underline underline-offset-2" href="/cart">
+                                        {tQuantity('quantityInCart', { quantity })}
+                                      </Link>
+                                    </div>
+                                  ) : null;
+                                }}
+                              </Stream>
+                            )
+                          }
                           decrementLabel={tQuantity('decreaseQuantity')}
                           disabled={product.canAddToCart === false}
                           incrementLabel={tQuantity('increaseQuantity')}

@@ -37,6 +37,7 @@ interface Props {
   decrementLabel?: string;
   minQuantity?: number;
   maxQuantity?: number;
+  cartQuantityLink?: ReactNode;
 }
 
 export function AddToCartForm({
@@ -53,6 +54,7 @@ export function AddToCartForm({
   decrementLabel = 'Decrease quantity',
   minQuantity = 1,
   maxQuantity,
+  cartQuantityLink,
 }: Props) {
   const router = useRouter();
   const events = useEvents();
@@ -135,15 +137,12 @@ export function AddToCartForm({
       ) : (
         <input name="quantity" type="hidden" value={1} />
       )}
-      <Button
-        className={showQuantity ? 'shrink-0' : 'w-full'}
-        disabled={disabled}
-        loading={pending}
-        size={size}
-        type="submit"
-      >
-        {isPreorder ? preorderLabel : addToCartLabel}
-      </Button>
+      <div className={clsx('flex flex-col gap-2', showQuantity ? 'shrink-0' : 'w-full')}>
+        <Button className="w-full" disabled={disabled} loading={pending} size={size} type="submit">
+          {isPreorder ? preorderLabel : addToCartLabel}
+        </Button>
+        {cartQuantityLink}
+      </div>
     </form>
   );
 }

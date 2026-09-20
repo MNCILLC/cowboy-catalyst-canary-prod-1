@@ -27,12 +27,12 @@ const GetProductCartQuantityQuery = graphql(`
   }
 `);
 
-export const getProductCartQuantity = cache(
-  async (productId: number, customerAccessToken?: string): Promise<number> => {
+export const getCartProductQuantities = cache(
+  async (customerAccessToken?: string): Promise<Record<string, number>> => {
     const cartId = await getCartId();
 
     if (!cartId) {
-      return 0;
+      return {};
     }
 
     const response = await client.fetch({
@@ -48,14 +48,25 @@ export const getProductCartQuantity = cache(
     const lineItems = response.data.site.cart?.lineItems;
 
     if (!lineItems) {
-      return 0;
+      return {};
     }
 
     // Include every variant and option combination of this product.
-    return [...lineItems.physicalItems, ...lineItems.digitalItems].reduce(
-      (quantity, item) =>
-        item.productEntityId === productId ? quantity + item.quantity : quantity,
-      0,
+    return [...lineItems.physicalItems, ...lineItems.digitalItems].reduce<Record<string, number>>(
+      (quantities, item) => {
+        const productId = item.productEntityId.toString();
+
+        quantities[productId] = (quantities[productId] ?? 0) + item.quantity;
+
+        return quantities;
+      },
+      {},
     );
   },
 );
+
+export const getProductCartQuantity = async (productId: number, customerAccessToken?: string) => {
+  const quantities = await getCartProductQuantities(customerAccessToken);
+
+  return quantities[productId.toString()] ?? 0;
+};
