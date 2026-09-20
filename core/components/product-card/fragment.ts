@@ -9,6 +9,17 @@ export const ProductCardFragment = graphql(
       entityId
       name
       description
+      listViewDescriptionMetafield: metafields(
+        namespace: "custom_product"
+        keys: ["list_view_description"]
+        first: 1
+      ) {
+        edges {
+          node {
+            value
+          }
+        }
+      }
       ...ProductAttributesFragment
       packingFields: customFields(names: ["packing", "Packing", "PACKING"], first: 1) {
         edges {

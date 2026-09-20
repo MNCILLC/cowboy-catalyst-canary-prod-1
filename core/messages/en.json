@@ -529,6 +529,7 @@
     "ProductDetails": {
       "quantity": "Quantity",
       "increaseQuantity": "Increase quantity",
+      "quantityInCart": "{quantity, number} in cart",
       "decreaseQuantity": "Decrease quantity",
       "emptySelectPlaceholder": "Select an option",
       "successMessage": "{cartItems, plural, =1 {1 item} other {# items}} added to <cartLink> your cart</cartLink>",

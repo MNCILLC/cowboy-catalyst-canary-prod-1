@@ -21,6 +21,7 @@ import { ShowCrateProductCard } from '../show-crate-product-card';
 
 import { ProductCardAttributes } from './attributes';
 import { Compare } from './compare';
+import { ProductCardDescription } from './description';
 
 export interface Product {
   isShow?: boolean;
@@ -29,7 +30,7 @@ export interface Product {
   showFeatures?: Array<{ id: string; value: string }>;
   id: string;
   title: string;
-  packing?: string;
+  listViewDescription?: string;
   descriptionHtml?: string;
   attributes?: Array<{
     key: string;
@@ -108,7 +109,7 @@ function StandardProductCard({
   product: {
     id,
     title,
-    packing,
+    listViewDescription,
     attributes,
     subtitle,
     badge,
@@ -155,6 +156,7 @@ function StandardProductCard({
       detailsContent: '',
       titleRow: '',
       title: '',
+      descriptionRow: '',
       actions: 'ml-1 mt-auto',
       compare: '',
       badge: 'absolute left-3 top-3',
@@ -177,7 +179,8 @@ function StandardProductCard({
       detailsContent: 'flex min-h-0 w-full flex-col',
       titleRow: 'grid grid-cols-2 items-start gap-x-4 gap-y-2 @lg:grid-cols-3',
       title: 'col-span-2 min-w-0 @lg:col-span-1',
-      actions: 'relative z-10 ml-auto mt-3 flex flex-col items-end gap-3',
+      descriptionRow: 'flex flex-col gap-x-4 @lg:flex-row @lg:items-start',
+      actions: 'relative z-10 ml-auto mt-2 flex flex-col items-end gap-3',
       compare: 'relative z-10 w-fit',
       badge: 'mb-1 self-start',
     },
@@ -315,7 +318,15 @@ function StandardProductCard({
               </span>
               {controlPlacement.headerDetails}
             </div>
-            <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
+            <div className={layoutStyles.descriptionRow}>
+              <ProductCardDescription
+                colorScheme={colorScheme}
+                layout={layout}
+                listViewDescription={listViewDescription}
+              />
+              {actionsPlacement.details}
+            </div>
+            <ProductCardBadges layout={layout} subtitle={subtitle} />
             {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
@@ -350,7 +361,6 @@ function StandardProductCard({
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
             {controlPlacement.inventoryDetails}
-            {actionsPlacement.details}
           </div>
         </div>
         <ProductCardAttributes attributes={attributes} layout={layout} />
@@ -378,15 +388,13 @@ function StandardProductCard({
 
 function ProductCardBadges({
   layout,
-  packing,
   subtitle,
-}: Pick<Product, 'packing' | 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
-  if (layout !== 'list' || (!packing?.trim() && !subtitle?.trim())) return null;
+}: Pick<Product, 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
+  if (layout !== 'list' || !subtitle?.trim()) return null;
 
   return (
     <div className="my-1.5 flex flex-wrap gap-2">
-      {!!packing?.trim() && <Badge variant="info">{packing}</Badge>}
-      {!!subtitle?.trim() && <Badge variant="info">{subtitle}</Badge>}
+      <Badge variant="info">{subtitle}</Badge>
     </div>
   );
 }
