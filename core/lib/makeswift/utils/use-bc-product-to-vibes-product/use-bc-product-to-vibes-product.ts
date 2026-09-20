@@ -45,6 +45,17 @@ export const BcProductSchema = z.object({
     })
     .nullish(),
   useEnhancedStockDisplay: z.boolean().optional(),
+  enhancedGridAttributes: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        values: z.array(
+          z.object({ value: z.string(), label: z.string(), swatchColor: z.string().optional() }),
+        ),
+      }),
+    )
+    .optional(),
   entityId: z.number(),
   name: z.string(),
   defaultImage: z.object({ altText: z.string(), url: string() }).nullable(),
@@ -73,6 +84,7 @@ export function useBcProductToVibesProduct(
 
       return {
         ...showCrateProductTransformer(product),
+        enhancedGridAttributes: product.enhancedGridAttributes,
         id: entityId.toString(),
         title: name,
         href: path,

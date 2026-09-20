@@ -148,7 +148,10 @@ export default async function Search(props: Props) {
         settings: settings?.inventory,
         formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
       },
-      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ? await getMetafieldFilters() : [],
+      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ||
+        process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'
+        ? await getMetafieldFilters()
+        : [],
     );
   });
 
@@ -261,7 +264,8 @@ export default async function Search(props: Props) {
         { label: t('Search.Breadcrumbs.search'), href: `#` },
       ]}
       cartQuantities={
-        isProductListViewEnabled && process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+        (isProductListViewEnabled || process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true') &&
+        process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
           ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
           : undefined
       }
@@ -270,6 +274,7 @@ export default async function Search(props: Props) {
       defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Search.Empty.subtitle')}
       emptyStateTitle={streamableEmptyStateTitle}
+      enableEnhancedProductAttributes={process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'}
       enableListView={isProductListViewEnabled}
       filterLabel={t('FacetedSearch.filters')}
       filters={streamableFilters}

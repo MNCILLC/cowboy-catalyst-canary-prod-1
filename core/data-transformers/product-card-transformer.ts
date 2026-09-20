@@ -6,7 +6,11 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
-import { getProductAttributes, ProductAttributeFilter } from '~/lib/product-metafield-filters';
+import {
+  getProductAttributes,
+  ProductAttributeFilter,
+  productFilterDefinitions,
+} from '~/lib/product-metafield-filters';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
@@ -54,12 +58,10 @@ const getInventoryMessage = (
   return inventoryByLocation?.backorderMessage ?? undefined;
 };
 
-const productAttributesTransformer = (
+export const getProductCardAttributes = (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   filters?: ProductAttributeFilter[],
 ) => {
-  if (process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES !== 'true') return [];
-
   const packing =
     'packingFields' in product
       ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim()
@@ -71,9 +73,30 @@ const productAttributesTransformer = (
       : []),
     ...getProductAttributes(
       'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
-      filters,
+      productFilterDefinitions.map(
+        ({ productKey }) =>
+          filters?.find(({ paramName }) => paramName === `mf_${productKey}`) ?? {
+            paramName: `mf_${productKey}`,
+            label: productKey.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()),
+            options: [],
+          },
+      ),
     ),
   ];
+};
+
+const productCardAttributeVariants = (
+  product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
+  filters?: ProductAttributeFilter[],
+) => {
+  const listEnabled = process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true';
+  const gridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
+  const attributes = listEnabled || gridEnabled ? getProductCardAttributes(product, filters) : [];
+
+  return {
+    attributes: listEnabled ? attributes : undefined,
+    enhancedGridAttributes: gridEnabled ? attributes : undefined,
+  };
 };
 
 export const singleProductCardTransformer = (
@@ -87,9 +110,9 @@ export const singleProductCardTransformer = (
 ): Product => {
   return {
     ...showCrateProductTransformer(product),
+    ...productCardAttributeVariants(product, attributeFilters),
     id: product.entityId.toString(),
     title: product.name,
-    attributes: productAttributesTransformer(product, attributeFilters),
     descriptionHtml: 'description' in product ? product.description : undefined,
     listViewDescription:
       'listViewDescriptionMetafield' in product

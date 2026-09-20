@@ -8,8 +8,11 @@ import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { getProductCardAttributes } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getStockDisplayData } from '~/lib/stock-display';
+
+import { getMetafieldFilters } from './get-metafield-filters';
 
 const ProductStockSettingsFragment = graphql(`
   fragment ProductStockSettingsFragment on Settings {
@@ -33,9 +36,14 @@ async function withStockDisplay(
   const t = locale
     ? await getTranslations({ locale, namespace: 'Product.ProductDetails' })
     : await getTranslations('Product.ProductDetails');
+  const enhancedGridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
+  const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters() : [];
 
   return products.map((product) => ({
     ...product,
+    enhancedGridAttributes: enhancedGridEnabled
+      ? getProductCardAttributes(product, attributeFilters)
+      : undefined,
     useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
     stockDisplayData: getStockDisplayData(
       // Cards have no selected variant, so a combined quantity would be misleading.
