@@ -477,6 +477,7 @@ export default async function Product({ params, searchParams }: Props) {
         ? [
             {
               title: t('ProductDetails.Accordions.specifications'),
+              defaultOpen: true,
               content: (
                 <div className="prose @container">
                   <dl className="flex flex-col gap-4">

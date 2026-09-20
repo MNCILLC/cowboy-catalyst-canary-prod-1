@@ -51,6 +51,7 @@ interface ProductDetailProduct {
     Array<{
       title: string;
       content: ReactNode;
+      defaultOpen?: boolean;
     }>
   >;
   minQuantity?: Streamable<number | null>;
@@ -345,6 +346,9 @@ export function ProductDetail<F extends Field>({
                         accordions && (
                           <Accordion
                             className="border-t border-[var(--product-detail-border,hsl(var(--contrast-100)))] pt-4"
+                            defaultValue={accordions.flatMap((accordion, index) =>
+                              accordion.defaultOpen ? [index.toString()] : [],
+                            )}
                             type="multiple"
                           >
                             {accordions.map((accordion, index) => (
