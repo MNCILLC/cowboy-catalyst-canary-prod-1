@@ -168,7 +168,10 @@ export default async function Brand(props: Props) {
         settings: settings?.inventory,
         formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
       },
-      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ? await getMetafieldFilters() : [],
+      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ||
+        process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'
+        ? await getMetafieldFilters()
+        : [],
     );
   });
 
@@ -236,7 +239,8 @@ export default async function Brand(props: Props) {
     <ProductsListSection
       addToCartAction={addToCart}
       cartQuantities={
-        isProductListViewEnabled && process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+        (isProductListViewEnabled || process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true') &&
+        process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
           ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
           : undefined
       }
@@ -245,6 +249,7 @@ export default async function Brand(props: Props) {
       defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Brand.Empty.subtitle')}
       emptyStateTitle={t('Brand.Empty.title')}
+      enableEnhancedProductAttributes={process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'}
       enableListView={isProductListViewEnabled}
       filterLabel={t('FacetedSearch.filters')}
       filters={streamableFilters}

@@ -1,16 +1,7 @@
 import { clsx } from 'clsx';
-import { useTranslations } from 'next-intl';
 import { ReactNode } from 'react';
-import {
-  Content as CalloutContent,
-  Description as CalloutDescription,
-  Header as CalloutHeader,
-  Root as CalloutRoot,
-  Title as CalloutTitle,
-} from 'storefront-kit/callout';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
-import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Image } from '~/components/image';
@@ -22,6 +13,9 @@ import { ShowCrateProductCard } from '../show-crate-product-card';
 import { ProductCardAttributes } from './attributes';
 import { Compare } from './compare';
 import { ProductCardDescription } from './description';
+import { EnhancedGridProductCard } from './enhanced-grid';
+import { ProductCardInventory } from './inventory';
+import { ProductCardPromotions } from './promotions';
 
 export interface Product {
   isShow?: boolean;
@@ -37,6 +31,7 @@ export interface Product {
     label: string;
     values: Array<{ value: string; label: string; swatchColor?: string }>;
   }>;
+  enhancedGridAttributes?: Product['attributes'];
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -98,6 +93,10 @@ export interface ProductCardProps {
  * ```
  */
 export function ProductCard(props: ProductCardProps) {
+  if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {
+    return <EnhancedGridProductCard {...props} />;
+  }
+
   if (props.product.isShow) {
     return <ShowCrateProductCard {...props} />;
   }
@@ -136,7 +135,6 @@ function StandardProductCard({
   imagePriority = false,
   imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
 }: ProductCardProps) {
-  const t = useTranslations('Components.ProductCard');
   const layoutStyles = {
     grid: {
       root: 'max-w-md flex-col gap-3',
@@ -341,22 +339,7 @@ function StandardProductCard({
               </span>
             )}
             {controlPlacement.priceDetails}
-            {promotions != null && promotions.length > 0 && (
-              <div className="mt-1.5">
-                <CalloutRoot size="small" variant="warning">
-                  <CalloutContent>
-                    <CalloutHeader>
-                      <CalloutTitle>{promotions[0]?.text ?? ''}</CalloutTitle>
-                      {promotions.length > 1 && (
-                        <CalloutDescription>
-                          {t('moreOffers', { count: promotions.length - 1 })}
-                        </CalloutDescription>
-                      )}
-                    </CalloutHeader>
-                  </CalloutContent>
-                </CalloutRoot>
-              </div>
-            )}
+            <ProductCardPromotions promotions={promotions} />
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
@@ -396,76 +379,6 @@ function ProductCardBadges({
     <div className="my-1.5 flex flex-wrap gap-2">
       <Badge variant="info">{subtitle}</Badge>
     </div>
-  );
-}
-
-function ProductCardInventory({
-  colorScheme,
-  showStockLevel,
-  inventoryMessage,
-  layout,
-  stockDisplayData,
-  useEnhancedStockDisplay,
-}: Pick<Product, 'inventoryMessage' | 'stockDisplayData' | 'useEnhancedStockDisplay'> &
-  Required<Pick<ProductCardProps, 'colorScheme' | 'layout' | 'showStockLevel'>>) {
-  if (useEnhancedStockDisplay) {
-    const stockMessage = stockDisplayData?.stockLevelMessage || inventoryMessage;
-
-    return (
-      <div className="space-y-1 text-sm">
-        <EnhancedStockLevel message={stockMessage} status={stockDisplayData?.stockLevelStatus} />
-        {!!stockDisplayData?.backorderAvailabilityPrompt && (
-          <p className="opacity-75">{stockDisplayData.backorderAvailabilityPrompt}</p>
-        )}
-        {!!inventoryMessage && inventoryMessage !== stockMessage && (
-          <p className="opacity-75">{inventoryMessage}</p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {(layout === 'list' || showStockLevel) && stockDisplayData && (
-        <div
-          className={clsx(
-            'flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
-            {
-              light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-              dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
-            }[colorScheme],
-          )}
-        >
-          <span
-            className={clsx(
-              'font-semibold',
-              stockDisplayData.stockLevelStatus === 'error' && 'text-error',
-            )}
-          >
-            {stockDisplayData.stockLevelMessage}
-          </span>
-          {!!stockDisplayData.backorderAvailabilityPrompt && (
-            <span className="border-s border-contrast-100 pl-2.5">
-              {stockDisplayData.backorderAvailabilityPrompt}
-            </span>
-          )}
-        </div>
-      )}
-      <span
-        className={clsx(
-          'block text-sm font-normal',
-          {
-            light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
-            dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
-          }[colorScheme],
-        )}
-      >
-        {(layout === 'list' || showStockLevel) &&
-        inventoryMessage === stockDisplayData?.stockLevelMessage
-          ? null
-          : inventoryMessage}
-      </span>
-    </>
   );
 }
 
