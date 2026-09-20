@@ -89,16 +89,19 @@ export function AddToCartForm({
     },
   });
   const quantityControl = useInputControl(fields.quantity);
+  const { change: changeQuantity } = quantityControl;
 
   useEffect(() => {
     if (lastResult?.status === 'success') {
+      if (showQuantity) changeQuantity('1');
+
       toast.success(successMessage);
 
       // This is needed to refresh the Data Cache after the product has been added to the cart.
       // The cart id is not picked up after the first time the cart is created/updated.
       router.refresh();
     }
-  }, [lastResult, successMessage, router]);
+  }, [lastResult, successMessage, router, showQuantity, changeQuantity]);
 
   useEffect(() => {
     if (form.errors) {

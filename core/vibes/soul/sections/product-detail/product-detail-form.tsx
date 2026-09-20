@@ -162,18 +162,6 @@ export function ProductDetailForm<F extends Field>({
     lastResult: null,
   });
 
-  useEffect(() => {
-    if (lastResult?.status === 'success') {
-      toast.success(successMessage);
-
-      startTransition(async () => {
-        // This is needed to refresh the Data Cache after the product has been added to the cart.
-        // The cart id is not picked up after the first time the cart is created/updated.
-        await revalidateCart();
-      });
-    }
-  }, [lastResult, successMessage, router]);
-
   const [form, formFields] = useForm({
     lastResult,
     constraint: getZodConstraint(schema(fields, minQuantity, maxQuantity)),
@@ -235,6 +223,20 @@ export function ProductDetailForm<F extends Field>({
   }, [backorderDisplayData, formFields.quantity.value, t]);
 
   const quantityControl = useInputControl(formFields.quantity);
+  const { change: changeQuantity } = quantityControl;
+
+  useEffect(() => {
+    if (lastResult?.status === 'success') {
+      changeQuantity('1');
+      toast.success(successMessage);
+
+      startTransition(async () => {
+        // This is needed to refresh the Data Cache after the product has been added to the cart.
+        // The cart id is not picked up after the first time the cart is created/updated.
+        await revalidateCart();
+      });
+    }
+  }, [lastResult, successMessage, changeQuantity]);
 
   return (
     <FormProvider context={form.context}>
