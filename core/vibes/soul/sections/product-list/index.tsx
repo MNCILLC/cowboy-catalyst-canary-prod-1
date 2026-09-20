@@ -18,6 +18,7 @@ import {
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Link } from '~/components/link';
 
+import { useProductAttributesVisibility } from './attribute-visibility';
 import { useProductView } from './view';
 
 interface ProductListProps {
@@ -78,6 +79,7 @@ export function ProductList({
   maxCompareLimitMessage: streamableMaxCompareLimitMessage,
 }: ProductListProps) {
   const view = useProductView();
+  const showAttributes = useProductAttributesVisibility();
   const t = useTranslations('Compare');
   const tProduct = useTranslations('Product.ProductDetails.Submit');
   const tQuantity = useTranslations('Product.ProductDetails');
@@ -112,7 +114,14 @@ export function ProductList({
           );
         }
 
-        const gridColumns = products.some((product) => product.enhancedGridAttributes !== undefined)
+        const visibleProducts = products.map((product) =>
+          showAttributes || product.enhancedGridAttributes === undefined
+            ? product
+            : { ...product, attributes: undefined, enhancedGridAttributes: undefined },
+        );
+        const gridColumns = visibleProducts.some(
+          (product) => product.enhancedGridAttributes !== undefined,
+        )
           ? 'gap-4 @4xl:grid-cols-2 @7xl:grid-cols-3'
           : 'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5';
 
@@ -129,7 +138,7 @@ export function ProductList({
                   view === 'grid' ? gridColumns : 'gap-4',
                 )}
               >
-                {products.map((product) => (
+                {visibleProducts.map((product) => (
                   <ProductCard
                     aspectRatio={aspectRatio}
                     colorScheme={colorScheme}

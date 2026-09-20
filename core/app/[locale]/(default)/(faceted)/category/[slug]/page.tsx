@@ -300,6 +300,7 @@ export default async function Category(props: Props) {
         defaultExpandedFilters={!isCustomProductFilteringEnabled}
         emptyStateSubtitle={t('Category.Empty.subtitle')}
         emptyStateTitle={t('Category.Empty.title')}
+        enableEnhancedProductAttributes={process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'}
         enableListView={isProductListViewEnabled}
         filterLabel={t('FacetedSearch.filters')}
         filters={streamableFilters}

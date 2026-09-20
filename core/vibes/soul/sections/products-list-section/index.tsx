@@ -9,6 +9,7 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import * as SidePanel from '@/vibes/soul/primitives/side-panel';
 import { Breadcrumb, Breadcrumbs, BreadcrumbsSkeleton } from '@/vibes/soul/sections/breadcrumbs';
 import { ProductList } from '@/vibes/soul/sections/product-list';
+import { ProductAttributesToggle } from '@/vibes/soul/sections/product-list/attribute-visibility';
 import {
   ProductView,
   ProductViewProvider,
@@ -28,6 +29,7 @@ interface Props {
   showAppliedFilters?: boolean;
   showSort?: boolean;
   enableListView?: boolean;
+  enableEnhancedProductAttributes?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
   cartQuantities?: Streamable<Record<string, number>>;
@@ -67,6 +69,7 @@ export function ProductsListSection({
   showAppliedFilters = false,
   showSort = true,
   enableListView = true,
+  enableEnhancedProductAttributes = false,
   initialView,
   addToCartAction,
   cartQuantities,
@@ -138,27 +141,30 @@ export function ProductsListSection({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {showSort && (
-                    <Stream
-                      fallback={<SortingSkeleton />}
-                      value={Streamable.all([
-                        streamableSortLabel,
-                        streamableSortOptions,
-                        streamableSortPlaceholder,
-                      ])}
-                    >
-                      {([label, options, placeholder]) => (
-                        <Sorting
-                          defaultValue={sortDefaultValue}
-                          label={label}
-                          options={options}
-                          paramName={sortParamName}
-                          placeholder={placeholder}
-                        />
-                      )}
-                    </Stream>
+                    <div className="w-44 shrink-0">
+                      <Stream
+                        fallback={<SortingSkeleton />}
+                        value={Streamable.all([
+                          streamableSortLabel,
+                          streamableSortOptions,
+                          streamableSortPlaceholder,
+                        ])}
+                      >
+                        {([label, options, placeholder]) => (
+                          <Sorting
+                            defaultValue={sortDefaultValue}
+                            label={label}
+                            options={options}
+                            paramName={sortParamName}
+                            placeholder={placeholder}
+                          />
+                        )}
+                      </Stream>
+                    </div>
                   )}
+                  {enableEnhancedProductAttributes && <ProductAttributesToggle />}
                   <ProductViewSwitcher />
                 </div>
                 {showFilters && (

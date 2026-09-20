@@ -249,6 +249,7 @@ export default async function Brand(props: Props) {
       defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Brand.Empty.subtitle')}
       emptyStateTitle={t('Brand.Empty.title')}
+      enableEnhancedProductAttributes={process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'}
       enableListView={isProductListViewEnabled}
       filterLabel={t('FacetedSearch.filters')}
       filters={streamableFilters}
