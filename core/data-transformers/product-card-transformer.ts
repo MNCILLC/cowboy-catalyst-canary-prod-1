@@ -60,10 +60,20 @@ const productAttributesTransformer = (
 ) => {
   if (process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES !== 'true') return [];
 
-  return getProductAttributes(
-    'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
-    filters,
-  );
+  const packing =
+    'packingFields' in product
+      ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim()
+      : undefined;
+
+  return [
+    ...(packing
+      ? [{ key: 'packing', label: 'Packing', values: [{ value: packing, label: packing }] }]
+      : []),
+    ...getProductAttributes(
+      'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
+      filters,
+    ),
+  ];
 };
 
 export const singleProductCardTransformer = (
@@ -81,9 +91,9 @@ export const singleProductCardTransformer = (
     title: product.name,
     attributes: productAttributesTransformer(product, attributeFilters),
     descriptionHtml: 'description' in product ? product.description : undefined,
-    packing:
-      'packingFields' in product
-        ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim() || undefined
+    listViewDescription:
+      'listViewDescriptionMetafield' in product
+        ? removeEdgesAndNodes(product.listViewDescriptionMetafield).at(0)?.value.trim() || undefined
         : undefined,
     href: product.path,
     hasOptions:

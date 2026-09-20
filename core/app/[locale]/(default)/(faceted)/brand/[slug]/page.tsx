@@ -15,6 +15,7 @@ import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
 import { pageInfoTransformer } from '~/data-transformers/page-info-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
+import { getCartProductQuantities } from '~/lib/cart/get-product-cart-quantity';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
@@ -234,6 +235,11 @@ export default async function Brand(props: Props) {
   return (
     <ProductsListSection
       addToCartAction={addToCart}
+      cartQuantities={
+        isProductListViewEnabled && process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+          ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
+          : undefined
+      }
       compareLabel={t('Compare.compare')}
       compareProducts={streamableCompareProducts}
       defaultExpandedFilters={!isCustomProductFilteringEnabled}

@@ -7,6 +7,7 @@ import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProductCardProps } from '@/vibes/soul/primitives/product-card';
 import { ProductCardAttributes } from '@/vibes/soul/primitives/product-card/attributes';
 import { Compare } from '@/vibes/soul/primitives/product-card/compare';
+import { ProductCardDescription } from '@/vibes/soul/primitives/product-card/description';
 import { Rating } from '@/vibes/soul/primitives/rating';
 import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
 import { Image } from '~/components/image';
@@ -28,6 +29,7 @@ export function ShowCrateProductCard({
   const {
     id,
     title,
+    listViewDescription,
     subtitle,
     badge,
     image,
@@ -102,6 +104,11 @@ export function ShowCrateProductCard({
             <h3 className="mt-2 break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
               {title}
             </h3>
+            <ProductCardDescription
+              colorScheme={colorScheme}
+              layout={layout}
+              listViewDescription={listViewDescription}
+            />
             <PriceLabel
               className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
               colorScheme={colorScheme}

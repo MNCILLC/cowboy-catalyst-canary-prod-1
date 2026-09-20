@@ -31,12 +31,13 @@ interface Props {
   isPreorder?: boolean;
   addToCartAction: CompareAddToCartAction;
   showQuantity?: boolean;
-  size?: 'small' | 'medium';
+  size?: 'x-small' | 'small' | 'medium';
   quantityLabel?: string;
   incrementLabel?: string;
   decrementLabel?: string;
   minQuantity?: number;
   maxQuantity?: number;
+  cartQuantityLink?: ReactNode;
 }
 
 export function AddToCartForm({
@@ -53,6 +54,7 @@ export function AddToCartForm({
   decrementLabel = 'Decrease quantity',
   minQuantity = 1,
   maxQuantity,
+  cartQuantityLink,
 }: Props) {
   const router = useRouter();
   const events = useEvents();
@@ -87,16 +89,19 @@ export function AddToCartForm({
     },
   });
   const quantityControl = useInputControl(fields.quantity);
+  const { change: changeQuantity } = quantityControl;
 
   useEffect(() => {
     if (lastResult?.status === 'success') {
+      if (showQuantity) changeQuantity('1');
+
       toast.success(successMessage);
 
       // This is needed to refresh the Data Cache after the product has been added to the cart.
       // The cart id is not picked up after the first time the cart is created/updated.
       router.refresh();
     }
-  }, [lastResult, successMessage, router]);
+  }, [lastResult, successMessage, router, showQuantity, changeQuantity]);
 
   useEffect(() => {
     if (form.errors) {
@@ -110,13 +115,13 @@ export function AddToCartForm({
     <form
       {...getFormProps(form)}
       action={formAction}
-      className={clsx(showQuantity && 'flex items-start gap-2')}
+      className={clsx(showQuantity && 'flex items-start', size === 'x-small' ? 'gap-1.5' : 'gap-2')}
     >
       <input name="id" type="hidden" value={productId} />
       {showQuantity ? (
         <NumberInput
           aria-label={quantityLabel}
-          className="w-28 shrink-0"
+          className={clsx('shrink-0', size === 'x-small' ? 'w-auto' : 'w-28')}
           decrementLabel={decrementLabel}
           disabled={disabled || pending}
           errors={fields.quantity.errors}
@@ -135,15 +140,12 @@ export function AddToCartForm({
       ) : (
         <input name="quantity" type="hidden" value={1} />
       )}
-      <Button
-        className={showQuantity ? 'shrink-0' : 'w-full'}
-        disabled={disabled}
-        loading={pending}
-        size={size}
-        type="submit"
-      >
-        {isPreorder ? preorderLabel : addToCartLabel}
-      </Button>
+      <div className={clsx('flex flex-col gap-2', showQuantity ? 'shrink-0' : 'w-full')}>
+        <Button className="w-full" disabled={disabled} loading={pending} size={size} type="submit">
+          {isPreorder ? preorderLabel : addToCartLabel}
+        </Button>
+        {cartQuantityLink}
+      </div>
     </form>
   );
 }
