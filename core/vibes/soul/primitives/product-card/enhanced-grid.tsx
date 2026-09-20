@@ -89,14 +89,21 @@ export function EnhancedGridProductCard({
               price={product.price ?? (product.isShow ? t('callForPricing') : '')}
             />
           </div>
-          <ProductCardInventory
-            colorScheme={colorScheme}
-            inventoryMessage={product.inventoryMessage}
-            layout="grid"
-            showStockLevel={showStockLevel || product.isShow === true}
-            stockDisplayData={product.stockDisplayData}
-            useEnhancedStockDisplay={product.useEnhancedStockDisplay}
-          />
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <ProductCardInventory
+                colorScheme={colorScheme}
+                inventoryMessage={product.inventoryMessage}
+                layout="grid"
+                showStockLevel={showStockLevel || product.isShow === true}
+                stockDisplayData={product.stockDisplayData}
+                useEnhancedStockDisplay={product.useEnhancedStockDisplay}
+              />
+            </div>
+            {Boolean(purchaseAction) && (
+              <div className="relative z-10 ml-auto">{purchaseAction}</div>
+            )}
+          </div>
           <ProductCardPromotions promotions={product.promotions} />
           {showRating && typeof product.rating === 'number' && product.rating > 0 && (
             <Rating numberOfReviews={product.numberOfReviews} rating={product.rating} />
@@ -113,7 +120,6 @@ export function EnhancedGridProductCard({
               <span className="sr-only">: {product.title}</span>
             </ButtonLink>
           )}
-          {Boolean(purchaseAction) && <div className="relative z-10">{purchaseAction}</div>}
         </div>
 
         <ProductCardAttributes
