@@ -155,10 +155,10 @@ export function ProductList({
                           productId={product.id}
                           quantityLabel={tQuantity('quantity')}
                           showQuantity
-                          size="small"
+                          size="x-small"
                         />
                       ) : (
-                        <ButtonLink href={product.href} size="small">
+                        <ButtonLink href={product.href} size="x-small">
                           {t('viewOptions')}
                         </ButtonLink>
                       ))
