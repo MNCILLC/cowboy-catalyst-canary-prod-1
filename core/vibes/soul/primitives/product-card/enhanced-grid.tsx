@@ -74,17 +74,21 @@ export function EnhancedGridProductCard({
           )}
         </div>
 
-        <div className="min-w-0 space-y-2 md:col-start-1 md:row-start-2">
+        <div className="min-w-0 space-y-2 md:col-span-full md:row-start-2">
           {!!product.subtitle && (
             <p className="text-xs font-medium opacity-75">{product.subtitle}</p>
           )}
           {!!product.showName && <p className="text-xs opacity-75">{product.showName}</p>}
-          <h3 className="break-words text-lg font-semibold leading-tight">{product.title}</h3>
-          <PriceLabel
-            className="text-base [&_abbr]:cursor-default [&_abbr]:no-underline"
-            colorScheme={colorScheme}
-            price={product.price ?? (product.isShow ? t('callForPricing') : '')}
-          />
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="min-w-0 flex-1 break-words text-lg font-semibold leading-tight">
+              {product.title}
+            </h3>
+            <PriceLabel
+              className="max-w-[50%] shrink-0 text-right text-base [&_abbr]:cursor-default [&_abbr]:no-underline"
+              colorScheme={colorScheme}
+              price={product.price ?? (product.isShow ? t('callForPricing') : '')}
+            />
+          </div>
           <ProductCardInventory
             colorScheme={colorScheme}
             inventoryMessage={product.inventoryMessage}
@@ -114,7 +118,7 @@ export function EnhancedGridProductCard({
 
         <ProductCardAttributes
           attributes={product.enhancedGridAttributes}
-          className="md:col-start-2 md:row-span-2 md:row-start-1"
+          className="md:col-start-2 md:row-start-1"
           compact
           layout="grid"
         />
