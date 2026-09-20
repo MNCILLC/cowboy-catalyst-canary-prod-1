@@ -168,7 +168,10 @@ export default async function Brand(props: Props) {
         settings: settings?.inventory,
         formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
       },
-      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ? await getMetafieldFilters() : [],
+      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ||
+        process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'
+        ? await getMetafieldFilters()
+        : [],
     );
   });
 
