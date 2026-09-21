@@ -1,7 +1,6 @@
 import { clsx } from 'clsx';
 import { useTranslations } from 'next-intl';
 
-import { Badge } from '@/vibes/soul/primitives/badge';
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { Rating } from '@/vibes/soul/primitives/rating';
@@ -10,6 +9,7 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { ProductCardAttributes } from './attributes';
+import { ProductCardBadge } from './badge';
 import { Compare } from './compare';
 import { ProductCardInventory } from './inventory';
 import { ProductCardPromotions } from './promotions';
@@ -67,11 +67,11 @@ export function EnhancedGridProductCard({
               {product.title}
             </div>
           )}
-          {!!product.badge && (
-            <Badge className="absolute left-2 top-2" shape="rounded">
-              {product.badge}
-            </Badge>
-          )}
+          <ProductCardBadge
+            badge={product.badge}
+            className="absolute left-2 top-2"
+            isProUseOnly={product.isProUseOnly}
+          />
         </div>
 
         <div className="min-w-0 space-y-2 md:col-span-full md:row-start-2">

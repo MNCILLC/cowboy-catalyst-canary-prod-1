@@ -8,6 +8,7 @@ import {
   isShowCrateProduct,
   showCrateProductTransformer,
 } from '~/data-transformers/show-crate-product-transformer';
+import { isProUseProduct } from '~/lib/pro-use/policy';
 
 const priceSchema = z.object({
   value: z.number(),
@@ -26,6 +27,11 @@ const PricesSchema = z.object({
 });
 
 export const BcProductSchema = z.object({
+  proUseMetafields: z
+    .object({
+      edges: z.array(z.object({ node: z.object({ value: z.string() }) })).nullable(),
+    })
+    .optional(),
   showDescription: z.string(),
   showMetafields: z.object({
     edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
@@ -86,6 +92,7 @@ export function useBcProductToVibesProduct(
         ...showCrateProductTransformer(product),
         enhancedGridAttributes: product.enhancedGridAttributes,
         id: entityId.toString(),
+        isProUseOnly: isProUseProduct(product),
         title: name,
         href: path,
         image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,

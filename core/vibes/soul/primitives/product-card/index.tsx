@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
+import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
@@ -11,6 +12,7 @@ import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
 
 import { ProductCardAttributes } from './attributes';
+import { ProductCardBadge } from './badge';
 import { Compare } from './compare';
 import { ProductCardDescription } from './description';
 import { EnhancedGridProductCard } from './enhanced-grid';
@@ -18,6 +20,7 @@ import { ProductCardInventory } from './inventory';
 import { ProductCardPromotions } from './promotions';
 
 export interface Product {
+  isProUseOnly?: boolean;
   isShow?: boolean;
   showName?: string;
   showDescription?: string;
@@ -92,7 +95,15 @@ export interface ProductCardProps {
  * }
  * ```
  */
-export function ProductCard(props: ProductCardProps) {
+export function ProductCard({ purchaseAction, ...rest }: ProductCardProps) {
+  const props = {
+    ...rest,
+    product: { ...rest.product, badge: rest.product.isProUseOnly ? 'PRO' : rest.product.badge },
+    purchaseAction: purchaseAction ? (
+      <ProUseGate restricted={rest.product.isProUseOnly}>{purchaseAction}</ProUseGate>
+    ) : undefined,
+  };
+
   if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {
     return <EnhancedGridProductCard {...props} />;
   }
@@ -112,6 +123,7 @@ function StandardProductCard({
     attributes,
     subtitle,
     badge,
+    isProUseOnly,
     price,
     image,
     href,
@@ -183,12 +195,9 @@ function StandardProductCard({
       badge: 'mb-1 self-start',
     },
   }[layout];
-  const badgeElement =
-    badge != null && badge !== '' ? (
-      <Badge className={layoutStyles.badge} shape="rounded">
-        {badge}
-      </Badge>
-    ) : null;
+  const badgeElement = (
+    <ProductCardBadge badge={badge} className={layoutStyles.badge} isProUseOnly={isProUseOnly} />
+  );
 
   const inventory = (
     <ProductCardInventory
