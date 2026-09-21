@@ -61,7 +61,10 @@ export function ProUseCustomerBadge() {
       {({ isCertified }) =>
         isCertified ? (
           <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
-            <Badge className="px-1 py-0 text-[9px] font-semibold leading-3" shape="rounded">
+            <Badge
+              className="bg-green-700 px-1 py-0 text-[9px] font-semibold leading-3 text-white"
+              shape="rounded"
+            >
               PRO
             </Badge>
             <span className="sr-only"> certified customer</span>
