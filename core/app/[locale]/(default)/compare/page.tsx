@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { Streamable } from '@/vibes/soul/lib/streamable';
 import { CompareSection } from '@/vibes/soul/sections/compare-section';
 import { getSessionCustomerAccessToken } from '~/auth';
-import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { singleProductCardTransformer } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
@@ -76,15 +76,7 @@ export default async function Compare(props: Props) {
     const format = await getFormatter();
 
     return products.map((product) => ({
-      id: product.entityId.toString(),
-      title: product.name,
-      href: product.path,
-      image: product.defaultImage
-        ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
-        : undefined,
-      price: pricesTransformer(product, format, taxDisplay),
-      subtitle: product.brand?.name ?? undefined,
-      rating: product.reviewSummary.averageRating,
+      ...singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
       description: <div dangerouslySetInnerHTML={{ __html: product.description }} />,
       customFields: [
         { name: t('sku'), value: product.sku },

@@ -1,5 +1,6 @@
 import { PricingFragment } from '~/client/fragments/pricing';
 import { graphql } from '~/client/graphql';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 
 export const MakeswiftProductFragment = graphql(
   `
@@ -19,8 +20,9 @@ export const MakeswiftProductFragment = graphql(
         numberOfReviews
         averageRating
       }
+      ...ShowCrateProductCardFragment
       ...PricingFragment
     }
   `,
-  [PricingFragment],
+  [PricingFragment, ShowCrateProductCardFragment],
 );

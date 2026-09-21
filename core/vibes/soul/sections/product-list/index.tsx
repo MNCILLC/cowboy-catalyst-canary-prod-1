@@ -16,11 +16,14 @@ import {
   ProductCardSkeleton,
 } from '@/vibes/soul/primitives/product-card';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
+import { Link } from '~/components/link';
 
+import { useProductAttributesVisibility } from './attribute-visibility';
 import { useProductView } from './view';
 
 interface ProductListProps {
   addToCartAction?: CompareAddToCartAction;
+  cartQuantities?: Streamable<Record<string, number>>;
   products: Streamable<Product[]>;
   showRating?: boolean;
   compareProducts?: Streamable<Product[]>;
@@ -57,6 +60,7 @@ interface ProductListProps {
  */
 export function ProductList({
   addToCartAction,
+  cartQuantities,
   products: streamableProducts,
   showRating,
   className,
@@ -75,6 +79,7 @@ export function ProductList({
   maxCompareLimitMessage: streamableMaxCompareLimitMessage,
 }: ProductListProps) {
   const view = useProductView();
+  const showAttributes = useProductAttributesVisibility();
   const t = useTranslations('Compare');
   const tProduct = useTranslations('Product.ProductDetails.Submit');
   const tQuantity = useTranslations('Product.ProductDetails');
@@ -109,6 +114,17 @@ export function ProductList({
           );
         }
 
+        const visibleProducts = products.map((product) =>
+          showAttributes || product.enhancedGridAttributes === undefined
+            ? product
+            : { ...product, attributes: undefined, enhancedGridAttributes: undefined },
+        );
+        const gridColumns = visibleProducts.some(
+          (product) => product.enhancedGridAttributes !== undefined,
+        )
+          ? 'gap-4 @4xl:grid-cols-2 @7xl:grid-cols-3'
+          : 'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5';
+
         return (
           <CompareDrawerProvider
             items={compareProducts}
@@ -119,12 +135,10 @@ export function ProductList({
               <div
                 className={clsx(
                   'mx-auto grid grid-cols-1',
-                  view === 'grid'
-                    ? 'gap-x-4 gap-y-6 @sm:grid-cols-2 @2xl:grid-cols-3 @2xl:gap-x-5 @2xl:gap-y-8 @5xl:grid-cols-4 @7xl:grid-cols-5'
-                    : 'gap-4',
+                  view === 'grid' ? gridColumns : 'gap-4',
                 )}
               >
-                {products.map((product) => (
+                {visibleProducts.map((product) => (
                   <ProductCard
                     aspectRatio={aspectRatio}
                     colorScheme={colorScheme}
@@ -139,12 +153,29 @@ export function ProductList({
                     layout={view}
                     product={product}
                     purchaseAction={
-                      view === 'list' &&
+                      (view === 'list' || product.enhancedGridAttributes !== undefined) &&
                       addToCartAction &&
                       (product.hasOptions === false ? (
                         <AddToCartForm
                           addToCartAction={addToCartAction}
                           addToCartLabel={t('addToCart')}
+                          cartQuantityLink={
+                            cartQuantities !== undefined && (
+                              <Stream fallback={null} value={cartQuantities}>
+                                {(quantities) => {
+                                  const quantity = quantities[product.id] ?? 0;
+
+                                  return quantity > 0 ? (
+                                    <div aria-live="polite" className="w-full text-center text-xs">
+                                      <Link className="underline underline-offset-2" href="/cart">
+                                        {tQuantity('quantityInCart', { quantity })}
+                                      </Link>
+                                    </div>
+                                  ) : null;
+                                }}
+                              </Stream>
+                            )
+                          }
                           decrementLabel={tQuantity('decreaseQuantity')}
                           disabled={product.canAddToCart === false}
                           incrementLabel={tQuantity('increaseQuantity')}
@@ -155,10 +186,10 @@ export function ProductList({
                           productId={product.id}
                           quantityLabel={tQuantity('quantity')}
                           showQuantity
-                          size="small"
+                          size="x-small"
                         />
                       ) : (
-                        <ButtonLink href={product.href} size="small">
+                        <ButtonLink href={product.href} size="x-small">
                           {t('viewOptions')}
                         </ButtonLink>
                       ))

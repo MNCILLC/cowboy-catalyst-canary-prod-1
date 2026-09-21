@@ -6,9 +6,15 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import {
+  getProductAttributes,
+  ProductAttributeFilter,
+  productFilterDefinitions,
+} from '~/lib/product-metafield-filters';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
+import { isShowCrateProduct, showCrateProductTransformer } from './show-crate-product-transformer';
 
 interface ProductCardStockDisplay {
   settings?: StockDisplaySettings | null;
@@ -52,6 +58,47 @@ const getInventoryMessage = (
   return inventoryByLocation?.backorderMessage ?? undefined;
 };
 
+export const getProductCardAttributes = (
+  product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
+  filters?: ProductAttributeFilter[],
+) => {
+  const packing =
+    'packingFields' in product
+      ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim()
+      : undefined;
+
+  return [
+    ...(packing
+      ? [{ key: 'packing', label: 'Packing', values: [{ value: packing, label: packing }] }]
+      : []),
+    ...getProductAttributes(
+      'attributeMetafields' in product ? removeEdgesAndNodes(product.attributeMetafields) : [],
+      productFilterDefinitions.map(
+        ({ productKey }) =>
+          filters?.find(({ paramName }) => paramName === `mf_${productKey}`) ?? {
+            paramName: `mf_${productKey}`,
+            label: productKey.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()),
+            options: [],
+          },
+      ),
+    ),
+  ];
+};
+
+const productCardAttributeVariants = (
+  product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
+  filters?: ProductAttributeFilter[],
+) => {
+  const listEnabled = process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true';
+  const gridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
+  const attributes = listEnabled || gridEnabled ? getProductCardAttributes(product, filters) : [];
+
+  return {
+    attributes: listEnabled ? attributes : undefined,
+    enhancedGridAttributes: gridEnabled ? attributes : undefined,
+  };
+};
+
 export const singleProductCardTransformer = (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   format: ExistingResultType<typeof getFormatter>,
@@ -59,14 +106,17 @@ export const singleProductCardTransformer = (
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
+  attributeFilters?: ProductAttributeFilter[],
 ): Product => {
   return {
+    ...showCrateProductTransformer(product),
+    ...productCardAttributeVariants(product, attributeFilters),
     id: product.entityId.toString(),
     title: product.name,
     descriptionHtml: 'description' in product ? product.description : undefined,
-    packing:
-      'packingFields' in product
-        ? removeEdgesAndNodes(product.packingFields).at(0)?.value.trim() || undefined
+    listViewDescription:
+      'listViewDescriptionMetafield' in product
+        ? removeEdgesAndNodes(product.listViewDescriptionMetafield).at(0)?.value.trim() || undefined
         : undefined,
     href: product.path,
     hasOptions:
@@ -89,10 +139,14 @@ export const singleProductCardTransformer = (
     image: product.defaultImage
       ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
       : undefined,
-    price: pricesTransformer(product, format, taxDisplay),
+    price:
+      isShowCrateProduct(product) && hasZeroPrice(product)
+        ? undefined
+        : pricesTransformer(product, format, taxDisplay),
     subtitle: product.brand?.name ?? undefined,
     rating: product.reviewSummary.averageRating,
     numberOfReviews: product.reviewSummary.numberOfReviews,
+    useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
     inventoryMessage:
       'variants' in product
         ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
@@ -125,9 +179,10 @@ export const productCardTransformer = (
   showBackorderMessage?: boolean,
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
+  attributeFilters?: ProductAttributeFilter[],
 ): Product[] => {
   return products
-    .filter((product) => !hasZeroPrice(product))
+    .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
     .map((product) =>
       singleProductCardTransformer(
         product,
@@ -136,6 +191,7 @@ export const productCardTransformer = (
         showBackorderMessage,
         taxDisplay,
         stockDisplay,
+        attributeFilters,
       ),
     );
 };

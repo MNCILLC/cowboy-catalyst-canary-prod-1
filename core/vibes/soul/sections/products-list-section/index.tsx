@@ -9,11 +9,13 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import * as SidePanel from '@/vibes/soul/primitives/side-panel';
 import { Breadcrumb, Breadcrumbs, BreadcrumbsSkeleton } from '@/vibes/soul/sections/breadcrumbs';
 import { ProductList } from '@/vibes/soul/sections/product-list';
+import { ProductAttributesToggle } from '@/vibes/soul/sections/product-list/attribute-visibility';
 import {
   ProductView,
   ProductViewProvider,
   ProductViewSwitcher,
 } from '@/vibes/soul/sections/product-list/view';
+import { AppliedFilters } from '@/vibes/soul/sections/products-list-section/applied-filters';
 import { Filter, FiltersPanel } from '@/vibes/soul/sections/products-list-section/filters-panel';
 import {
   Sorting,
@@ -22,9 +24,15 @@ import {
 } from '@/vibes/soul/sections/products-list-section/sorting';
 
 interface Props {
+  defaultExpandedFilters?: boolean;
+  showFilters?: boolean;
+  showAppliedFilters?: boolean;
+  showSort?: boolean;
   enableListView?: boolean;
+  enableEnhancedProductAttributes?: boolean;
   initialView?: ProductView;
   addToCartAction?: CompareAddToCartAction;
+  cartQuantities?: Streamable<Record<string, number>>;
   breadcrumbs?: Streamable<Breadcrumb[]>;
   title?: Streamable<string | null>;
   totalCount: Streamable<string>;
@@ -56,9 +64,15 @@ interface Props {
 }
 
 export function ProductsListSection({
+  defaultExpandedFilters = false,
+  showFilters = true,
+  showAppliedFilters = false,
+  showSort = true,
   enableListView = true,
+  enableEnhancedProductAttributes = false,
   initialView,
   addToCartAction,
+  cartQuantities,
   breadcrumbs: streamableBreadcrumbs,
   title = 'Products',
   totalCount,
@@ -127,72 +141,87 @@ export function ProductsListSection({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2">
-                  <Stream
-                    fallback={<SortingSkeleton />}
-                    value={Streamable.all([
-                      streamableSortLabel,
-                      streamableSortOptions,
-                      streamableSortPlaceholder,
-                    ])}
-                  >
-                    {([label, options, placeholder]) => (
-                      <Sorting
-                        defaultValue={sortDefaultValue}
-                        label={label}
-                        options={options}
-                        paramName={sortParamName}
-                        placeholder={placeholder}
-                      />
-                    )}
-                  </Stream>
+                <div className="flex flex-wrap items-center gap-2">
+                  {showSort && (
+                    <div className="w-44 shrink-0">
+                      <Stream
+                        fallback={<SortingSkeleton />}
+                        value={Streamable.all([
+                          streamableSortLabel,
+                          streamableSortOptions,
+                          streamableSortPlaceholder,
+                        ])}
+                      >
+                        {([label, options, placeholder]) => (
+                          <Sorting
+                            defaultValue={sortDefaultValue}
+                            label={label}
+                            options={options}
+                            paramName={sortParamName}
+                            placeholder={placeholder}
+                          />
+                        )}
+                      </Stream>
+                    </div>
+                  )}
+                  {enableEnhancedProductAttributes && <ProductAttributesToggle />}
                   <ProductViewSwitcher />
                 </div>
-                <div className="block @3xl:hidden">
-                  <SidePanel.Root>
-                    <SidePanel.Trigger asChild>
-                      <Button size="medium" variant="secondary">
-                        {filterLabel}
-                        <span className="hidden @xl:block">
-                          <Sliders size={20} />
-                        </span>
-                      </Button>
-                    </SidePanel.Trigger>
-                    <Stream value={streamableFiltersPanelTitle}>
-                      {(filtersPanelTitle) => (
-                        <SidePanel.Content title={filtersPanelTitle}>
-                          <FiltersPanel
-                            filters={filters}
-                            paginationInfo={paginationInfo}
-                            rangeFilterApplyLabel={rangeFilterApplyLabel}
-                            resetFiltersLabel={resetFiltersLabel}
-                          />
-                        </SidePanel.Content>
-                      )}
-                    </Stream>
-                  </SidePanel.Root>
-                </div>
+                {showFilters && (
+                  <div className="block @3xl:hidden">
+                    <SidePanel.Root>
+                      <SidePanel.Trigger asChild>
+                        <Button size="medium" variant="secondary">
+                          {filterLabel}
+                          <span className="hidden @xl:block">
+                            <Sliders size={20} />
+                          </span>
+                        </Button>
+                      </SidePanel.Trigger>
+                      <Stream value={streamableFiltersPanelTitle}>
+                        {(filtersPanelTitle) => (
+                          <SidePanel.Content title={filtersPanelTitle}>
+                            <FiltersPanel
+                              defaultExpanded={defaultExpandedFilters}
+                              filters={filters}
+                              paginationInfo={paginationInfo}
+                              rangeFilterApplyLabel={rangeFilterApplyLabel}
+                              resetFiltersLabel={resetFiltersLabel}
+                            />
+                          </SidePanel.Content>
+                        )}
+                      </Stream>
+                    </SidePanel.Root>
+                  </div>
+                )}
               </div>
             </div>
           </div>
           <div className="flex items-stretch gap-8 @4xl:gap-10">
-            <aside className="hidden w-52 @3xl:block @4xl:w-60">
-              <Stream value={streamableFiltersPanelTitle}>
-                {(filtersPanelTitle) => <h2 className="sr-only">{filtersPanelTitle}</h2>}
-              </Stream>
-              <FiltersPanel
-                className="sticky top-4"
-                filters={filters}
-                paginationInfo={paginationInfo}
-                rangeFilterApplyLabel={rangeFilterApplyLabel}
-                resetFiltersLabel={resetFiltersLabel}
-              />
-            </aside>
+            {showFilters && (
+              <aside className="hidden w-52 @3xl:block @4xl:w-60">
+                <Stream value={streamableFiltersPanelTitle}>
+                  {(filtersPanelTitle) => <h2 className="sr-only">{filtersPanelTitle}</h2>}
+                </Stream>
+                <FiltersPanel
+                  className="sticky top-4"
+                  defaultExpanded={defaultExpandedFilters}
+                  filters={filters}
+                  paginationInfo={paginationInfo}
+                  rangeFilterApplyLabel={rangeFilterApplyLabel}
+                  resetFiltersLabel={resetFiltersLabel}
+                />
+              </aside>
+            )}
 
             <div className="group-has-data-pending/products-list-section:animate-pulse min-w-0 flex-1">
               {productListBanner}
+              {showAppliedFilters && (
+                <AppliedFilters filters={filters} paginationInfo={paginationInfo} />
+              )}
               <ProductList
                 addToCartAction={addToCartAction}
+                cartQuantities={cartQuantities}
                 compareHref={compareHref}
                 compareLabel={compareLabel}
                 compareParamName={compareParamName}

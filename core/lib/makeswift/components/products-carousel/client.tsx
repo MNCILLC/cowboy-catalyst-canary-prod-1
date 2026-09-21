@@ -13,7 +13,8 @@ type MSProductsCarouselProps = Omit<
   'products'
 > & {
   className: string;
-  collection: 'none' | 'best-selling' | 'newest' | 'featured';
+  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
+  categoryId?: string;
   limit: number;
   additionalProducts: Array<{
     entityId?: string;
@@ -24,16 +25,21 @@ type MSProductsCarouselProps = Omit<
 export function MSProductsCarousel({
   className,
   collection,
+  categoryId,
   limit,
-  additionalProducts,
+  additionalProducts = [],
   hideOverflow,
+  showStockLevel = false,
   showWholesalePricingBanner = true,
   ...props
 }: MSProductsCarouselProps) {
+  const maxProducts = Number.isFinite(limit) ? Math.min(50, Math.max(1, Math.floor(limit))) : 12;
   const additionalProductIds = additionalProducts.map(({ entityId }) => entityId ?? '');
   const { products, isLoading } = useProducts({
     collection,
-    collectionLimit: limit,
+    categoryId,
+    collectionLimit: maxProducts,
+    showStockLevel,
     additionalProductIds,
   });
   const showBanner = useWholesalePricingBannerVisibility(showWholesalePricingBanner);
@@ -54,7 +60,8 @@ export function MSProductsCarousel({
           {...props}
           className="w-full"
           hideOverflow={hideOverflow}
-          products={products}
+          products={products.slice(0, maxProducts)}
+          showStockLevel={showStockLevel}
         />
       </div>
     </div>

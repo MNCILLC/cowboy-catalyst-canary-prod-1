@@ -149,6 +149,20 @@
     "FacetedSearch": {
       "filters": "Filters",
       "resetFilters": "Reset filters",
+      "Applied": {
+        "label": "Applied filters",
+        "remove": "Remove {label}: {value}",
+        "clearAll": "Clear all"
+      },
+      "Metafields": {
+        "colors": "Colors",
+        "effects": "Effects",
+        "firing_patterns": "Firing patterns",
+        "caliber": "Caliber",
+        "performance_height": "Height",
+        "duration": "Duration",
+        "ignition_types": "Ignition types"
+      },
       "Range": {
         "apply": "Apply"
       },
@@ -515,6 +529,7 @@
     "ProductDetails": {
       "quantity": "Quantity",
       "increaseQuantity": "Increase quantity",
+      "quantityInCart": "{quantity, number} in cart",
       "decreaseQuantity": "Decrease quantity",
       "emptySelectPlaceholder": "Select an option",
       "successMessage": "{cartItems, plural, =1 {1 item} other {# items}} added to <cartLink> your cart</cartLink>",
@@ -524,6 +539,9 @@
       "increaseNumber": "Increase number",
       "decreaseNumber": "Decrease number",
       "thumbnail": "View image number",
+      "backToList": "Back to List",
+      "showFullDescription": "Show Full Description",
+      "hideFullDescription": "Hide Full Description",
       "additionalInformation": "Additional information",
       "currentStock": "{quantity, number} in stock",
       "backorderQuantity": "{quantity, number} will be on backorder",
@@ -532,6 +550,14 @@
       "playVideo": "Play video",
       "viewVideo": "View video",
       "videosTitle": "Videos",
+      "showVideosTitle": "See the show in action",
+      "includedItemsTitle": "What's in the crate",
+      "intendedAudienceTitle": "Who this show is for",
+      "Comparison": {
+        "title": "Find the right fit",
+        "feature": "Feature",
+        "price": "Price"
+      },
       "hideVideos": "Hide videos",
       "showVideos": "Show videos",
       "Submit": {
@@ -628,6 +654,8 @@
   },
   "Components": {
     "ProductCard": {
+      "learnMore": "Learn More",
+      "callForPricing": "Call for Pricing",
       "moreOffers": "+{count, plural, =1 {# more offer} other {# more offers}}"
     },
     "Header": {

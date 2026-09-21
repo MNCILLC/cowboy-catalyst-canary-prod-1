@@ -28,9 +28,12 @@ import { RadioGroup } from '@/vibes/soul/form/radio-group';
 import { Select } from '@/vibes/soul/form/select';
 import { SwatchRadioGroup } from '@/vibes/soul/form/swatch-radio-group';
 import { Textarea } from '@/vibes/soul/form/textarea';
+import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Button } from '@/vibes/soul/primitives/button';
+import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
+import { Link } from '~/components/link';
 import { usePathname, useRouter } from '~/i18n/routing';
 
 import { revalidateCart } from './actions/revalidate-cart';
@@ -47,7 +50,9 @@ interface State<F extends Field> {
 export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData>;
 
 export interface StockDisplayData {
+  enhanced?: boolean;
   stockLevelMessage?: string | null;
+  stockLevelStatus?: 'error' | 'success';
   backorderAvailabilityPrompt?: string | null;
 }
 
@@ -65,6 +70,7 @@ export interface ProductDetailFormProps<F extends Field> {
   productId: string;
   ctaLabel?: string;
   quantityLabel?: string;
+  quantityInCart?: Streamable<number>;
   incrementLabel?: string;
   decrementLabel?: string;
   emptySelectPlaceholder?: string;
@@ -83,6 +89,7 @@ export function ProductDetailForm<F extends Field>({
   productId,
   ctaLabel = 'Add to cart',
   quantityLabel = 'Quantity',
+  quantityInCart,
   incrementLabel = 'Increase quantity',
   decrementLabel = 'Decrease quantity',
   emptySelectPlaceholder = 'Select an option',
@@ -155,18 +162,6 @@ export function ProductDetailForm<F extends Field>({
     lastResult: null,
   });
 
-  useEffect(() => {
-    if (lastResult?.status === 'success') {
-      toast.success(successMessage);
-
-      startTransition(async () => {
-        // This is needed to refresh the Data Cache after the product has been added to the cart.
-        // The cart id is not picked up after the first time the cart is created/updated.
-        await revalidateCart();
-      });
-    }
-  }, [lastResult, successMessage, router]);
-
   const [form, formFields] = useForm({
     lastResult,
     constraint: getZodConstraint(schema(fields, minQuantity, maxQuantity)),
@@ -228,6 +223,20 @@ export function ProductDetailForm<F extends Field>({
   }, [backorderDisplayData, formFields.quantity.value, t]);
 
   const quantityControl = useInputControl(formFields.quantity);
+  const { change: changeQuantity } = quantityControl;
+
+  useEffect(() => {
+    if (lastResult?.status === 'success') {
+      changeQuantity('1');
+      toast.success(successMessage);
+
+      startTransition(async () => {
+        // This is needed to refresh the Data Cache after the product has been added to the cart.
+        // The cart id is not picked up after the first time the cart is created/updated.
+        await revalidateCart();
+      });
+    }
+  }, [lastResult, successMessage, changeQuantity]);
 
   return (
     <FormProvider context={form.context}>
@@ -266,9 +275,21 @@ export function ProductDetailForm<F extends Field>({
                     : 'translate-y-[calc(100%+4px)]',
                 )}
               >
-                <div className="flex-none whitespace-nowrap font-semibold text-black">
-                  {stockDisplayData.stockLevelMessage}
-                </div>
+                {stockDisplayData.enhanced ? (
+                  <EnhancedStockLevel
+                    message={stockDisplayData.stockLevelMessage}
+                    status={stockDisplayData.stockLevelStatus}
+                  />
+                ) : (
+                  <div
+                    className={clsx(
+                      'flex-none whitespace-nowrap font-semibold',
+                      stockDisplayData.stockLevelStatus === 'error' ? 'text-error' : 'text-black',
+                    )}
+                  >
+                    {stockDisplayData.stockLevelMessage}
+                  </div>
+                )}
                 {!!stockDisplayData.backorderAvailabilityPrompt && (
                   <div className="flex-none whitespace-nowrap border-s border-gray-300 pl-2.5">
                     {stockDisplayData.backorderAvailabilityPrompt}
@@ -299,7 +320,7 @@ export function ProductDetailForm<F extends Field>({
             )}
           </div>
 
-          <div className="flex gap-x-3">
+          <div className="flex items-start gap-x-3">
             <NumberInput
               aria-label={quantityLabel}
               decrementLabel={decrementLabel}
@@ -313,7 +334,25 @@ export function ProductDetailForm<F extends Field>({
               required
               value={quantityControl.value}
             />
-            <SubmitButton disabled={ctaDisabled}>{ctaLabel}</SubmitButton>
+            <div className="flex flex-col items-start gap-2">
+              <SubmitButton disabled={ctaDisabled}>{ctaLabel}</SubmitButton>
+              {quantityInCart !== undefined && (
+                <Stream fallback={null} value={quantityInCart}>
+                  {(quantity) =>
+                    quantity > 0 ? (
+                      <div
+                        aria-live="polite"
+                        className="w-full text-center text-sm text-[var(--product-detail-secondary-text,hsl(var(--contrast-500)))]"
+                      >
+                        <Link className="underline underline-offset-2" href="/cart">
+                          {t('quantityInCart', { quantity })}
+                        </Link>
+                      </div>
+                    ) : null
+                  }
+                </Stream>
+              )}
+            </div>
             {additionalActions}
           </div>
         </div>

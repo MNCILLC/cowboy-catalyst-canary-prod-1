@@ -1,13 +1,5 @@
 import { clsx } from 'clsx';
-import { useTranslations } from 'next-intl';
 import { ReactNode } from 'react';
-import {
-  Content as CalloutContent,
-  Description as CalloutDescription,
-  Header as CalloutHeader,
-  Root as CalloutRoot,
-  Title as CalloutTitle,
-} from 'storefront-kit/callout';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
@@ -16,15 +8,30 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { Rating } from '../rating';
+import { ShowCrateProductCard } from '../show-crate-product-card';
 
+import { ProductCardAttributes } from './attributes';
 import { Compare } from './compare';
 import { ProductCardDescription } from './description';
+import { EnhancedGridProductCard } from './enhanced-grid';
+import { ProductCardInventory } from './inventory';
+import { ProductCardPromotions } from './promotions';
 
 export interface Product {
+  isShow?: boolean;
+  showName?: string;
+  showDescription?: string;
+  showFeatures?: Array<{ id: string; value: string }>;
   id: string;
   title: string;
-  packing?: string;
+  listViewDescription?: string;
   descriptionHtml?: string;
+  attributes?: Array<{
+    key: string;
+    label: string;
+    values: Array<{ value: string; label: string; swatchColor?: string }>;
+  }>;
+  enhancedGridAttributes?: Product['attributes'];
   href: string;
   image?: { src: string; alt: string };
   price?: Price;
@@ -32,8 +39,10 @@ export interface Product {
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  useEnhancedStockDisplay?: boolean;
   stockDisplayData?: {
     stockLevelMessage: string;
+    stockLevelStatus?: 'error' | 'success';
     backorderAvailabilityPrompt: string | null;
   } | null;
   numberOfReviews?: number;
@@ -58,6 +67,7 @@ export interface ProductCardProps {
   compareParamName?: string;
   product: Product;
   showRating?: boolean;
+  showStockLevel?: boolean;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -82,24 +92,38 @@ export interface ProductCardProps {
  * }
  * ```
  */
-export function ProductCard({
+export function ProductCard(props: ProductCardProps) {
+  if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {
+    return <EnhancedGridProductCard {...props} />;
+  }
+
+  if (props.product.isShow) {
+    return <ShowCrateProductCard {...props} />;
+  }
+
+  return <StandardProductCard {...props} />;
+}
+
+function StandardProductCard({
   product: {
     id,
     title,
-    packing,
-    descriptionHtml,
+    listViewDescription,
+    attributes,
     subtitle,
     badge,
     price,
     image,
     href,
     inventoryMessage,
+    useEnhancedStockDisplay,
     stockDisplayData,
     rating,
     numberOfReviews,
     promotions,
   },
   showRating = false,
+  showStockLevel = false,
   layout = 'grid',
   purchaseAction,
   colorScheme = 'light',
@@ -111,7 +135,6 @@ export function ProductCard({
   imagePriority = false,
   imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
 }: ProductCardProps) {
-  const t = useTranslations('Components.ProductCard');
   const layoutStyles = {
     grid: {
       root: 'max-w-md flex-col gap-3',
@@ -129,6 +152,9 @@ export function ProductCard({
       placeholder: 'pl-5 pt-5 text-4xl leading-[0.8] @xs:text-7xl',
       details: 'mt-2 px-1 @xs:mt-3 @2xl:flex-row',
       detailsContent: '',
+      titleRow: '',
+      title: '',
+      descriptionRow: '',
       actions: 'ml-1 mt-auto',
       compare: '',
       badge: 'absolute left-3 top-3',
@@ -149,7 +175,10 @@ export function ProductCard({
       placeholder: 'p-2 text-sm',
       details: 'min-h-0 min-w-0 self-stretch',
       detailsContent: 'flex min-h-0 w-full flex-col',
-      actions: 'ml-auto flex flex-col items-end gap-3',
+      titleRow: 'grid grid-cols-2 items-start gap-x-4 gap-y-2 @lg:grid-cols-3',
+      title: 'col-span-2 min-w-0 @lg:col-span-1',
+      descriptionRow: 'flex flex-col gap-x-4 @lg:flex-row @lg:items-start',
+      actions: 'relative z-10 ml-auto mt-2 flex flex-col items-end gap-3',
       compare: 'relative z-10 w-fit',
       badge: 'mb-1 self-start',
     },
@@ -166,16 +195,11 @@ export function ProductCard({
       colorScheme={colorScheme}
       inventoryMessage={inventoryMessage}
       layout={layout}
+      showStockLevel={showStockLevel}
       stockDisplayData={stockDisplayData}
+      useEnhancedStockDisplay={useEnhancedStockDisplay}
     />
   );
-  const inventoryPlacement = {
-    grid: { details: inventory, actions: null },
-    list: {
-      details: null,
-      actions: <div className="w-full min-w-0 max-w-xs">{inventory}</div>,
-    },
-  }[layout];
   const priceElement = price != null && (
     <PriceLabel
       className="[&_abbr]:cursor-default [&_abbr]:no-underline"
@@ -198,14 +222,32 @@ export function ProductCard({
       compareImage: null,
       compareActions: compareElement,
       priceDetails: priceElement,
-      priceActions: null,
+      inventoryDetails: inventory,
+      headerDetails: null,
     },
     list: {
       compareImage: compareElement,
       compareActions: null,
       priceDetails: null,
-      priceActions: priceElement,
+      inventoryDetails: null,
+      headerDetails: (
+        <>
+          <div className="min-w-0 @lg:justify-self-center">{inventory}</div>
+          <div className="min-w-0 text-right">{priceElement}</div>
+        </>
+      ),
     },
+  }[layout];
+
+  const actionsElement = [purchaseAction, controlPlacement.compareActions].some(Boolean) && (
+    <div className={clsx('shrink-0', layoutStyles.actions)}>
+      {purchaseAction}
+      {controlPlacement.compareActions}
+    </div>
+  );
+  const actionsPlacement = {
+    grid: { details: null, outside: actionsElement },
+    list: { details: actionsElement, outside: null },
   }[layout];
 
   return (
@@ -259,23 +301,30 @@ export function ProductCard({
             )}
           >
             {layout === 'list' && badgeElement}
-            <span
-              className={clsx(
-                'line-clamp-2 font-semibold',
-                {
-                  light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-                  dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
-                }[colorScheme],
-              )}
-            >
-              {title}
-            </span>
-            <ProductCardBadges layout={layout} packing={packing} subtitle={subtitle} />
-            <ProductCardDescription
-              colorScheme={colorScheme}
-              description={descriptionHtml}
-              layout={layout}
-            />
+            <div className={layoutStyles.titleRow}>
+              <span
+                className={clsx(
+                  'line-clamp-2 font-semibold',
+                  layoutStyles.title,
+                  {
+                    light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
+                    dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
+                  }[colorScheme],
+                )}
+              >
+                {title}
+              </span>
+              {controlPlacement.headerDetails}
+            </div>
+            <div className={layoutStyles.descriptionRow}>
+              <ProductCardDescription
+                colorScheme={colorScheme}
+                layout={layout}
+                listViewDescription={listViewDescription}
+              />
+              {actionsPlacement.details}
+            </div>
+            <ProductCardBadges layout={layout} subtitle={subtitle} />
             {layout === 'grid' && subtitle != null && subtitle !== '' && (
               <span
                 className={clsx(
@@ -290,28 +339,14 @@ export function ProductCard({
               </span>
             )}
             {controlPlacement.priceDetails}
-            {promotions != null && promotions.length > 0 && (
-              <div className="mt-1.5">
-                <CalloutRoot size="small" variant="warning">
-                  <CalloutContent>
-                    <CalloutHeader>
-                      <CalloutTitle>{promotions[0]?.text ?? ''}</CalloutTitle>
-                      {promotions.length > 1 && (
-                        <CalloutDescription>
-                          {t('moreOffers', { count: promotions.length - 1 })}
-                        </CalloutDescription>
-                      )}
-                    </CalloutHeader>
-                  </CalloutContent>
-                </CalloutRoot>
-              </div>
-            )}
+            <ProductCardPromotions promotions={promotions} />
             {showRating && typeof rating === 'number' && rating > 0 && (
               <Rating className="mb-2 mt-1" numberOfReviews={numberOfReviews} rating={rating} />
             )}
-            {inventoryPlacement.details}
+            {controlPlacement.inventoryDetails}
           </div>
         </div>
+        <ProductCardAttributes attributes={attributes} layout={layout} />
         {href !== '#' && (
           <Link
             aria-label={title}
@@ -329,79 +364,21 @@ export function ProductCard({
           </Link>
         )}
       </div>
-      {[
-        controlPlacement.priceActions,
-        purchaseAction,
-        inventoryPlacement.actions,
-        controlPlacement.compareActions,
-      ].some(Boolean) && (
-        <div className={clsx('shrink-0', layoutStyles.actions)}>
-          {controlPlacement.priceActions}
-          {purchaseAction}
-          {inventoryPlacement.actions}
-          {controlPlacement.compareActions}
-        </div>
-      )}
+      {actionsPlacement.outside}
     </article>
   );
 }
 
 function ProductCardBadges({
   layout,
-  packing,
   subtitle,
-}: Pick<Product, 'packing' | 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
-  if (layout !== 'list' || (!packing?.trim() && !subtitle?.trim())) return null;
+}: Pick<Product, 'subtitle'> & Required<Pick<ProductCardProps, 'layout'>>) {
+  if (layout !== 'list' || !subtitle?.trim()) return null;
 
   return (
     <div className="my-1.5 flex flex-wrap gap-2">
-      {!!packing?.trim() && <Badge variant="info">{packing}</Badge>}
-      {!!subtitle?.trim() && <Badge variant="info">{subtitle}</Badge>}
+      <Badge variant="info">{subtitle}</Badge>
     </div>
-  );
-}
-
-function ProductCardInventory({
-  colorScheme,
-  inventoryMessage,
-  layout,
-  stockDisplayData,
-}: Pick<Product, 'inventoryMessage' | 'stockDisplayData'> &
-  Required<Pick<ProductCardProps, 'colorScheme' | 'layout'>>) {
-  return (
-    <>
-      {layout === 'list' && stockDisplayData && (
-        <div
-          className={clsx(
-            'flex flex-wrap gap-x-2.5 gap-y-2 text-sm',
-            {
-              light: 'text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-              dark: 'text-[var(--product-card-dark-title,hsl(var(--background)))]',
-            }[colorScheme],
-          )}
-        >
-          <span className="font-semibold">{stockDisplayData.stockLevelMessage}</span>
-          {!!stockDisplayData.backorderAvailabilityPrompt && (
-            <span className="border-s border-contrast-100 pl-2.5">
-              {stockDisplayData.backorderAvailabilityPrompt}
-            </span>
-          )}
-        </div>
-      )}
-      <span
-        className={clsx(
-          'block text-sm font-normal',
-          {
-            light: 'text-[var(--product-card-light-message,hsl(var(--foreground)/75%))]',
-            dark: 'text-[var(--product-card-dark-message,hsl(var(--background)/75%))]',
-          }[colorScheme],
-        )}
-      >
-        {layout === 'list' && inventoryMessage === stockDisplayData?.stockLevelMessage
-          ? null
-          : inventoryMessage}
-      </span>
-    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
+import { getTranslations } from 'next-intl/server';
 import { cache } from 'react';
 
 import { getSessionCustomerAccessToken } from '~/auth';
@@ -7,13 +8,62 @@ import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { getProductCardAttributes } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { getStockDisplayData } from '~/lib/stock-display';
+
+import { getMetafieldFilters } from './get-metafield-filters';
+
+const ProductStockSettingsFragment = graphql(`
+  fragment ProductStockSettingsFragment on Settings {
+    inventory {
+      defaultOutOfStockMessage
+      showOutOfStockMessage
+      stockLevelDisplay
+      showBackorderAvailabilityPrompt
+      backorderAvailabilityPrompt
+      showQuantityOnBackorder
+      showBackorderMessage
+    }
+  }
+`);
+
+async function withStockDisplay(
+  products: Array<ResultOf<typeof ProductCardFragment>>,
+  settings: ResultOf<typeof ProductStockSettingsFragment> | null | undefined,
+  locale?: string,
+) {
+  const t = locale
+    ? await getTranslations({ locale, namespace: 'Product.ProductDetails' })
+    : await getTranslations('Product.ProductDetails');
+  const enhancedGridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
+  const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters() : [];
+
+  return products.map((product) => ({
+    ...product,
+    enhancedGridAttributes: enhancedGridEnabled
+      ? getProductCardAttributes(product, attributeFilters)
+      : undefined,
+    useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+    stockDisplayData: getStockDisplayData(
+      // Cards have no selected variant, so a combined quantity would be misleading.
+      product.inventory.hasVariantInventory
+        ? { isInStock: product.inventory.isInStock }
+        : product.inventory,
+      settings?.inventory,
+      (quantity) => t('currentStock', { quantity }),
+    ),
+  }));
+}
 
 const GetBestSellingProductsQuery = graphql(
   `
-    query getBestSellingProducts($currencyCode: currencyCode) {
+    query getBestSellingProducts($currencyCode: currencyCode, $limit: Int) {
       site {
-        bestSellingProducts {
+        settings {
+          ...ProductStockSettingsFragment
+        }
+        bestSellingProducts(first: $limit) {
           edges {
             node {
               categories {
@@ -31,14 +81,17 @@ const GetBestSellingProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetFeaturedProductsQuery = graphql(
   `
-    query getFeaturedProducts($currencyCode: currencyCode) {
+    query getFeaturedProducts($currencyCode: currencyCode, $limit: Int) {
       site {
-        featuredProducts {
+        settings {
+          ...ProductStockSettingsFragment
+        }
+        featuredProducts(first: $limit) {
           edges {
             node {
               categories {
@@ -56,14 +109,17 @@ const GetFeaturedProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetNewestProductsQuery = graphql(
   `
-    query getNewestProducts($currencyCode: currencyCode) {
+    query getNewestProducts($currencyCode: currencyCode, $limit: Int) {
       site {
-        newestProducts {
+        settings {
+          ...ProductStockSettingsFragment
+        }
+        newestProducts(first: $limit) {
           edges {
             node {
               categories {
@@ -81,13 +137,16 @@ const GetNewestProductsQuery = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 const GetProductsByIds = graphql(
   `
     query GetProductsByIds($entityIds: [Int!], $currencyCode: currencyCode) {
       site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
         products(entityIds: $entityIds) {
           edges {
             node {
@@ -106,7 +165,37 @@ const GetProductsByIds = graphql(
       }
     }
   `,
-  [ProductCardFragment],
+  [ProductCardFragment, ProductStockSettingsFragment],
+);
+
+const GetCategoryProductsQuery = graphql(
+  `
+    query GetCategoryProducts($categoryId: Int!, $limit: Int, $currencyCode: currencyCode) {
+      site {
+        settings {
+          ...ProductStockSettingsFragment
+        }
+        category(entityId: $categoryId) {
+          products(first: $limit) {
+            edges {
+              node {
+                categories {
+                  edges {
+                    node {
+                      name
+                      path
+                    }
+                  }
+                }
+                ...ProductCardFragment
+              }
+            }
+          }
+        }
+      }
+    }
+  `,
+  [ProductCardFragment, ProductStockSettingsFragment],
 );
 
 export type GetProductsResponse = Array<
@@ -115,71 +204,83 @@ export type GetProductsResponse = Array<
   >[number]['node']
 >;
 
-const getBestSellingProducts = cache(async ({ locale }: { locale?: string }) => {
-  const customerAccessToken = await getSessionCustomerAccessToken();
-  const currencyCode = await getPreferredCurrencyCode();
-  const channelId = getChannelIdFromLocale(locale);
+const getBestSellingProducts = cache(
+  async ({ locale, limit }: { locale?: string; limit?: number }) => {
+    const customerAccessToken = await getSessionCustomerAccessToken();
+    const currencyCode = await getPreferredCurrencyCode();
+    const channelId = getChannelIdFromLocale(locale);
 
-  try {
-    const response = await client.fetch({
-      document: GetBestSellingProductsQuery,
-      customerAccessToken,
-      variables: { currencyCode },
-      channelId,
-      fetchOptions: {
-        ...(locale && { headers: { 'Accept-Language': locale } }),
-        ...(customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } }),
-      },
-    });
+    try {
+      const response = await client.fetch({
+        document: GetBestSellingProductsQuery,
+        customerAccessToken,
+        variables: { currencyCode, limit },
+        channelId,
+        fetchOptions: {
+          ...(locale && { headers: { 'Accept-Language': locale } }),
+          ...(customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } }),
+        },
+      });
 
-    const { bestSellingProducts } = response.data.site;
+      const { bestSellingProducts } = response.data.site;
 
-    return {
-      status: 'success',
-      products: removeEdgesAndNodes(bestSellingProducts),
-    };
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return { status: 'error', error: error.message };
+      return {
+        status: 'success',
+        products: await withStockDisplay(
+          removeEdgesAndNodes(bestSellingProducts),
+          response.data.site.settings,
+          locale,
+        ),
+      };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        return { status: 'error', error: error.message };
+      }
+
+      return { status: 'error', error: 'Something went wrong. Please try again.' };
     }
+  },
+);
 
-    return { status: 'error', error: 'Something went wrong. Please try again.' };
-  }
-});
+const getFeaturedProducts = cache(
+  async ({ locale, limit }: { locale?: string; limit?: number }) => {
+    const customerAccessToken = await getSessionCustomerAccessToken();
+    const currencyCode = await getPreferredCurrencyCode();
+    const channelId = getChannelIdFromLocale(locale);
 
-const getFeaturedProducts = cache(async ({ locale }: { locale?: string }) => {
-  const customerAccessToken = await getSessionCustomerAccessToken();
-  const currencyCode = await getPreferredCurrencyCode();
-  const channelId = getChannelIdFromLocale(locale);
+    try {
+      const response = await client.fetch({
+        document: GetFeaturedProductsQuery,
+        customerAccessToken,
+        variables: { currencyCode, limit },
+        channelId,
+        fetchOptions: {
+          ...(locale && { headers: { 'Accept-Language': locale } }),
+          ...(customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } }),
+        },
+      });
 
-  try {
-    const response = await client.fetch({
-      document: GetFeaturedProductsQuery,
-      customerAccessToken,
-      variables: { currencyCode },
-      channelId,
-      fetchOptions: {
-        ...(locale && { headers: { 'Accept-Language': locale } }),
-        ...(customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } }),
-      },
-    });
+      const { featuredProducts } = response.data.site;
 
-    const { featuredProducts } = response.data.site;
+      return {
+        status: 'success',
+        products: await withStockDisplay(
+          removeEdgesAndNodes(featuredProducts),
+          response.data.site.settings,
+          locale,
+        ),
+      };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        return { status: 'error', error: error.message };
+      }
 
-    return {
-      status: 'success',
-      products: removeEdgesAndNodes(featuredProducts),
-    };
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      return { status: 'error', error: error.message };
+      return { status: 'error', error: 'Something went wrong. Please try again.' };
     }
+  },
+);
 
-    return { status: 'error', error: 'Something went wrong. Please try again.' };
-  }
-});
-
-const getNewestProducts = cache(async ({ locale }: { locale?: string }) => {
+const getNewestProducts = cache(async ({ locale, limit }: { locale?: string; limit?: number }) => {
   const customerAccessToken = await getSessionCustomerAccessToken();
   const currencyCode = await getPreferredCurrencyCode();
   const channelId = getChannelIdFromLocale(locale);
@@ -188,7 +289,7 @@ const getNewestProducts = cache(async ({ locale }: { locale?: string }) => {
     const response = await client.fetch({
       document: GetNewestProductsQuery,
       customerAccessToken,
-      variables: { currencyCode },
+      variables: { currencyCode, limit },
       channelId,
       fetchOptions: {
         ...(locale && { headers: { 'Accept-Language': locale } }),
@@ -200,7 +301,11 @@ const getNewestProducts = cache(async ({ locale }: { locale?: string }) => {
 
     return {
       status: 'success',
-      products: removeEdgesAndNodes(newestProducts),
+      products: await withStockDisplay(
+        removeEdgesAndNodes(newestProducts),
+        response.data.site.settings,
+        locale,
+      ),
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -231,7 +336,11 @@ const getProductsByIds = cache(
 
       return {
         status: 'success',
-        products: removeEdgesAndNodes(products),
+        products: await withStockDisplay(
+          removeEdgesAndNodes(products),
+          response.data.site.settings,
+          locale,
+        ),
       };
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -243,4 +352,55 @@ const getProductsByIds = cache(
   },
 );
 
-export { getBestSellingProducts, getFeaturedProducts, getNewestProducts, getProductsByIds };
+const getCategoryProducts = cache(
+  async ({
+    categoryId,
+    limit = 12,
+    locale,
+  }: {
+    categoryId: number;
+    limit?: number;
+    locale?: string;
+  }) => {
+    const customerAccessToken = await getSessionCustomerAccessToken();
+    const currencyCode = await getPreferredCurrencyCode();
+    const channelId = getChannelIdFromLocale(locale);
+
+    try {
+      const response = await client.fetch({
+        document: GetCategoryProductsQuery,
+        variables: { categoryId, limit, currencyCode },
+        customerAccessToken,
+        channelId,
+        fetchOptions: {
+          ...(locale && { headers: { 'Accept-Language': locale } }),
+          ...(customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } }),
+        },
+      });
+      const category = response.data.site.category;
+
+      return {
+        status: 'success',
+        products: await withStockDisplay(
+          category ? removeEdgesAndNodes(category.products) : [],
+          response.data.site.settings,
+          locale,
+        ),
+      };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        return { status: 'error', error: error.message };
+      }
+
+      return { status: 'error', error: 'Something went wrong. Please try again.' };
+    }
+  },
+);
+
+export {
+  getBestSellingProducts,
+  getCategoryProducts,
+  getFeaturedProducts,
+  getNewestProducts,
+  getProductsByIds,
+};

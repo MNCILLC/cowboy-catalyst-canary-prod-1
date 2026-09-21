@@ -1,5 +1,7 @@
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProductAttributesFragment } from '~/client/fragments/product-attributes';
 import { graphql } from '~/client/graphql';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 
 export const ProductCardFragment = graphql(
   `
@@ -7,6 +9,18 @@ export const ProductCardFragment = graphql(
       entityId
       name
       description
+      listViewDescriptionMetafield: metafields(
+        namespace: "custom_product"
+        keys: ["list_view_description"]
+        first: 1
+      ) {
+        edges {
+          node {
+            value
+          }
+        }
+      }
+      ...ProductAttributesFragment
       packingFields: customFields(names: ["packing", "Packing", "PACKING"], first: 1) {
         edges {
           node {
@@ -77,8 +91,9 @@ export const ProductCardFragment = graphql(
           }
         }
       }
+      ...ShowCrateProductCardFragment
       ...PricingFragment
     }
   `,
-  [PricingFragment],
+  [PricingFragment, ShowCrateProductCardFragment, ProductAttributesFragment],
 );

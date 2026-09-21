@@ -6,9 +6,10 @@ import { registerImageComponent } from '@makeswift/runtime/react/builtins/image'
 import { registerRootComponent } from '@makeswift/runtime/react/builtins/root';
 import { registerSlotComponent } from '@makeswift/runtime/react/builtins/slot';
 import { registerSocialLinksComponent } from '@makeswift/runtime/react/builtins/social-links';
-import { registerTextComponent } from '@makeswift/runtime/react/builtins/text';
 import { registerVideoComponent } from '@makeswift/runtime/react/builtins/video';
 import { ReactRuntimeCore } from '@makeswift/runtime/react/core';
+
+import { registerTextWithBorder } from './components/text/register';
 
 const runtime = new ReactRuntimeCore({
   apiOrigin: process.env.NEXT_PUBLIC_MAKESWIFT_API_ORIGIN,
@@ -28,7 +29,7 @@ const runtime = new ReactRuntimeCore({
 registerRootComponent(runtime);
 registerSlotComponent(runtime);
 registerBoxComponent(runtime);
-registerTextComponent(runtime);
+registerTextWithBorder(runtime);
 registerImageComponent(runtime);
 registerDividerComponent(runtime);
 registerEmbedComponent(runtime);

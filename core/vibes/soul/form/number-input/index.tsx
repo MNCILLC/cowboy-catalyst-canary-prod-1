@@ -36,7 +36,7 @@ import { Label } from '@/vibes/soul/form/label';
 export const NumberInput = React.forwardRef<
   React.ComponentRef<'input'>,
   Omit<React.ComponentPropsWithoutRef<'input'>, 'id' | 'size'> & {
-    size?: 'small' | 'medium';
+    size?: 'x-small' | 'small' | 'medium';
     label?: string;
     errors?: string[];
     decrementLabel?: string;
@@ -91,7 +91,7 @@ export const NumberInput = React.forwardRef<
             aria-label={decrementLabel}
             className={clsx(
               'group rounded-l-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
-              size === 'small' ? 'p-3' : 'p-3.5',
+              { 'x-small': 'p-2', small: 'p-3', medium: 'p-3.5' }[size],
               {
                 light:
                   'bg-[var(--number-input-light-button-background,hsl(var(--background)))] hover:bg-[var(--number-input-light-button-background-hover,hsl(var(--contrast-100)/50%))]',
@@ -118,14 +118,15 @@ export const NumberInput = React.forwardRef<
                   dark: 'text-[var(--number-input-dark-icon,hsl(var(--contrast-300)))] group-hover:text-[var(--number-input-dark-icon-hover,hsl(var(--background)))]',
                 }[colorScheme],
               )}
-              size={size === 'small' ? 16 : 18}
+              size={size === 'medium' ? 18 : 16}
               strokeWidth={1.5}
             />
           </button>
           <input
             {...rest}
             className={clsx(
-              'w-8 flex-1 select-none justify-center bg-transparent text-center [appearance:textfield] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+              'flex-1 select-none justify-center bg-transparent text-center [appearance:textfield] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-30 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+              size === 'x-small' ? 'w-6 text-xs' : 'w-8',
               size === 'small' && 'text-sm',
               {
                 light: 'text-[var(--number-input-light-text,hsl(var(--foreground)))]',
@@ -142,7 +143,7 @@ export const NumberInput = React.forwardRef<
             aria-label={incrementLabel}
             className={clsx(
               'group rounded-r-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--number-input-focus,hsl(var(--primary)))] disabled:cursor-not-allowed disabled:opacity-30',
-              size === 'small' ? 'p-3' : 'p-3.5',
+              { 'x-small': 'p-2', small: 'p-3', medium: 'p-3.5' }[size],
               {
                 light:
                   'bg-[var(--number-input-light-button-background,hsl(var(--background)))] hover:bg-[var(--number-input-light-button-background-hover,hsl(var(--contrast-100)/50%))]',
@@ -169,7 +170,7 @@ export const NumberInput = React.forwardRef<
                   dark: 'text-[var(--number-input-dark-icon,hsl(var(--contrast-300)))] group-hover:text-[var(--number-input-dark-icon-hover,hsl(var(--background)))]',
                 }[colorScheme],
               )}
-              size={size === 'small' ? 16 : 18}
+              size={size === 'medium' ? 18 : 16}
               strokeWidth={1.5}
             />
           </button>
