@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useContext } from 'react';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
+import { Badge } from '@/vibes/soul/primitives/badge';
 import { HeroHtml } from '@/vibes/soul/sections/hero-video/html';
 
 interface ProUseAccess {
@@ -48,6 +49,25 @@ export function ProUseGate({
   return (
     <Stream fallback={<ProUseMessage message={defaultAccess.message} />} value={access}>
       {({ isCertified, message }) => (isCertified ? children : <ProUseMessage message={message} />)}
+    </Stream>
+  );
+}
+
+export function ProUseCustomerBadge() {
+  const access = useContext(ProUseContext);
+
+  return (
+    <Stream fallback={null} value={access}>
+      {({ isCertified }) =>
+        isCertified ? (
+          <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <Badge className="px-1 py-0 text-[9px] font-semibold leading-3" shape="rounded">
+              PRO
+            </Badge>
+            <span className="sr-only"> certified customer</span>
+          </span>
+        ) : null
+      }
     </Stream>
   );
 }
