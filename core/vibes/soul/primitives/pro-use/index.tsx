@@ -1,5 +1,6 @@
 'use client';
 
+import { clsx } from 'clsx';
 import { createContext, ReactNode, useContext } from 'react';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
@@ -71,6 +72,24 @@ export function ProUseCustomerBadge() {
           </span>
         ) : null
       }
+    </Stream>
+  );
+}
+
+export function ProUseProductBadge({ className }: { className?: string }) {
+  const access = useContext(ProUseContext);
+  const renderBadge = (isCertified: boolean) => (
+    <Badge
+      className={clsx('!text-white', isCertified ? '!bg-green-700' : '!bg-red-700', className)}
+      shape="rounded"
+    >
+      PRO
+    </Badge>
+  );
+
+  return (
+    <Stream fallback={renderBadge(false)} value={access}>
+      {({ isCertified }) => renderBadge(isCertified)}
     </Stream>
   );
 }

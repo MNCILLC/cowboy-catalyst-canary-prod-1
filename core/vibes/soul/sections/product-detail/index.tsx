@@ -9,9 +9,8 @@ import {
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Accordion, AccordionItem } from '@/vibes/soul/primitives/accordion';
 import { AnimatedUnderline } from '@/vibes/soul/primitives/animated-underline';
-import { Badge } from '@/vibes/soul/primitives/badge';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
-import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
+import { ProUseGate, ProUseProductBadge } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { type Breadcrumb, Breadcrumbs } from '@/vibes/soul/sections/breadcrumbs';
 import {
@@ -188,7 +187,7 @@ export function ProductDetail<F extends Field>({
                   <h1 className="mb-3 mt-2 font-[family-name:var(--product-detail-title-font-family,var(--font-family-heading))] text-2xl font-medium leading-none @xl:mb-4 @xl:text-3xl @4xl:text-4xl">
                     {product.title}
                   </h1>
-                  {product.isProUseOnly && <Badge>PRO</Badge>}
+                  {product.isProUseOnly && <ProUseProductBadge />}
                   {product.reviewsEnabled && (
                     <div className="group/product-rating">
                       <ReviewForm

@@ -12,6 +12,7 @@ import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
 
 import { ProductCardAttributes } from './attributes';
+import { ProductCardBadge } from './badge';
 import { Compare } from './compare';
 import { ProductCardDescription } from './description';
 import { EnhancedGridProductCard } from './enhanced-grid';
@@ -122,6 +123,7 @@ function StandardProductCard({
     attributes,
     subtitle,
     badge,
+    isProUseOnly,
     price,
     image,
     href,
@@ -193,12 +195,9 @@ function StandardProductCard({
       badge: 'mb-1 self-start',
     },
   }[layout];
-  const badgeElement =
-    badge != null && badge !== '' ? (
-      <Badge className={layoutStyles.badge} shape="rounded">
-        {badge}
-      </Badge>
-    ) : null;
+  const badgeElement = (
+    <ProductCardBadge badge={badge} className={layoutStyles.badge} isProUseOnly={isProUseOnly} />
+  );
 
   const inventory = (
     <ProductCardInventory
