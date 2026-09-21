@@ -63,7 +63,7 @@ export function ProUseCustomerBadge() {
         isCertified ? (
           <span className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap">
             <Badge
-              className="bg-green-700 px-1 py-0 text-[9px] font-semibold leading-3 text-white"
+              className="!bg-green-700 !px-1 !py-0 !text-[8px] font-semibold !leading-[10px] !text-white"
               shape="rounded"
             >
               PRO
