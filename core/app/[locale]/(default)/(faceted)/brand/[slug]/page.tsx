@@ -239,7 +239,6 @@ export default async function Brand(props: Props) {
     <ProductsListSection
       addToCartAction={addToCart}
       cartQuantities={
-        (isProductListViewEnabled || process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true') &&
         process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
           ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
           : undefined
