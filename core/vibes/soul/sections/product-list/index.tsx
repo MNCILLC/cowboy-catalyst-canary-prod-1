@@ -42,6 +42,34 @@ interface ProductListProps {
   maxCompareLimitMessage?: Streamable<string>;
 }
 
+function ProductCartQuantity({
+  cartQuantities,
+  productId,
+}: {
+  cartQuantities: ProductListProps['cartQuantities'];
+  productId: string;
+}) {
+  const t = useTranslations('Product.ProductDetails');
+
+  if (cartQuantities === undefined) return null;
+
+  return (
+    <div aria-live="polite" className="min-h-4 w-full whitespace-nowrap text-center text-xs">
+      <Stream fallback={null} value={cartQuantities}>
+        {(quantities) => {
+          const quantity = quantities[productId] ?? 0;
+
+          return quantity > 0 ? (
+            <Link className="underline underline-offset-2" href="/cart">
+              {t('quantityInCart', { quantity })}
+            </Link>
+          ) : null;
+        }}
+      </Stream>
+    </div>
+  );
+}
+
 // eslint-disable-next-line valid-jsdoc
 /**
  * This component supports various CSS variables for theming. Here's a comprehensive list, along
@@ -159,21 +187,10 @@ export function ProductList({
                           addToCartAction={addToCartAction}
                           addToCartLabel={t('addToCart')}
                           cartQuantityLink={
-                            cartQuantities !== undefined && (
-                              <Stream fallback={null} value={cartQuantities}>
-                                {(quantities) => {
-                                  const quantity = quantities[product.id] ?? 0;
-
-                                  return quantity > 0 ? (
-                                    <div aria-live="polite" className="w-full text-center text-xs">
-                                      <Link className="underline underline-offset-2" href="/cart">
-                                        {tQuantity('quantityInCart', { quantity })}
-                                      </Link>
-                                    </div>
-                                  ) : null;
-                                }}
-                              </Stream>
-                            )
+                            <ProductCartQuantity
+                              cartQuantities={cartQuantities}
+                              productId={product.id}
+                            />
                           }
                           decrementLabel={tQuantity('decreaseQuantity')}
                           disabled={product.canAddToCart === false}
@@ -188,9 +205,15 @@ export function ProductList({
                           size="x-small"
                         />
                       ) : (
-                        <ButtonLink href={product.href} size="x-small">
-                          {t('viewOptions')}
-                        </ButtonLink>
+                        <div className="flex flex-col gap-2">
+                          <ButtonLink href={product.href} size="x-small">
+                            {t('viewOptions')}
+                          </ButtonLink>
+                          <ProductCartQuantity
+                            cartQuantities={cartQuantities}
+                            productId={product.id}
+                          />
+                        </div>
                       ))
                     }
                     showCompare={showCompare}
