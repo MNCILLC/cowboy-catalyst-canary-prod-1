@@ -290,7 +290,6 @@ export default async function Category(props: Props) {
         addToCartAction={addToCart}
         breadcrumbs={breadcrumbs}
         cartQuantities={
-          (isProductListViewEnabled || process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true') &&
           process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
             ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
             : undefined
