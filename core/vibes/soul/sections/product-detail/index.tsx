@@ -9,7 +9,9 @@ import {
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Accordion, AccordionItem } from '@/vibes/soul/primitives/accordion';
 import { AnimatedUnderline } from '@/vibes/soul/primitives/animated-underline';
+import { Badge } from '@/vibes/soul/primitives/badge';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
+import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { type Breadcrumb, Breadcrumbs } from '@/vibes/soul/sections/breadcrumbs';
 import {
@@ -31,6 +33,7 @@ import { RatingLink } from './rating-link';
 import { Field } from './schema';
 
 interface ProductDetailProduct {
+  isProUseOnly?: boolean;
   id: string;
   title: string;
   href: string;
@@ -185,6 +188,7 @@ export function ProductDetail<F extends Field>({
                   <h1 className="mb-3 mt-2 font-[family-name:var(--product-detail-title-font-family,var(--font-family-heading))] text-2xl font-medium leading-none @xl:mb-4 @xl:text-3xl @4xl:text-4xl">
                     {product.title}
                   </h1>
+                  {product.isProUseOnly && <Badge>PRO</Badge>}
                   {product.reviewsEnabled && (
                     <div className="group/product-rating">
                       <ReviewForm
@@ -285,49 +289,51 @@ export function ProductDetail<F extends Field>({
                       }
                     </Stream>
                   </div>
-                  <div className="group/product-detail-form">
-                    <Stream
-                      fallback={<ProductDetailFormSkeleton />}
-                      value={Streamable.all([
-                        streamableFields,
-                        streamableCtaLabel,
-                        streamableCtaDisabled,
-                        product.minQuantity,
-                        product.maxQuantity,
-                        product.stockDisplayData,
-                        product.backorderDisplayData,
-                      ])}
-                    >
-                      {([
-                        fields,
-                        ctaLabel,
-                        ctaDisabled,
-                        minQuantity,
-                        maxQuantity,
-                        stockDisplayData,
-                        backorderDisplayData,
-                      ]) => (
-                        <ProductDetailForm
-                          action={action}
-                          additionalActions={additionalActions}
-                          backorderDisplayData={backorderDisplayData ?? undefined}
-                          ctaDisabled={ctaDisabled ?? undefined}
-                          ctaLabel={ctaLabel ?? undefined}
-                          decrementLabel={decrementLabel}
-                          emptySelectPlaceholder={emptySelectPlaceholder}
-                          fields={fields}
-                          incrementLabel={incrementLabel}
-                          maxQuantity={maxQuantity ?? undefined}
-                          minQuantity={minQuantity ?? undefined}
-                          prefetch={prefetch}
-                          productId={product.id}
-                          quantityInCart={quantityInCart}
-                          quantityLabel={quantityLabel}
-                          stockDisplayData={stockDisplayData ?? undefined}
-                        />
-                      )}
-                    </Stream>
-                  </div>
+                  <ProUseGate restricted={product.isProUseOnly}>
+                    <div className="group/product-detail-form">
+                      <Stream
+                        fallback={<ProductDetailFormSkeleton />}
+                        value={Streamable.all([
+                          streamableFields,
+                          streamableCtaLabel,
+                          streamableCtaDisabled,
+                          product.minQuantity,
+                          product.maxQuantity,
+                          product.stockDisplayData,
+                          product.backorderDisplayData,
+                        ])}
+                      >
+                        {([
+                          fields,
+                          ctaLabel,
+                          ctaDisabled,
+                          minQuantity,
+                          maxQuantity,
+                          stockDisplayData,
+                          backorderDisplayData,
+                        ]) => (
+                          <ProductDetailForm
+                            action={action}
+                            additionalActions={additionalActions}
+                            backorderDisplayData={backorderDisplayData ?? undefined}
+                            ctaDisabled={ctaDisabled ?? undefined}
+                            ctaLabel={ctaLabel ?? undefined}
+                            decrementLabel={decrementLabel}
+                            emptySelectPlaceholder={emptySelectPlaceholder}
+                            fields={fields}
+                            incrementLabel={incrementLabel}
+                            maxQuantity={maxQuantity ?? undefined}
+                            minQuantity={minQuantity ?? undefined}
+                            prefetch={prefetch}
+                            productId={product.id}
+                            quantityInCart={quantityInCart}
+                            quantityLabel={quantityLabel}
+                            stockDisplayData={stockDisplayData ?? undefined}
+                          />
+                        )}
+                      </Stream>
+                    </div>
+                  </ProUseGate>
                   <div className="group/product-description">
                     <Stream fallback={<ProductDescriptionSkeleton />} value={product.description}>
                       {(description) =>

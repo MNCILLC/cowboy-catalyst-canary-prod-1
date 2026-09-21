@@ -6,6 +6,7 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import { isProUseProduct } from '~/lib/pro-use/policy';
 import {
   getProductAttributes,
   ProductAttributeFilter,
@@ -112,6 +113,7 @@ export const singleProductCardTransformer = (
     ...showCrateProductTransformer(product),
     ...productCardAttributeVariants(product, attributeFilters),
     id: product.entityId.toString(),
+    isProUseOnly: isProUseProduct(product),
     title: product.name,
     descriptionHtml: 'description' in product ? product.description : undefined,
     listViewDescription:

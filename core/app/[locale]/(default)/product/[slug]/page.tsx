@@ -28,6 +28,7 @@ import { getProductCartQuantity } from '~/lib/cart/get-product-cart-quantity';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
+import { isProUseProduct } from '~/lib/pro-use/policy';
 import { getProductAttributes, productFilterDefinitions } from '~/lib/product-metafield-filters';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
@@ -606,6 +607,7 @@ export default async function Product({ params, searchParams }: Props) {
           prefetch={true}
           product={{
             id: baseProduct.entityId.toString(),
+            isProUseOnly: isProUseProduct(baseProduct),
             title: baseProduct.name,
             description: (
               <div
