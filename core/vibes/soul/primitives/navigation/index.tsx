@@ -33,6 +33,7 @@ import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Button } from '@/vibes/soul/primitives/button';
 import { Logo } from '@/vibes/soul/primitives/logo';
 import { Price } from '@/vibes/soul/primitives/price-label';
+import { ProUseCustomerBadge } from '@/vibes/soul/primitives/pro-use';
 import { ProductCard } from '@/vibes/soul/primitives/product-card';
 import { Link } from '~/components/link';
 import { usePathname, useRouter } from '~/i18n/routing';
@@ -593,8 +594,10 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
             </Link>
           )}
 
-          <Link aria-label={accountLabel} className={navButtonClassName} href={accountHref}>
-            <User size={20} strokeWidth={1} />
+          <Link className={navButtonClassName} href={accountHref}>
+            <span className="sr-only">{accountLabel}</span>
+            <User aria-hidden="true" size={20} strokeWidth={1} />
+            <ProUseCustomerBadge />
           </Link>
           <Link aria-label={cartLabel} className={navButtonClassName} href={cartHref}>
             <ShoppingBag size={20} strokeWidth={1} />

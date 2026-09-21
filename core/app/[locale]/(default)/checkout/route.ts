@@ -13,6 +13,8 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { ProUseRequiredError } from '~/lib/pro-use/policy';
+import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
 
 const CheckoutEligibilityQuery = graphql(`
@@ -91,6 +93,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   const consent = await getConsentCookie();
 
   try {
+    await assertProUseCart(cartId);
+
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
       document: CheckoutEligibilityQuery,
@@ -146,6 +150,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     });
   } catch (error) {
     rethrow(error);
+
+    if (error instanceof ProUseRequiredError) {
+      await serverToast.error(error.message);
+
+      return redirect({ href: '/cart', locale });
+    }
 
     if (error instanceof BigCommerceAuthError) {
       return redirect({ href: '/logout?redirectTo=/checkout/', locale });

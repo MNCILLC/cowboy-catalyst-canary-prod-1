@@ -6,6 +6,7 @@ import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProductCardProps } from '@/vibes/soul/primitives/product-card';
 import { ProductCardAttributes } from '@/vibes/soul/primitives/product-card/attributes';
+import { ProductCardBadge } from '@/vibes/soul/primitives/product-card/badge';
 import { Compare } from '@/vibes/soul/primitives/product-card/compare';
 import { ProductCardDescription } from '@/vibes/soul/primitives/product-card/description';
 import { Rating } from '@/vibes/soul/primitives/rating';
@@ -114,9 +115,9 @@ export function ShowCrateProductCard({
               colorScheme={colorScheme}
               price={price ?? t('callForPricing')}
             />
-            {!!badge && (
+            {(product.isProUseOnly || !!badge) && (
               <div className="mt-0">
-                <Badge>{badge}</Badge>
+                <ProductCardBadge badge={badge} isProUseOnly={product.isProUseOnly} />
               </div>
             )}
           </div>

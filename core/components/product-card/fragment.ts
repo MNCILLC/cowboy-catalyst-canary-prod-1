@@ -1,4 +1,5 @@
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProUseProductFragment } from '~/client/fragments/pro-use';
 import { ProductAttributesFragment } from '~/client/fragments/product-attributes';
 import { graphql } from '~/client/graphql';
 import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
@@ -91,9 +92,10 @@ export const ProductCardFragment = graphql(
           }
         }
       }
+      ...ProUseProductFragment
       ...ShowCrateProductCardFragment
       ...PricingFragment
     }
   `,
-  [PricingFragment, ShowCrateProductCardFragment, ProductAttributesFragment],
+  [ProUseProductFragment, PricingFragment, ShowCrateProductCardFragment, ProductAttributesFragment],
 );

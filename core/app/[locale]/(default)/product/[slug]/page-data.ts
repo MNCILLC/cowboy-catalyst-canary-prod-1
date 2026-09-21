@@ -3,6 +3,7 @@ import { cache } from 'react';
 
 import { client } from '~/client';
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProUseProductFragment } from '~/client/fragments/pro-use';
 import { ProductAttributesFragment } from '~/client/fragments/product-attributes';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
@@ -239,12 +240,13 @@ const ProductQuery = graphql(
               }
             }
           }
+          ...ProUseProductFragment
           ...ProductOptionsFragment
         }
       }
     }
   `,
-  [ProductOptionsFragment],
+  [ProductOptionsFragment, ProUseProductFragment],
 );
 
 export const getProduct = cache(async (entityId: number, customerAccessToken?: string) => {

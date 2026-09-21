@@ -8,9 +8,10 @@ import { NextIntlClientProvider } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { cache, PropsWithChildren } from 'react';
-
 import '../../globals.css';
 
+import { Streamable } from '@/vibes/soul/lib/streamable';
+import { ProUseProvider } from '@/vibes/soul/primitives/pro-use';
 import { fonts } from '~/app/fonts';
 import { CookieNotifications } from '~/app/notifications';
 import { Providers } from '~/app/providers';
@@ -26,6 +27,7 @@ import { scriptsTransformer } from '~/data-transformers/scripts-transformer';
 import { routing } from '~/i18n/routing';
 import { SiteTheme } from '~/lib/makeswift/components/site-theme';
 import { MakeswiftProvider } from '~/lib/makeswift/provider';
+import { getProUseDisplayAccess } from '~/lib/pro-use/server';
 import { getToastNotification } from '~/lib/server-toast';
 
 import '~/lib/makeswift/components';
@@ -168,7 +170,9 @@ export default async function RootLayout({ params, children }: Props) {
                     {toastNotificationCookieData && (
                       <CookieNotifications {...toastNotificationCookieData} />
                     )}
-                    {children}
+                    <ProUseProvider value={Streamable.from(getProUseDisplayAccess)}>
+                      {children}
+                    </ProUseProvider>
                   </Providers>
                 </AnalyticsProvider>
               </NuqsAdapter>
