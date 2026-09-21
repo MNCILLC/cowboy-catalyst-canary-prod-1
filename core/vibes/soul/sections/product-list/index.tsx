@@ -153,7 +153,6 @@ export function ProductList({
                     layout={view}
                     product={product}
                     purchaseAction={
-                      (view === 'list' || product.enhancedGridAttributes !== undefined) &&
                       addToCartAction &&
                       (product.hasOptions === false ? (
                         <AddToCartForm
