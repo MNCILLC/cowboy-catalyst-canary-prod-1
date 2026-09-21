@@ -19,6 +19,8 @@
     "prelint": "next typegen",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "typecheck": "tsc --noEmit",
+    "test:auth-refresh": "node --test lib/force-refresh.test.mts",
+    "test:pro-use": "node --test lib/pro-use/*.test.mts",
     "test:product-filters": "node --test lib/product-metafield-filters.test.mts",
     "test:applied-filters": "node --test lib/applied-product-filters.test.mts"
   },
