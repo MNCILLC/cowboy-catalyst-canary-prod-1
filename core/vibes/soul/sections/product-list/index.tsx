@@ -54,7 +54,10 @@ function ProductCartQuantity({
   if (cartQuantities === undefined) return null;
 
   return (
-    <div aria-live="polite" className="min-h-4 w-full whitespace-nowrap text-center text-xs">
+    <div
+      aria-live="polite"
+      className="min-h-[1lh] w-full whitespace-nowrap text-center text-xs leading-normal"
+    >
       <Stream fallback={null} value={cartQuantities}>
         {(quantities) => {
           const quantity = quantities[productId] ?? 0;
