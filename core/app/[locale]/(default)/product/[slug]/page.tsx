@@ -587,21 +587,31 @@ export default async function Product({ params, searchParams }: Props) {
             />
           }
           additionalInformationTitle={t('ProductDetails.additionalInformation')}
+          afterPurchaseContent={
+            isShow &&
+            (enhancedAttributesEnabled ? (
+              <Stream fallback={null} value={streamableEnhancedAttributes}>
+                {(attributes) => (
+                  <EnhancedProductAttributes
+                    attributes={attributes}
+                    title={t('ProductDetails.Accordions.specifications')}
+                  />
+                )}
+              </Stream>
+            ) : (
+              <ShowProductSpecifications
+                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
+                textSize="base"
+                title={t('ProductDetails.Accordions.specifications')}
+              />
+            ))
+          }
           ctaDisabled={streameableCtaDisabled}
           ctaLabel={streameableCtaLabel}
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
           galleryAspectRatio={enhancedAttributesEnabled ? '4:3' : '4:5'}
-          galleryContent={
-            isShow && !enhancedAttributesEnabled ? (
-              <ShowProductSpecifications
-                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
-                textSize="base"
-                title={t('ProductDetails.Accordions.specifications')}
-              />
-            ) : undefined
-          }
           incrementLabel={t('ProductDetails.increaseQuantity')}
           loadMoreImagesAction={getMoreProductImages}
           prefetch={true}
@@ -648,7 +658,7 @@ export default async function Product({ params, searchParams }: Props) {
         />
       </ProductAnalyticsProvider>
 
-      {enhancedAttributesEnabled && (
+      {enhancedAttributesEnabled && !isShow && (
         <Stream fallback={null} value={streamableEnhancedAttributes}>
           {(attributes) => (
             <EnhancedProductAttributes
