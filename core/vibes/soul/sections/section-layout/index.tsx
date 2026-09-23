@@ -5,6 +5,8 @@ export interface SectionLayoutProps {
   className?: string;
   children: ReactNode;
   containerSize?: 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  paddingTop?: number;
+  paddingBottom?: number;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -21,7 +23,13 @@ export interface SectionLayoutProps {
  * }
  * ```
  */
-export function SectionLayout({ className, children, containerSize = '2xl' }: SectionLayoutProps) {
+export function SectionLayout({
+  className,
+  children,
+  containerSize = '2xl',
+  paddingTop,
+  paddingBottom,
+}: SectionLayoutProps) {
   return (
     <section className={clsx('overflow-hidden @container', className)}>
       <div
@@ -35,6 +43,7 @@ export function SectionLayout({ className, children, containerSize = '2xl' }: Se
             full: 'max-w-none',
           }[containerSize],
         )}
+        style={{ paddingTop, paddingBottom }}
       >
         {children}
       </div>

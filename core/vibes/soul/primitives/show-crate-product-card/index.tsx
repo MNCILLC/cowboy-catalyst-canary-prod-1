@@ -23,7 +23,7 @@ export function ShowCrateProductCard({
   compareLabel,
   compareParamName,
   imagePriority = false,
-  imageSizes = '96px',
+  imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
   showRating = false,
 }: ProductCardProps) {
   const t = useTranslations('Components.ProductCard');
@@ -61,9 +61,9 @@ export function ShowCrateProductCard({
       data-layout={layout}
     >
       <div className="relative flex min-h-0 flex-1 flex-col gap-6 p-4">
-        <div className="flex flex-wrap items-start gap-4">
+        <div className="flex flex-col items-start gap-4">
           {image != null && (
-            <div className="relative size-16 shrink-0 overflow-hidden rounded-lg @xs:size-24">
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden rounded-lg">
               <Image
                 alt={image.alt}
                 className="object-contain"
@@ -74,7 +74,7 @@ export function ShowCrateProductCard({
               />
             </div>
           )}
-          <div className="min-w-0 flex-1 basis-32">
+          <div className="w-full min-w-0">
             {!!subtitle && (
               <p className="mb-1 text-sm font-medium uppercase tracking-wide opacity-75">
                 {subtitle}
