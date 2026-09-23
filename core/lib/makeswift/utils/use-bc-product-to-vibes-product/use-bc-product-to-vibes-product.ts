@@ -33,6 +33,8 @@ export const BcProductSchema = z.object({
     })
     .optional(),
   showDescription: z.string(),
+  description: z.string(),
+  inventory: z.object({ isInStock: z.boolean() }),
   showMetafields: z.object({
     edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
   }),
@@ -83,6 +85,10 @@ export function useBcProductToVibesProduct(
   return useCallback(
     (product) => {
       const { entityId, name, defaultImage, brand, path } = product;
+      const includeStockLevel =
+        showStockLevel ||
+        (isShowCrateProduct(product) &&
+          process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true');
       const price =
         isShowCrateProduct(product) && hasZeroPrice(product)
           ? undefined
@@ -94,12 +100,14 @@ export function useBcProductToVibesProduct(
         id: entityId.toString(),
         isProUseOnly: isProUseProduct(product),
         title: name,
+        descriptionHtml: product.description,
+        isInStock: product.inventory.isInStock,
         href: path,
         image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
         price,
         subtitle: brand?.name,
-        stockDisplayData: showStockLevel ? product.stockDisplayData : undefined,
-        useEnhancedStockDisplay: showStockLevel && product.useEnhancedStockDisplay,
+        stockDisplayData: includeStockLevel ? product.stockDisplayData : undefined,
+        useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
       };
     },
     [format, showStockLevel],

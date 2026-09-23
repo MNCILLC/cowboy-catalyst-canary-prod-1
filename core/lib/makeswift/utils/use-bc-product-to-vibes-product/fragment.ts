@@ -8,6 +8,9 @@ export const MakeswiftProductFragment = graphql(
     fragment MakeswiftProductFragment on Product {
       entityId
       name
+      inventory {
+        isInStock
+      }
       defaultImage {
         altText
         url: urlTemplate(lossy: true)

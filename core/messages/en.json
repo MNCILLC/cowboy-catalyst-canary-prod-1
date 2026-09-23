@@ -655,6 +655,16 @@
   "Components": {
     "ProductCard": {
       "learnMore": "Learn More",
+      "quickView": "Quick View",
+      "closeQuickView": "Close quick view",
+      "quickViewSpecifications": "Specifications",
+      "quickViewDescription": "Product description",
+      "noSpecifications": "No specifications available.",
+      "noDescription": "No description available.",
+      "stockLevel": "Stock level",
+      "inStock": "In stock",
+      "outOfStock": "Out of stock",
+      "stockUnavailable": "Stock information unavailable",
       "callForPricing": "Call for Pricing",
       "moreOffers": "+{count, plural, =1 {# more offer} other {# more offers}}"
     },

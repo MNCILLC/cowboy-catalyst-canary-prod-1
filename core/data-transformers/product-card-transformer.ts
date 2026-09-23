@@ -153,6 +153,7 @@ export const singleProductCardTransformer = (
       'variants' in product
         ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
         : undefined,
+    isInStock: product.inventory.isInStock,
     stockDisplayData:
       stockDisplay && 'variants' in product
         ? getStockDisplayData(

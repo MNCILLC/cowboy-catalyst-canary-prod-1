@@ -3,6 +3,7 @@ import { graphql } from '~/client/graphql';
 export const ShowCrateProductCardFragment = graphql(`
   fragment ShowCrateProductCardFragment on Product {
     entityId
+    description
     showDescription: plainTextDescription(characterLimit: 240)
     showMetafields: metafields(
       namespace: "custom"

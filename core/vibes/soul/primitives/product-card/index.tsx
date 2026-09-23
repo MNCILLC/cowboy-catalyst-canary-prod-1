@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import { ReactNode } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
+import { FcCrateQuickViewCard } from '@/vibes/soul/primitives/fc-crate-quick-view-card';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
@@ -42,6 +43,7 @@ export interface Product {
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  isInStock?: boolean;
   useEnhancedStockDisplay?: boolean;
   stockDisplayData?: {
     stockLevelMessage: string;
@@ -103,6 +105,10 @@ export function ProductCard({ purchaseAction, ...rest }: ProductCardProps) {
       <ProUseGate restricted={rest.product.isProUseOnly}>{purchaseAction}</ProUseGate>
     ) : undefined,
   };
+
+  if (props.product.isShow && process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true') {
+    return <FcCrateQuickViewCard {...props} />;
+  }
 
   if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {
     return <EnhancedGridProductCard {...props} />;
