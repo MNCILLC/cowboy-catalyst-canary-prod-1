@@ -119,7 +119,7 @@ export function ProductImageCarousel({
     <div
       aria-label={t('imageCarousel', { name: product.title })}
       aria-roledescription="carousel"
-      className="group/carousel -mx-4 min-w-0"
+      className="group/carousel -mx-4 -mt-4 min-w-0"
       role="region"
     >
       <div className="relative">
