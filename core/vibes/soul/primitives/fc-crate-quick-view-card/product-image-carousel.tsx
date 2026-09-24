@@ -31,6 +31,7 @@ export function ProductImageCarousel({
   const multipleImages = images.length > 1;
   const autoplayEnabled = process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
   const [selected, setSelected] = useState(0);
+  const [slideHeight, setSlideHeight] = useState<number>();
   const [isPlaying, setIsPlaying] = useState(false);
   const [progressCycle, setProgressCycle] = useState(0);
   const [userPaused, setUserPaused] = useState(!autoplayEnabled);
@@ -60,12 +61,26 @@ export function ProductImageCarousel({
   useEffect(() => {
     if (!emblaApi) return;
 
-    const sync = () => setSelected(emblaApi.selectedSnap());
+    // Offscreen lazy images can still have square placeholder dimensions.
+    // Size the viewport from the visible slide, including when its image loads.
+    let activeSlide: HTMLElement | undefined;
+    const measure = () => setSlideHeight(activeSlide?.getBoundingClientRect().height);
+    const observer = new ResizeObserver(measure);
+    const sync = () => {
+      const index = emblaApi.selectedSnap();
+
+      setSelected(index);
+      observer.disconnect();
+      activeSlide = emblaApi.slideNodes()[index];
+      if (activeSlide) observer.observe(activeSlide);
+      measure();
+    };
 
     sync();
     emblaApi.on('select', sync).on('reinit', sync);
 
     return () => {
+      observer.disconnect();
       emblaApi.off('select', sync).off('reinit', sync);
     };
   }, [emblaApi]);
@@ -108,7 +123,7 @@ export function ProductImageCarousel({
       role="region"
     >
       <div className="relative">
-        <div className="overflow-hidden" ref={emblaRef}>
+        <div className="overflow-hidden" ref={emblaRef} style={{ height: slideHeight }}>
           <div className="flex touch-pan-y items-start">
             {images.length > 0 ? (
               images.map((image, index) => (
