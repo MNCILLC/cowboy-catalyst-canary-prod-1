@@ -93,7 +93,7 @@ export function ProductImageCarousel({
     <div
       aria-label={t('imageCarousel', { name: product.title })}
       aria-roledescription="carousel"
-      className="-mx-4 min-w-0"
+      className="group/carousel -mx-4 min-w-0"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
@@ -144,7 +144,7 @@ export function ProductImageCarousel({
         </div>
         {multipleImages && (
           <>
-            <div className="absolute left-2 top-1/2 z-10 -translate-y-1/2">
+            <div className="pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity duration-500 ease-in-out group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-has-[:focus-visible]/carousel:pointer-events-auto group-has-[:focus-visible]/carousel:opacity-100">
               <Button
                 aria-label={t('previousImage')}
                 className="!bg-white !text-black opacity-50 after:hidden"
@@ -156,7 +156,7 @@ export function ProductImageCarousel({
                 <ChevronLeft aria-hidden="true" size={16} />
               </Button>
             </div>
-            <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
+            <div className="pointer-events-none absolute right-2 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity duration-500 ease-in-out group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-has-[:focus-visible]/carousel:pointer-events-auto group-has-[:focus-visible]/carousel:opacity-100">
               <Button
                 aria-label={t('nextImage')}
                 className="!bg-white !text-black opacity-50 after:hidden"
