@@ -4,7 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { clsx } from 'clsx';
 import { XIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
@@ -16,6 +16,70 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { ProductImageCarousel } from './product-image-carousel';
+
+function CardTitle({ title, href }: { title: string; href: string }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const heading = headingRef.current;
+    const text = textRef.current;
+
+    if (!heading || !text) return;
+
+    let disposed = false;
+    const fit = () => {
+      if (disposed) return;
+
+      const styles = getComputedStyle(heading);
+      const available =
+        heading.clientWidth - parseFloat(styles.paddingLeft) - parseFloat(styles.paddingRight);
+
+      if (available <= 0) return;
+
+      // Measure at the normal size before shrinking, so wider cards can restore it.
+      text.style.fontSize = styles.fontSize;
+
+      let width = text.getBoundingClientRect().width;
+      let fontSize = parseFloat(styles.fontSize);
+
+      // Remeasure because variable fonts can change proportions at smaller sizes.
+      for (let attempt = 0; width > available && attempt < 4; attempt += 1) {
+        fontSize = Math.max(1, (fontSize * available) / width - 0.1);
+        text.style.fontSize = `${fontSize}px`;
+        width = text.getBoundingClientRect().width;
+      }
+    };
+    const observer = new ResizeObserver(fit);
+
+    fit();
+    observer.observe(heading);
+    void document.fonts.ready.then(fit);
+    document.fonts.addEventListener('loadingdone', fit);
+
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      document.fonts.removeEventListener('loadingdone', fit);
+    };
+  }, [title]);
+
+  return (
+    <h3
+      className="-mx-4 -mt-4 whitespace-nowrap bg-red-700 p-4 text-center font-[family-name:var(--font-family-heading)] text-xl font-semibold uppercase leading-tight text-white"
+      ref={headingRef}
+    >
+      <Link
+        className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        href={href}
+      >
+        <span className="inline-block" ref={textRef}>
+          {title}
+        </span>
+      </Link>
+    </h3>
+  );
+}
 
 function StockLevel({ product }: { product: Product }) {
   const t = useTranslations('Components.ProductCard');
@@ -77,14 +141,7 @@ export function FcCrateQuickViewCard({
       data-card-variant="fc-crate-quick-view"
       data-layout={layout}
     >
-      <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight text-white">
-        <Link
-          className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          href={href}
-        >
-          {title}
-        </Link>
-      </h3>
+      <CardTitle href={href} title={title} />
       <ProductImageCarousel
         imagePriority={imagePriority}
         imageSizes={imageSizes}
@@ -99,12 +156,14 @@ export function FcCrateQuickViewCard({
       />
       <StockLevel product={product} />
       <Dialog.Root onOpenChange={setQuickViewOpen} open={quickViewOpen}>
-        <Dialog.Trigger asChild>
-          <Button className="mt-auto w-full" shape="rounded" size="small" variant="tertiary">
-            {t('quickView')}
-            <span className="sr-only">: {title}</span>
-          </Button>
-        </Dialog.Trigger>
+        <div className="-mx-4 -mb-4 mt-auto bg-blue-700 p-4">
+          <Dialog.Trigger asChild>
+            <Button className="w-full" shape="rounded" size="small" variant="tertiary">
+              {t('quickView')}
+              <span className="sr-only">: {title}</span>
+            </Button>
+          </Dialog.Trigger>
+        </div>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 z-50 bg-foreground/50" />
           <Dialog.Content
