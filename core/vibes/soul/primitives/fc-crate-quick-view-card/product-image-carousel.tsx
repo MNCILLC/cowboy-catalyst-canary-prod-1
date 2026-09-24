@@ -102,68 +102,80 @@ export function ProductImageCarousel({
       onMouseLeave={() => setHovered(false)}
       role="region"
     >
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex touch-pan-y items-start">
-          {images.length > 0 ? (
-            images.map((image, index) => (
-              <div
-                aria-label={t('imagePosition', {
-                  current: String(index + 1),
-                  total: String(images.length),
-                })}
-                aria-roledescription="slide"
-                className="min-w-0 flex-[0_0_100%]"
-                key={image.src}
-                role="group"
-              >
-                <Link
-                  aria-label={product.title}
-                  className="block w-full"
-                  href={product.href}
-                  tabIndex={-1}
+      <div className="relative">
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex touch-pan-y items-start">
+            {images.length > 0 ? (
+              images.map((image, index) => (
+                <div
+                  aria-label={t('imagePosition', {
+                    current: String(index + 1),
+                    total: String(images.length),
+                  })}
+                  aria-roledescription="slide"
+                  className="min-w-0 flex-[0_0_100%]"
+                  key={image.src}
+                  role="group"
                 >
-                  <Image
-                    alt={image.alt}
-                    className="block h-auto w-full"
-                    height={1024}
-                    preload={index === 0 && imagePriority}
-                    sizes={imageSizes}
-                    src={image.src}
-                    width={1024}
-                  />
-                </Link>
+                  <Link
+                    aria-label={product.title}
+                    className="block w-full"
+                    href={product.href}
+                    tabIndex={-1}
+                  >
+                    <Image
+                      alt={image.alt}
+                      className="block h-auto w-full"
+                      height={1024}
+                      preload={index === 0 && imagePriority}
+                      sizes={imageSizes}
+                      src={image.src}
+                      width={1024}
+                    />
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <div className="flex aspect-square w-full items-center justify-center break-words p-4 text-center text-xl opacity-50">
+                {product.title}
               </div>
-            ))
-          ) : (
-            <div className="flex aspect-square w-full items-center justify-center break-words p-4 text-center text-xl opacity-50">
-              {product.title}
-            </div>
-          )}
+            )}
+          </div>
         </div>
+        {multipleImages && (
+          <>
+            <div className="absolute left-2 top-1/2 z-10 -translate-y-1/2">
+              <Button
+                aria-label={t('previousImage')}
+                className="!bg-white !text-black opacity-50 after:hidden"
+                onClick={() => emblaApi?.goToPrev()}
+                shape="circle"
+                size="x-small"
+                variant="tertiary"
+              >
+                <ChevronLeft aria-hidden="true" size={16} />
+              </Button>
+            </div>
+            <div className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
+              <Button
+                aria-label={t('nextImage')}
+                className="!bg-white !text-black opacity-50 after:hidden"
+                onClick={() => emblaApi?.goToNext()}
+                shape="circle"
+                size="x-small"
+                variant="tertiary"
+              >
+                <ChevronRight aria-hidden="true" size={16} />
+              </Button>
+            </div>
+          </>
+        )}
       </div>
       {multipleImages && (
         <div className="mt-2 flex items-center justify-center gap-3 px-4">
-          <Button
-            aria-label={t('previousImage')}
-            onClick={() => emblaApi?.goToPrev()}
-            shape="circle"
-            size="x-small"
-            variant="tertiary"
-          >
-            <ChevronLeft aria-hidden="true" size={16} />
-          </Button>
           <span aria-live={shouldPlay ? 'off' : 'polite'} className="text-xs tabular-nums">
             {t('imagePosition', { current: String(selected + 1), total: String(images.length) })}
           </span>
-          <Button
-            aria-label={t('nextImage')}
-            onClick={() => emblaApi?.goToNext()}
-            shape="circle"
-            size="x-small"
-            variant="tertiary"
-          >
-            <ChevronRight aria-hidden="true" size={16} />
-          </Button>
           {autoplayEnabled && !reducedMotion && (
             <Button
               aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
