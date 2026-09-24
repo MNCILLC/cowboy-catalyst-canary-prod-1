@@ -61,6 +61,9 @@ export function showCrateProductTransformer(
             footerText: color('card_footer_text_color'),
             buttonBackground: color('card_footer_button_bg_color'),
             buttonText: color('card_footer_button_text_color'),
+            bodyBackgroundTop: color('card_body_bg_color_top'),
+            bodyBackgroundBottom: color('card_body_bg_color_bottom'),
+            bodyText: color('card_body_text_color'),
           }
         : undefined,
     images: isShow

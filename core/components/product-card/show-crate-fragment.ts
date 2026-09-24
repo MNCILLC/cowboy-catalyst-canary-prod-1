@@ -17,8 +17,11 @@ export const ShowCrateProductCardFragment = graphql(`
               "card_footer_text_color"
               "card_footer_button_bg_color"
               "card_footer_button_text_color"
+              "card_body_bg_color_top"
+              "card_body_bg_color_bottom"
+              "card_body_text_color"
             ]
-            first: 6
+            first: 9
           ) {
             edges {
               node {

@@ -33,6 +33,9 @@ export interface Product {
     footerText?: string;
     buttonBackground?: string;
     buttonText?: string;
+    bodyBackgroundTop?: string;
+    bodyBackgroundBottom?: string;
+    bodyText?: string;
   };
   id: string;
   title: string;

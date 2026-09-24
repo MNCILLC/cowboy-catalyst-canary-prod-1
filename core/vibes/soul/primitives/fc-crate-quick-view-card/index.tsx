@@ -132,16 +132,27 @@ export function FcCrateQuickViewCard({
     cardStyle,
   } = product;
   const description = descriptionHtml?.trim() || showDescription?.trim();
+  const bodyStyle: CSSProperties & Record<'--price-dark-text' | '--price-dark-sale-text', string> =
+    {
+      backgroundImage:
+        cardStyle?.bodyBackgroundTop || cardStyle?.bodyBackgroundBottom
+          ? `linear-gradient(to top, ${cardStyle.bodyBackgroundBottom || 'transparent'}, ${cardStyle.bodyBackgroundTop || 'transparent'})`
+          : undefined,
+      color: cardStyle?.bodyText,
+      '--price-dark-text': 'currentColor',
+      '--price-dark-sale-text': 'currentColor',
+    };
 
   return (
     <article
       className={clsx(
-        'flex h-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-600 bg-gradient-to-t from-[#555555] to-[#2e2e2e] p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] text-white shadow-sm @container',
+        'flex h-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-600 p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm @container',
         layout === 'grid' && 'max-w-md',
         className,
       )}
       data-card-variant="fc-crate-quick-view"
       data-layout={layout}
+      style={bodyStyle}
     >
       <CardTitle
         href={href}
@@ -156,7 +167,7 @@ export function FcCrateQuickViewCard({
         product={product}
       />
       <PriceLabel
-        className="[--price-dark-sale-text:#fff] [--price-dark-text:#fff] [&_abbr]:cursor-default [&_abbr]:no-underline"
+        className="[&_abbr]:cursor-default [&_abbr]:no-underline"
         colorScheme="dark"
         price={price ?? t('callForPricing')}
       />
