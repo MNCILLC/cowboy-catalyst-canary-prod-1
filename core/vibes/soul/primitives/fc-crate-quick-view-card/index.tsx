@@ -158,7 +158,12 @@ export function FcCrateQuickViewCard({
       <Dialog.Root onOpenChange={setQuickViewOpen} open={quickViewOpen}>
         <div className="-mx-4 -mb-4 mt-auto bg-blue-700 p-4">
           <Dialog.Trigger asChild>
-            <Button className="w-full" shape="rounded" size="small" variant="tertiary">
+            <Button
+              className="w-full [--button-tertiary-background-hover:rgb(255_255_255/50%)] [--button-tertiary-background:transparent]"
+              shape="rounded"
+              size="small"
+              variant="tertiary"
+            >
               {t('quickView')}
               <span className="sr-only">: {title}</span>
             </Button>
