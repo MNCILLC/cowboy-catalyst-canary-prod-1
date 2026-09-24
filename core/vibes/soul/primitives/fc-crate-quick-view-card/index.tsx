@@ -73,6 +73,14 @@ export function FcCrateQuickViewCard({
       data-card-variant="fc-crate-quick-view"
       data-layout={layout}
     >
+      <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight text-white">
+        <Link
+          className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          href={href}
+        >
+          {title}
+        </Link>
+      </h3>
       <Link
         aria-label={title}
         className="relative block aspect-square w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -94,14 +102,6 @@ export function FcCrateQuickViewCard({
           </div>
         )}
       </Link>
-      <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight text-white">
-        <Link
-          className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          href={href}
-        >
-          {title}
-        </Link>
-      </h3>
       <PriceLabel
         className="[--price-dark-sale-text:#fff] [--price-dark-text:#fff] [&_abbr]:cursor-default [&_abbr]:no-underline"
         colorScheme="dark"
