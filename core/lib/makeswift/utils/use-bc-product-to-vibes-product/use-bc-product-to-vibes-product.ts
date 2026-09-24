@@ -34,6 +34,22 @@ export const BcProductSchema = z.object({
     .optional(),
   showDescription: z.string(),
   description: z.string(),
+  cardStyleCategories: z.object({
+    edges: z
+      .array(
+        z.object({
+          node: z.object({
+            entityId: z.number(),
+            cardStyleMetafields: z.object({
+              edges: z
+                .array(z.object({ node: z.object({ key: z.string(), value: z.string() }) }))
+                .nullable(),
+            }),
+          }),
+        }),
+      )
+      .nullable(),
+  }),
   cardImages: z.object({
     edges: z
       .array(z.object({ node: z.object({ altText: z.string(), url: z.string() }) }))
@@ -84,6 +100,7 @@ export type { Product };
 
 export function useBcProductToVibesProduct(
   showStockLevel = false,
+  categoryId?: number,
 ): (product: BcProductSchema) => Product {
   const format = useFormatter();
 
@@ -100,7 +117,7 @@ export function useBcProductToVibesProduct(
           : pricesTransformer(product, format);
 
       return {
-        ...showCrateProductTransformer(product),
+        ...showCrateProductTransformer(product, categoryId),
         enhancedGridAttributes: product.enhancedGridAttributes,
         id: entityId.toString(),
         isProUseOnly: isProUseProduct(product),
@@ -115,6 +132,6 @@ export function useBcProductToVibesProduct(
         useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
       };
     },
-    [format, showStockLevel],
+    [format, showStockLevel, categoryId],
   );
 }

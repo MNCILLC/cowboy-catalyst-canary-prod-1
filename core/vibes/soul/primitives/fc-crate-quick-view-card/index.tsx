@@ -4,7 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { clsx } from 'clsx';
 import { XIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { CSSProperties, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
@@ -17,7 +17,7 @@ import { Link } from '~/components/link';
 
 import { ProductImageCarousel } from './product-image-carousel';
 
-function CardTitle({ title, href }: { title: string; href: string }) {
+function CardTitle({ title, href, style }: { title: string; href: string; style?: CSSProperties }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
 
@@ -66,8 +66,9 @@ function CardTitle({ title, href }: { title: string; href: string }) {
 
   return (
     <h3
-      className="-mx-4 -mt-4 whitespace-nowrap bg-red-700 p-4 text-center font-[family-name:var(--font-family-heading)] text-xl font-semibold uppercase leading-tight text-white"
+      className="-mx-4 -mt-4 whitespace-nowrap p-4 text-center font-[family-name:var(--font-family-heading)] text-xl font-semibold uppercase leading-tight"
       ref={headingRef}
+      style={style}
     >
       <Link
         className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -128,6 +129,7 @@ export function FcCrateQuickViewCard({
     showFeatures = [],
     descriptionHtml,
     showDescription,
+    cardStyle,
   } = product;
   const description = descriptionHtml?.trim() || showDescription?.trim();
 
@@ -141,7 +143,11 @@ export function FcCrateQuickViewCard({
       data-card-variant="fc-crate-quick-view"
       data-layout={layout}
     >
-      <CardTitle href={href} title={title} />
+      <CardTitle
+        href={href}
+        style={{ backgroundColor: cardStyle?.headerBackground, color: cardStyle?.headerText }}
+        title={title}
+      />
       <ProductImageCarousel
         imagePriority={imagePriority}
         imageSizes={imageSizes}
@@ -156,12 +162,19 @@ export function FcCrateQuickViewCard({
       />
       <StockLevel product={product} />
       <Dialog.Root onOpenChange={setQuickViewOpen} open={quickViewOpen}>
-        <div className="-mx-4 -mb-4 mt-auto bg-blue-700 p-4">
+        <div
+          className="-mx-4 -mb-4 mt-auto p-4"
+          style={{ backgroundColor: cardStyle?.footerBackground, color: cardStyle?.footerText }}
+        >
           <Dialog.Trigger asChild>
             <Button
-              className="w-full [--button-tertiary-background-hover:rgb(255_255_255/50%)] [--button-tertiary-background:transparent]"
+              className="w-full [--button-tertiary-background-hover:rgb(255_255_255/50%)]"
               shape="rounded"
               size="small"
+              style={{
+                backgroundColor: cardStyle?.buttonBackground,
+                color: cardStyle?.buttonText ?? cardStyle?.footerText,
+              }}
               variant="tertiary"
             >
               {t('quickView')}

@@ -28,13 +28,41 @@ export function getShowCrateCustomFieldNames(product: ShowCrateProduct): string[
 
 export function showCrateProductTransformer(
   product: ShowCrateProduct,
-): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription' | 'images'> {
+  categoryId?: number,
+): Pick<
+  Product,
+  'isShow' | 'showName' | 'showFeatures' | 'showDescription' | 'images' | 'cardStyle'
+> {
   const isShow = isShowCrateProduct(product);
   const fieldNames = getShowCrateCustomFieldNames(product);
   const customFields = removeEdgesAndNodes(product.showCustomFields);
+  // Choose one category's settings, rather than mixing colors from different categories.
+  // Stable ID order makes the fallback consistent across catalog and Makeswift queries.
+  const configuredCategories = removeEdgesAndNodes(product.cardStyleCategories)
+    .sort((a, b) => a.entityId - b.entityId)
+    .filter((category) =>
+      removeEdgesAndNodes(category.cardStyleMetafields).some(({ value }) => value.trim()),
+    );
+  const styleCategory =
+    configuredCategories.find((category) => category.entityId === categoryId) ??
+    configuredCategories[0];
+  const styleFields = styleCategory ? removeEdgesAndNodes(styleCategory.cardStyleMetafields) : [];
+  const color = (key: string) =>
+    styleFields.find((field) => field.key === key)?.value.trim() || undefined;
 
   return {
     isShow,
+    cardStyle:
+      isShow && styleCategory
+        ? {
+            headerBackground: color('card_header_bg_color'),
+            headerText: color('card_header_text_color'),
+            footerBackground: color('card_footer_bg_color'),
+            footerText: color('card_footer_text_color'),
+            buttonBackground: color('card_footer_button_bg_color'),
+            buttonText: color('card_footer_button_text_color'),
+          }
+        : undefined,
     images: isShow
       ? removeEdgesAndNodes(product.cardImages).map(({ url, altText }) => ({
           src: url,

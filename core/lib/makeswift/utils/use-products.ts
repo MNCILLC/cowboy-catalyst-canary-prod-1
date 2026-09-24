@@ -39,7 +39,10 @@ export function useProducts({
   products: Product[] | null;
   isLoading: boolean;
 } {
-  const bcProductToVibesProduct = useBcProductToVibesProduct(showStockLevel);
+  const bcProductToVibesProduct = useBcProductToVibesProduct(
+    showStockLevel,
+    collection === 'category' && categoryId ? Number(categoryId) : undefined,
+  );
   const locale = useLocale();
   const collectionParams = new URLSearchParams({
     locale,

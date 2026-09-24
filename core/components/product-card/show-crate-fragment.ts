@@ -4,6 +4,32 @@ export const ShowCrateProductCardFragment = graphql(`
   fragment ShowCrateProductCardFragment on Product {
     entityId
     description
+    cardStyleCategories: categories(first: 50) {
+      edges {
+        node {
+          entityId
+          cardStyleMetafields: metafields(
+            namespace: "custom_category"
+            keys: [
+              "card_header_bg_color"
+              "card_header_text_color"
+              "card_footer_bg_color"
+              "card_footer_text_color"
+              "card_footer_button_bg_color"
+              "card_footer_button_text_color"
+            ]
+            first: 6
+          ) {
+            edges {
+              node {
+                key
+                value
+              }
+            }
+          }
+        }
+      }
+    }
     cardImages: images(first: 50) {
       edges {
         node {

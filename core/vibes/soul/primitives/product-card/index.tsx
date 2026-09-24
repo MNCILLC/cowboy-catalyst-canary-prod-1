@@ -26,6 +26,14 @@ export interface Product {
   showName?: string;
   showDescription?: string;
   showFeatures?: Array<{ id: string; value: string }>;
+  cardStyle?: {
+    headerBackground?: string;
+    headerText?: string;
+    footerBackground?: string;
+    footerText?: string;
+    buttonBackground?: string;
+    buttonText?: string;
+  };
   id: string;
   title: string;
   listViewDescription?: string;
