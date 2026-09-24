@@ -1,5 +1,6 @@
 'use client';
 
+import { clsx } from 'clsx';
 import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
@@ -30,6 +31,8 @@ export function ProductImageCarousel({
   const multipleImages = images.length > 1;
   const autoplayEnabled = process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
   const [selected, setSelected] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progressCycle, setProgressCycle] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -73,11 +76,21 @@ export function ProductImageCarousel({
   useEffect(() => {
     if (!emblaApi) return;
 
+    const onTimerSet = () => {
+      setIsPlaying(true);
+      setProgressCycle((value) => value + 1);
+    };
+    const onTimerStopped = () => setIsPlaying(false);
+
+    emblaApi.on('autoplay:timerset', onTimerSet).on('autoplay:timerstopped', onTimerStopped);
+
     const syncPlayback = () => {
       const autoplay = emblaApi.plugins().autoplay;
 
       if (shouldPlay) autoplay.play();
       else autoplay.stop();
+
+      setIsPlaying(autoplay.isPlaying());
     };
 
     syncPlayback();
@@ -85,6 +98,7 @@ export function ProductImageCarousel({
 
     return () => {
       emblaApi.off('reinit', syncPlayback);
+      emblaApi.off('autoplay:timerset', onTimerSet).off('autoplay:timerstopped', onTimerStopped);
       emblaApi.plugins().autoplay.stop();
     };
   }, [emblaApi, shouldPlay]);
@@ -170,29 +184,61 @@ export function ProductImageCarousel({
             </div>
           </>
         )}
+        {multipleImages && (
+          <div className="absolute bottom-2 left-4 right-4 z-10 flex items-center justify-center gap-3">
+            <div className="flex min-w-0 max-w-60 flex-1 items-center gap-2">
+              {images.map((image, index) => (
+                <button
+                  aria-current={index === selected ? 'true' : undefined}
+                  aria-label={t('imagePosition', {
+                    current: String(index + 1),
+                    total: String(images.length),
+                  })}
+                  className="min-w-0 flex-1 rounded px-0.5 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  key={image.src}
+                  onClick={() => {
+                    emblaApi?.goTo(index);
+                    emblaApi?.plugins().autoplay.reset();
+                  }}
+                  type="button"
+                >
+                  <span className="relative block h-0.5 overflow-hidden bg-white/30">
+                    <span
+                      className={clsx(
+                        'absolute inset-0 bg-white',
+                        index === selected ? 'opacity-100' : 'opacity-0',
+                        index === selected &&
+                          isPlaying &&
+                          'ease-linear animate-in slide-in-from-left fill-mode-forwards',
+                      )}
+                      key={progressCycle}
+                      style={{ animationDuration: '5000ms' }}
+                    />
+                  </span>
+                </button>
+              ))}
+            </div>
+            <span aria-live={isPlaying ? 'off' : 'polite'} className="sr-only">
+              {t('imagePosition', { current: String(selected + 1), total: String(images.length) })}
+            </span>
+            {autoplayEnabled && !reducedMotion && (
+              <Button
+                aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
+                onClick={() => setUserPaused((value) => !value)}
+                shape="circle"
+                size="x-small"
+                variant="tertiary"
+              >
+                {userPaused ? (
+                  <Play aria-hidden="true" size={16} />
+                ) : (
+                  <Pause aria-hidden="true" size={16} />
+                )}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
-      {multipleImages && (
-        <div className="mt-2 flex items-center justify-center gap-3 px-4">
-          <span aria-live={shouldPlay ? 'off' : 'polite'} className="text-xs tabular-nums">
-            {t('imagePosition', { current: String(selected + 1), total: String(images.length) })}
-          </span>
-          {autoplayEnabled && !reducedMotion && (
-            <Button
-              aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
-              onClick={() => setUserPaused((value) => !value)}
-              shape="circle"
-              size="x-small"
-              variant="tertiary"
-            >
-              {userPaused ? (
-                <Play aria-hidden="true" size={16} />
-              ) : (
-                <Pause aria-hidden="true" size={16} />
-              )}
-            </Button>
-          )}
-        </div>
-      )}
     </div>
   );
 }
