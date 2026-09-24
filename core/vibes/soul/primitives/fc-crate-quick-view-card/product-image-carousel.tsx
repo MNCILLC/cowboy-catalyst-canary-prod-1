@@ -34,21 +34,18 @@ export function ProductImageCarousel({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progressCycle, setProgressCycle] = useState(0);
   const [userPaused, setUserPaused] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: multipleImages, duration: reducedMotion ? 0 : 25 },
-    [Autoplay({ delay: 5000, active: autoplayEnabled && multipleImages })],
+    [
+      Autoplay({
+        delay: 5000,
+        active: autoplayEnabled && multipleImages,
+        defaultInteraction: false,
+      }),
+    ],
   );
-  const shouldPlay =
-    autoplayEnabled &&
-    multipleImages &&
-    !reducedMotion &&
-    !userPaused &&
-    !paused &&
-    !hovered &&
-    !focused;
+  const shouldPlay = autoplayEnabled && multipleImages && !reducedMotion && !userPaused && !paused;
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -108,12 +105,6 @@ export function ProductImageCarousel({
       aria-label={t('imageCarousel', { name: product.title })}
       aria-roledescription="carousel"
       className="group/carousel -mx-4 min-w-0"
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
-      }}
-      onFocus={() => setFocused(true)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       role="region"
     >
       <div className="relative">
@@ -182,6 +173,24 @@ export function ProductImageCarousel({
                 <ChevronRight aria-hidden="true" size={16} />
               </Button>
             </div>
+            {autoplayEnabled && !reducedMotion && (
+              <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-500 ease-in-out group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-has-[:focus-visible]/carousel:pointer-events-auto group-has-[:focus-visible]/carousel:opacity-100">
+                <Button
+                  aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
+                  className="!bg-white !text-black opacity-90 after:hidden"
+                  onClick={() => setUserPaused((value) => !value)}
+                  shape="circle"
+                  size="x-small"
+                  variant="tertiary"
+                >
+                  {userPaused ? (
+                    <Play aria-hidden="true" size={16} />
+                  ) : (
+                    <Pause aria-hidden="true" size={16} />
+                  )}
+                </Button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -222,21 +231,6 @@ export function ProductImageCarousel({
           <span aria-live={isPlaying ? 'off' : 'polite'} className="sr-only">
             {t('imagePosition', { current: String(selected + 1), total: String(images.length) })}
           </span>
-          {autoplayEnabled && !reducedMotion && (
-            <Button
-              aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
-              onClick={() => setUserPaused((value) => !value)}
-              shape="circle"
-              size="x-small"
-              variant="tertiary"
-            >
-              {userPaused ? (
-                <Play aria-hidden="true" size={16} />
-              ) : (
-                <Pause aria-hidden="true" size={16} />
-              )}
-            </Button>
-          )}
         </div>
       )}
     </div>
