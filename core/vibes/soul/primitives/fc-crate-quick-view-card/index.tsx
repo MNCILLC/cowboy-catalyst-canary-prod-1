@@ -48,7 +48,6 @@ export function FcCrateQuickViewCard({
   product,
   className,
   layout = 'grid',
-  colorScheme = 'light',
   imagePriority = false,
   imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
 }: ProductCardProps) {
@@ -67,12 +66,7 @@ export function FcCrateQuickViewCard({
   return (
     <article
       className={clsx(
-        'flex h-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-600 p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] shadow-sm @container',
-        {
-          light:
-            'bg-[var(--product-card-light-background,hsl(var(--contrast-100)))] text-[var(--product-card-light-title,hsl(var(--foreground)))]',
-          dark: 'bg-[var(--product-card-dark-background,hsl(var(--contrast-500)))] text-[var(--product-card-dark-title,hsl(var(--background)))]',
-        }[colorScheme],
+        'flex h-full min-w-0 flex-col gap-4 overflow-hidden rounded-2xl border border-gray-600 bg-gradient-to-t from-[#555555] to-[#2e2e2e] p-4 font-[family-name:var(--product-card-font-family,var(--font-family-body))] text-white shadow-sm @container',
         layout === 'grid' && 'max-w-md',
         className,
       )}
@@ -100,7 +94,7 @@ export function FcCrateQuickViewCard({
           </div>
         )}
       </Link>
-      <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight">
+      <h3 className="break-words font-[family-name:var(--font-family-heading)] text-xl font-semibold leading-tight text-white">
         <Link
           className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           href={href}
@@ -109,8 +103,8 @@ export function FcCrateQuickViewCard({
         </Link>
       </h3>
       <PriceLabel
-        className="[&_abbr]:cursor-default [&_abbr]:no-underline"
-        colorScheme={colorScheme}
+        className="[--price-dark-sale-text:#fff] [--price-dark-text:#fff] [&_abbr]:cursor-default [&_abbr]:no-underline"
+        colorScheme="dark"
         price={price ?? t('callForPricing')}
       />
       <StockLevel product={product} />
