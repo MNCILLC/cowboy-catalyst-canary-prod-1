@@ -33,19 +33,19 @@ export function ProductImageCarousel({
   const [selected, setSelected] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progressCycle, setProgressCycle] = useState(0);
-  const [userPaused, setUserPaused] = useState(false);
+  const [userPaused, setUserPaused] = useState(!autoplayEnabled);
   const [reducedMotion, setReducedMotion] = useState(true);
   const [emblaRef, emblaApi] = useEmblaCarousel(
     { loop: multipleImages, duration: reducedMotion ? 0 : 25 },
     [
       Autoplay({
         delay: 5000,
-        active: autoplayEnabled && multipleImages,
+        active: multipleImages,
         defaultInteraction: false,
       }),
     ],
   );
-  const shouldPlay = autoplayEnabled && multipleImages && !reducedMotion && !userPaused && !paused;
+  const shouldPlay = multipleImages && !reducedMotion && !userPaused && !paused;
 
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -173,7 +173,7 @@ export function ProductImageCarousel({
                 <ChevronRight aria-hidden="true" size={16} />
               </Button>
             </div>
-            {autoplayEnabled && !reducedMotion && (
+            {!reducedMotion && (
               <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity duration-500 ease-in-out group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-has-[:focus-visible]/carousel:pointer-events-auto group-has-[:focus-visible]/carousel:opacity-100">
                 <Button
                   aria-label={userPaused ? t('playSlideshow') : t('pauseSlideshow')}
