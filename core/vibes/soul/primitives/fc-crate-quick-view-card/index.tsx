@@ -12,7 +12,6 @@ import { PriceLabel } from '@/vibes/soul/primitives/price-label';
 import type { Product, ProductCardProps } from '@/vibes/soul/primitives/product-card';
 import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-card/show-crate-features';
 import { ProductDescription } from '@/vibes/soul/sections/product-detail/product-description';
-import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { ProductImageCarousel } from './product-image-carousel';
@@ -131,6 +130,7 @@ export function FcCrateQuickViewCard({
     showDescription,
     cardStyle,
   } = product;
+  const hasImages = Boolean(image || product.images?.length);
   const description = descriptionHtml?.trim() || showDescription?.trim();
   const bodyStyle: CSSProperties & Record<'--price-dark-text' | '--price-dark-sale-text', string> =
     {
@@ -213,7 +213,7 @@ export function FcCrateQuickViewCard({
             <div
               className={clsx(
                 'mt-4 grid items-stretch gap-4 sm:gap-6',
-                image ? 'grid-cols-2' : 'grid-cols-1',
+                hasImages ? 'grid-cols-2' : 'grid-cols-1',
               )}
             >
               <div className="flex min-w-0 flex-col items-start gap-4 pb-6">
@@ -223,14 +223,13 @@ export function FcCrateQuickViewCard({
                 <PriceLabel className="text-xl" price={price ?? t('callForPricing')} />
                 <StockLevel product={product} />
               </div>
-              {image && (
+              {hasImages && (
                 <div className="relative min-w-0 overflow-hidden rounded-lg">
-                  <Image
-                    alt={image.alt}
-                    className="object-contain"
-                    fill
-                    sizes="(min-width: 672px) 292px, calc((100vw - 96px) / 2)"
-                    src={image.src}
+                  <ProductImageCarousel
+                    imagePriority
+                    imageSizes="(min-width: 672px) 292px, calc((100vw - 96px) / 2)"
+                    product={product}
+                    variant="modal"
                   />
                 </div>
               )}

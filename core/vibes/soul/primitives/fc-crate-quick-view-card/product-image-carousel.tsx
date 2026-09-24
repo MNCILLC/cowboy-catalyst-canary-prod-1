@@ -15,6 +15,7 @@ import { Link } from '~/components/link';
 interface Props extends Pick<ProductCardProps, 'imagePriority' | 'imageSizes'> {
   product: Product;
   paused?: boolean;
+  variant?: 'card' | 'modal';
 }
 
 export function ProductImageCarousel({
@@ -22,6 +23,7 @@ export function ProductImageCarousel({
   imagePriority,
   imageSizes,
   paused = false,
+  variant = 'card',
 }: Props) {
   const t = useTranslations('Components.ProductCard');
   // Keep the catalog thumbnail first, without showing it twice in the gallery.
@@ -119,11 +121,18 @@ export function ProductImageCarousel({
     <div
       aria-label={t('imageCarousel', { name: product.title })}
       aria-roledescription="carousel"
-      className="group/carousel -mx-4 -mt-4 min-w-0"
+      className={clsx(
+        'group/carousel min-w-0',
+        variant === 'card' ? '-mx-4 -mt-4' : 'flex h-full flex-col justify-center',
+      )}
       role="region"
     >
       <div className="relative">
-        <div className="overflow-hidden" ref={emblaRef} style={{ height: slideHeight }}>
+        <div
+          className={clsx('overflow-hidden', variant === 'modal' && 'rounded-lg')}
+          ref={emblaRef}
+          style={{ height: slideHeight }}
+        >
           <div className="flex touch-pan-y items-start">
             {images.length > 0 ? (
               images.map((image, index) => (
@@ -227,10 +236,16 @@ export function ProductImageCarousel({
                 }}
                 type="button"
               >
-                <span className="relative block h-0.5 overflow-hidden bg-white/30">
+                <span
+                  className={clsx(
+                    'relative block h-0.5 overflow-hidden',
+                    variant === 'card' ? 'bg-white/30' : 'bg-foreground/30',
+                  )}
+                >
                   <span
                     className={clsx(
-                      'absolute inset-0 bg-white',
+                      'absolute inset-0',
+                      variant === 'card' ? 'bg-white' : 'bg-foreground',
                       index === selected ? 'opacity-100' : 'opacity-0',
                       index === selected &&
                         isPlaying &&
