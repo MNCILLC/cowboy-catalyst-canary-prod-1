@@ -656,6 +656,12 @@
     "ProductCard": {
       "learnMore": "Learn More",
       "quickView": "Quick View",
+      "imageCarousel": "{name} images",
+      "previousImage": "Previous image",
+      "nextImage": "Next image",
+      "imagePosition": "Image {current} of {total}",
+      "pauseSlideshow": "Pause slideshow",
+      "playSlideshow": "Play slideshow",
       "closeQuickView": "Close quick view",
       "quickViewSpecifications": "Specifications",
       "quickViewDescription": "Product description",

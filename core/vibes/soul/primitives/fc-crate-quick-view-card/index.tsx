@@ -4,6 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { clsx } from 'clsx';
 import { XIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useState } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
@@ -13,6 +14,8 @@ import { ShowCrateFeatures } from '@/vibes/soul/primitives/show-crate-product-ca
 import { ProductDescription } from '@/vibes/soul/sections/product-detail/product-description';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
+
+import { ProductImageCarousel } from './product-image-carousel';
 
 function StockLevel({ product }: { product: Product }) {
   const t = useTranslations('Components.ProductCard');
@@ -52,6 +55,7 @@ export function FcCrateQuickViewCard({
   imageSizes = '(min-width: 80rem) 20vw, (min-width: 64rem) 25vw, (min-width: 42rem) 33vw, (min-width: 24rem) 50vw, 100vw',
 }: ProductCardProps) {
   const t = useTranslations('Components.ProductCard');
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const {
     title,
     image,
@@ -81,34 +85,20 @@ export function FcCrateQuickViewCard({
           {title}
         </Link>
       </h3>
-      <Link
-        aria-label={title}
-        className="relative block aspect-square w-full overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        href={href}
-        tabIndex={-1}
-      >
-        {image ? (
-          <Image
-            alt={image.alt}
-            className="object-contain"
-            fill
-            preload={imagePriority}
-            sizes={imageSizes}
-            src={image.src}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center break-words p-4 text-center text-xl opacity-50">
-            {title}
-          </div>
-        )}
-      </Link>
+      <ProductImageCarousel
+        imagePriority={imagePriority}
+        imageSizes={imageSizes}
+        key={product.id}
+        paused={quickViewOpen}
+        product={product}
+      />
       <PriceLabel
         className="[--price-dark-sale-text:#fff] [--price-dark-text:#fff] [&_abbr]:cursor-default [&_abbr]:no-underline"
         colorScheme="dark"
         price={price ?? t('callForPricing')}
       />
       <StockLevel product={product} />
-      <Dialog.Root>
+      <Dialog.Root onOpenChange={setQuickViewOpen} open={quickViewOpen}>
         <Dialog.Trigger asChild>
           <Button className="mt-auto w-full" shape="rounded" size="small" variant="tertiary">
             {t('quickView')}

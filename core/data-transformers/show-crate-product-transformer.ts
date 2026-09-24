@@ -28,13 +28,19 @@ export function getShowCrateCustomFieldNames(product: ShowCrateProduct): string[
 
 export function showCrateProductTransformer(
   product: ShowCrateProduct,
-): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription'> {
+): Pick<Product, 'isShow' | 'showName' | 'showFeatures' | 'showDescription' | 'images'> {
   const isShow = isShowCrateProduct(product);
   const fieldNames = getShowCrateCustomFieldNames(product);
   const customFields = removeEdgesAndNodes(product.showCustomFields);
 
   return {
     isShow,
+    images: isShow
+      ? removeEdgesAndNodes(product.cardImages).map(({ url, altText }) => ({
+          src: url,
+          alt: altText,
+        }))
+      : undefined,
     showName: isShow
       ? customFields.find(({ name }) => name.trim() === 'Show Name')?.value.trim() || undefined
       : undefined,

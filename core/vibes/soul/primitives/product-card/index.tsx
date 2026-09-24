@@ -38,6 +38,7 @@ export interface Product {
   enhancedGridAttributes?: Product['attributes'];
   href: string;
   image?: { src: string; alt: string };
+  images?: Array<{ src: string; alt: string }>;
   price?: Price;
   subtitle?: string;
   badge?: string;

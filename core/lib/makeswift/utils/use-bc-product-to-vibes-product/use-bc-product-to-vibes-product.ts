@@ -34,6 +34,11 @@ export const BcProductSchema = z.object({
     .optional(),
   showDescription: z.string(),
   description: z.string(),
+  cardImages: z.object({
+    edges: z
+      .array(z.object({ node: z.object({ altText: z.string(), url: z.string() }) }))
+      .nullable(),
+  }),
   inventory: z.object({ isInStock: z.boolean() }),
   showMetafields: z.object({
     edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
