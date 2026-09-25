@@ -31,7 +31,9 @@ export function ProductImageCarousel({
     (image, index, all) => all.findIndex((candidate) => candidate.src === image.src) === index,
   );
   const multipleImages = images.length > 1;
-  const autoplayEnabled = process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
+  const slideDuration = variant === 'modal' ? 3000 : 5000;
+  const autoplayEnabled =
+    variant === 'modal' || process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
   const [selected, setSelected] = useState(0);
   const [slideHeight, setSlideHeight] = useState<number>();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,7 +44,7 @@ export function ProductImageCarousel({
     { loop: multipleImages, duration: reducedMotion ? 0 : 25 },
     [
       Autoplay({
-        delay: 5000,
+        delay: slideDuration,
         active: multipleImages,
         defaultInteraction: false,
       }),
@@ -253,7 +255,7 @@ export function ProductImageCarousel({
                         'ease-linear animate-in slide-in-from-left fill-mode-forwards',
                     )}
                     key={progressCycle}
-                    style={{ animationDuration: '5000ms' }}
+                    style={{ animationDuration: `${slideDuration}ms` }}
                   />
                 </span>
               </button>
