@@ -8,6 +8,7 @@ import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
+import { QuickViewPurchaseAction } from '~/components/product-card/quick-view-purchase-action';
 
 import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
@@ -33,6 +34,7 @@ export interface Product {
     footerText?: string;
     buttonBackground?: string;
     buttonText?: string;
+    buttonLabel?: string;
     bodyBackgroundTop?: string;
     bodyBackgroundBottom?: string;
     bodyText?: string;
@@ -119,7 +121,12 @@ export function ProductCard({ purchaseAction, ...rest }: ProductCardProps) {
   };
 
   if (props.product.isShow && process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true') {
-    return <FcCrateQuickViewCard {...props} />;
+    return (
+      <FcCrateQuickViewCard
+        {...props}
+        purchaseAction={props.purchaseAction ?? <QuickViewPurchaseAction product={props.product} />}
+      />
+    );
   }
 
   if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {

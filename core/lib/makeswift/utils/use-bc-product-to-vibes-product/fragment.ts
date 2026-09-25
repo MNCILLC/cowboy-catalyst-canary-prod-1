@@ -8,6 +8,19 @@ export const MakeswiftProductFragment = graphql(
     fragment MakeswiftProductFragment on Product {
       entityId
       name
+      showCartAction
+      minPurchaseQuantity
+      maxPurchaseQuantity
+      availabilityV2 {
+        status
+      }
+      productOptions(first: 1) {
+        edges {
+          node {
+            entityId
+          }
+        }
+      }
       inventory {
         isInStock
       }

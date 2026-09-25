@@ -113,6 +113,7 @@ function StockLevel({ product }: { product: Product }) {
 
 export function FcCrateQuickViewCard({
   product,
+  purchaseAction,
   className,
   layout = 'grid',
   imagePriority = false,
@@ -188,7 +189,7 @@ export function FcCrateQuickViewCard({
               }}
               variant="tertiary"
             >
-              {t('quickView')}
+              {cardStyle?.buttonLabel?.trim() || t('quickView')}
               <span className="sr-only">: {title}</span>
             </Button>
           </Dialog.Trigger>
@@ -226,6 +227,9 @@ export function FcCrateQuickViewCard({
                 </Dialog.Title>
                 <PriceLabel className="text-xl" price={price ?? t('callForPricing')} />
                 <StockLevel product={product} />
+                {purchaseAction && (
+                  <div className="w-full [&_form]:flex-wrap">{purchaseAction}</div>
+                )}
               </div>
               {hasImages && (
                 <div className="relative min-w-0 overflow-hidden rounded-lg">

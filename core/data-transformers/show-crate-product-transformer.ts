@@ -47,7 +47,7 @@ export function showCrateProductTransformer(
     configuredCategories.find((category) => category.entityId === categoryId) ??
     configuredCategories[0];
   const styleFields = styleCategory ? removeEdgesAndNodes(styleCategory.cardStyleMetafields) : [];
-  const color = (key: string) =>
+  const setting = (key: string) =>
     styleFields.find((field) => field.key === key)?.value.trim() || undefined;
 
   return {
@@ -55,15 +55,16 @@ export function showCrateProductTransformer(
     cardStyle:
       isShow && styleCategory
         ? {
-            headerBackground: color('card_header_bg_color'),
-            headerText: color('card_header_text_color'),
-            footerBackground: color('card_footer_bg_color'),
-            footerText: color('card_footer_text_color'),
-            buttonBackground: color('card_footer_button_bg_color'),
-            buttonText: color('card_footer_button_text_color'),
-            bodyBackgroundTop: color('card_body_bg_color_top'),
-            bodyBackgroundBottom: color('card_body_bg_color_bottom'),
-            bodyText: color('card_body_text_color'),
+            headerBackground: setting('card_header_bg_color'),
+            headerText: setting('card_header_text_color'),
+            footerBackground: setting('card_footer_bg_color'),
+            footerText: setting('card_footer_text_color'),
+            buttonBackground: setting('card_footer_button_bg_color'),
+            buttonText: setting('card_footer_button_text_color'),
+            buttonLabel: setting('card_footer_button_text'),
+            bodyBackgroundTop: setting('card_body_bg_color_top'),
+            bodyBackgroundBottom: setting('card_body_bg_color_bottom'),
+            bodyText: setting('card_body_text_color'),
           }
         : undefined,
     images: isShow

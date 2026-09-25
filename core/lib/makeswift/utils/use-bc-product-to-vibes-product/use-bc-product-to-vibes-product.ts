@@ -56,6 +56,13 @@ export const BcProductSchema = z.object({
       .nullable(),
   }),
   inventory: z.object({ isInStock: z.boolean() }),
+  showCartAction: z.boolean(),
+  minPurchaseQuantity: z.number().nullable(),
+  maxPurchaseQuantity: z.number().nullable(),
+  availabilityV2: z.object({ status: z.string() }),
+  productOptions: z.object({
+    edges: z.array(z.object({ node: z.object({ entityId: z.number() }) })).nullable(),
+  }),
   showMetafields: z.object({
     edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
   }),
@@ -124,6 +131,17 @@ export function useBcProductToVibesProduct(
         title: name,
         descriptionHtml: product.description,
         isInStock: product.inventory.isInStock,
+        hasOptions: (product.productOptions.edges?.length ?? 0) > 0,
+        canAddToCart:
+          product.showCartAction &&
+          product.availabilityV2.status !== 'Unavailable' &&
+          product.inventory.isInStock,
+        isPreorder: product.availabilityV2.status === 'Preorder',
+        minQuantity:
+          product.minPurchaseQuantity != null
+            ? Math.max(1, product.minPurchaseQuantity)
+            : undefined,
+        maxQuantity: product.maxPurchaseQuantity ?? undefined,
         href: path,
         image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
         price,
