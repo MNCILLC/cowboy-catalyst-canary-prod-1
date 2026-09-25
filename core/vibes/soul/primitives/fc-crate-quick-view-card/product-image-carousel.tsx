@@ -31,7 +31,8 @@ export function ProductImageCarousel({
     (image, index, all) => all.findIndex((candidate) => candidate.src === image.src) === index,
   );
   const multipleImages = images.length > 1;
-  const autoplayEnabled = process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
+  const autoplayEnabled =
+    variant === 'modal' || process.env.NEXT_PUBLIC_FCCRATE_IMAGE_AUTOPLAY === 'true';
   const [selected, setSelected] = useState(0);
   const [slideHeight, setSlideHeight] = useState<number>();
   const [isPlaying, setIsPlaying] = useState(false);
