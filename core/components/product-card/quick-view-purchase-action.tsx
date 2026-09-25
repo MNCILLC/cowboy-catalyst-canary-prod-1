@@ -4,8 +4,8 @@ import { useTranslations } from 'next-intl';
 
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { AddToCartForm } from '@/vibes/soul/primitives/compare-card/add-to-cart-form';
-import type { Product } from '@/vibes/soul/primitives/product-card';
 import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
+import type { Product } from '@/vibes/soul/primitives/product-card';
 import { addToCart } from '~/app/[locale]/(default)/compare/_actions/add-to-cart';
 
 export function QuickViewPurchaseAction({ product }: { product: Product }) {

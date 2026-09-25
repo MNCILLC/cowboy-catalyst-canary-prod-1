@@ -227,7 +227,7 @@ export function FcCrateQuickViewCard({
                 </Dialog.Title>
                 <PriceLabel className="text-xl" price={price ?? t('callForPricing')} />
                 <StockLevel product={product} />
-                {purchaseAction && (
+                {Boolean(purchaseAction) && (
                   <div className="w-full [&_form]:flex-wrap">{purchaseAction}</div>
                 )}
               </div>
