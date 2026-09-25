@@ -66,7 +66,8 @@ export function ProductImageCarousel({
     // Offscreen lazy images can still have square placeholder dimensions.
     // Size the viewport from the visible slide, including when its image loads.
     let activeSlide: HTMLElement | undefined;
-    const measure = () => setSlideHeight(activeSlide?.getBoundingClientRect().height);
+    // Layout height stays stable while the modal animates its scale.
+    const measure = () => setSlideHeight(activeSlide?.offsetHeight);
     const observer = new ResizeObserver(measure);
     const sync = () => {
       const index = emblaApi.selectedSnap();
