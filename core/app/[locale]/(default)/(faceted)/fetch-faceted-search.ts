@@ -420,10 +420,14 @@ export const fetchFacetedSearch = cache(
     const { after, before, limit = 9, sort, filters } = PublicToPrivateParams.parse(params);
     const selections = isCustomProductFilteringEnabled ? getMetafieldSelections(params) : [];
 
-    if (selections.length > 0) {
+    if (selections.length > 0 || filters.hideOutOfStock) {
       const [search, products] = await Promise.all([
         // Native facets are still evaluated by BigCommerce. Never send our cursors upstream.
-        getProductSearchResults({ limit: 1, sort, filters }, currencyCode, customerAccessToken),
+        getProductSearchResults(
+          { limit: 1, sort, filters: { ...filters, hideOutOfStock: false } },
+          currencyCode,
+          customerAccessToken,
+        ),
         getMetafieldFilteredProducts(
           filters,
           sort,

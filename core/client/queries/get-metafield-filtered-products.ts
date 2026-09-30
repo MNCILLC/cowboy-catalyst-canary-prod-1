@@ -8,6 +8,7 @@ import { graphql, VariablesOf } from '~/client/graphql';
 import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { withLocationInventory } from '~/lib/location/with-location-inventory';
 import {
   getMetafieldSelections,
   matchesMetafieldSelections,
@@ -33,6 +34,12 @@ const MatchProductsQuery = graphql(`
             edges {
               node {
                 entityId
+                sku
+                inventory {
+                  isStockTracked
+                  hasVariantInventory
+                  isInStock
+                }
                 metafields(namespace: "custom_product", keys: $keys, first: 50) {
                   edges {
                     node {
@@ -75,8 +82,12 @@ const getCandidates = cache(
     sort: SearchVariables['sort'],
     customerAccessToken?: string,
   ) => {
-    const products: Array<{ entityId: number; metafields: Array<{ key: string; value: string }> }> =
-      [];
+    const products: Array<{
+      entityId: number;
+      sku: string;
+      inventory: { isStockTracked: boolean; hasVariantInventory: boolean; isInStock: boolean };
+      metafields: Array<{ key: string; value: string }>;
+    }> = [];
     let after: string | undefined;
 
     // Scan lightweight metadata only. Cards/prices are fetched for the selected page.
@@ -87,7 +98,8 @@ const getCandidates = cache(
       const response = await client.fetch({
         document: MatchProductsQuery,
         variables: {
-          filters,
+          // Store-wide availability must not exclude stock at the selected location.
+          filters: { ...filters, hideOutOfStock: false },
           sort,
           after,
           keys: productFilterDefinitions.map(({ productKey }) => productKey),
@@ -100,6 +112,8 @@ const getCandidates = cache(
       products.push(
         ...removeEdgesAndNodes(connection).map((product) => ({
           entityId: product.entityId,
+          sku: product.sku,
+          inventory: product.inventory,
           metafields: removeEdgesAndNodes(product.metafields),
         })),
       );
@@ -126,13 +140,16 @@ export async function getMetafieldFilteredProducts(
 ) {
   const [candidates, metafieldFilters] = await Promise.all([
     getCandidates(filters, sort, customerAccessToken),
-    getMetafieldFilters(),
+    selections.length > 0 ? getMetafieldFilters() : Promise.resolve([]),
   ]);
-  const ids = candidates
-    .filter((product) =>
-      matchesMetafieldSelections(product.metafields, selections, metafieldFilters),
-    )
-    .map((product) => product.entityId);
+  const matchingProducts = candidates.filter((product) =>
+    matchesMetafieldSelections(product.metafields, selections, metafieldFilters),
+  );
+  // Filter the entire sorted candidate set before paginating so totals and pages stay correct.
+  const availableProducts = filters.hideOutOfStock
+    ? (await withLocationInventory(matchingProducts)).filter(({ inventory }) => inventory.isInStock)
+    : matchingProducts;
+  const ids = availableProducts.map((product) => product.entityId);
   const { ids: pageIds, ...page } = paginateMetafieldMatches(ids, pagination);
 
   if (!pageIds.length) return { ...page, items: [] };
