@@ -8,6 +8,7 @@ export const ProductCardFragment = graphql(
   `
     fragment ProductCardFragment on Product {
       entityId
+      sku
       name
       description
       listViewDescriptionMetafield: metafields(
@@ -52,6 +53,7 @@ export const ProductCardFragment = graphql(
         path
       }
       inventory {
+        isStockTracked
         hasVariantInventory
         isInStock
         aggregated {

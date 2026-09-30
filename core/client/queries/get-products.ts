@@ -10,6 +10,7 @@ import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { getProductCardAttributes } from '~/data-transformers/product-card-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { withLocationInventory } from '~/lib/location/with-location-inventory';
 import { getStockDisplayData } from '~/lib/stock-display';
 
 import { getMetafieldFilters } from './get-metafield-filters';
@@ -39,7 +40,9 @@ async function withStockDisplay(
   const enhancedGridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
   const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters() : [];
 
-  return products.map((product) => ({
+  const locationProducts = await withLocationInventory(products);
+
+  return locationProducts.map((product) => ({
     ...product,
     enhancedGridAttributes: enhancedGridEnabled
       ? getProductCardAttributes(product, attributeFilters)

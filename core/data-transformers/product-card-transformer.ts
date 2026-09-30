@@ -6,6 +6,7 @@ import { Product } from '@/vibes/soul/primitives/product-card';
 import { ExistingResultType } from '~/client/util';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { WishlistItemProductFragment } from '~/components/wishlist/fragment';
+import { withLocationInventory } from '~/lib/location/with-location-inventory';
 import { isProUseProduct } from '~/lib/pro-use/policy';
 import {
   getProductAttributes,
@@ -176,7 +177,7 @@ export const singleProductCardTransformer = (
   };
 };
 
-export const productCardTransformer = (
+export const productCardTransformer = async (
   products: Array<ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>>,
   format: ExistingResultType<typeof getFormatter>,
   outOfStockMessage?: string,
@@ -185,19 +186,22 @@ export const productCardTransformer = (
   stockDisplay?: ProductCardStockDisplay,
   attributeFilters?: ProductAttributeFilter[],
   categoryId?: number,
-): Product[] => {
-  return products
-    .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
-    .map((product) =>
-      singleProductCardTransformer(
-        product,
-        format,
-        outOfStockMessage,
-        showBackorderMessage,
-        taxDisplay,
-        stockDisplay,
-        attributeFilters,
-        categoryId,
-      ),
-    );
+): Promise<Product[]> => {
+  const visibleProducts = products.filter(
+    (product) => isShowCrateProduct(product) || !hasZeroPrice(product),
+  );
+  const locationProducts = await withLocationInventory(visibleProducts);
+
+  return locationProducts.map((product) =>
+    singleProductCardTransformer(
+      product,
+      format,
+      outOfStockMessage,
+      showBackorderMessage,
+      taxDisplay,
+      stockDisplay,
+      attributeFilters,
+      categoryId,
+    ),
+  );
 };

@@ -7,6 +7,7 @@ export const MakeswiftProductFragment = graphql(
   `
     fragment MakeswiftProductFragment on Product {
       entityId
+      sku
       name
       showCartAction
       minPurchaseQuantity
@@ -22,6 +23,8 @@ export const MakeswiftProductFragment = graphql(
         }
       }
       inventory {
+        isStockTracked
+        hasVariantInventory
         isInStock
       }
       defaultImage {

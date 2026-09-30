@@ -6,6 +6,7 @@ import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
 import { routing } from '~/i18n/routing';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { withLocationInventory } from '~/lib/location/with-location-inventory';
 import { MakeswiftProductFragment } from '~/lib/makeswift/utils/use-bc-product-to-vibes-product/fragment';
 
 const GetProduct = graphql(
@@ -52,5 +53,7 @@ export const GET = async (
     },
   });
 
-  return NextResponse.json(data.site.product);
+  const [product] = await withLocationInventory(data.site.product ? [data.site.product] : []);
+
+  return NextResponse.json(product ?? null);
 };

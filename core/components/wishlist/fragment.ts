@@ -25,6 +25,8 @@ export const WishlistItemProductFragment = graphql(
       sku
       showCartAction
       inventory {
+        isStockTracked
+        hasVariantInventory
         isInStock
       }
       availabilityV2 {

@@ -28,6 +28,7 @@ import React, {
   useTransition,
 } from 'react';
 import { useFormStatus } from 'react-dom';
+import { useSWRConfig } from 'swr';
 
 import { FormStatus } from '@/vibes/soul/form/form-status';
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
@@ -722,6 +723,7 @@ function LocationSwitcher({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { mutate } = useSWRConfig();
   const activeLocation = locations.find(({ id }) => id === activeLocationId) ?? locations[0];
 
   if (!activeLocation) return null;
@@ -759,6 +761,11 @@ function LocationSwitcher({
                 onSelect={() => {
                   startTransition(async () => {
                     await action(location.id);
+                    await mutate(
+                      (key) => typeof key === 'string' && key.startsWith('/api/products/'),
+                      undefined,
+                      { revalidate: true },
+                    );
                     router.refresh();
                   });
                 }}

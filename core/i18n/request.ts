@@ -2,13 +2,14 @@ import deepmerge from 'deepmerge';
 import { notFound } from 'next/navigation';
 import { getRequestConfig } from 'next-intl/server';
 
-import { locales } from './locales';
+import { defaultLocale, locales } from './locales';
 
 // The language to fall back to if the requested message string is not available.
 const fallbackLocale = 'en';
 
 export default getRequestConfig(async ({ requestLocale }) => {
-  const locale = await requestLocale;
+  // API routes do not pass through the locale proxy. Use the store default when absent.
+  const locale = (await requestLocale) ?? defaultLocale;
 
   if (!locale || !locales.includes(locale)) {
     notFound();
