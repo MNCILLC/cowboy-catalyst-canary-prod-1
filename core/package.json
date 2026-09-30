@@ -90,6 +90,7 @@
     "swr": "^2.2.5",
     "tailwindcss-radix": "^3.0.5",
     "uuid": "^11.1.0",
+    "zipcodes": "8.0.0",
     "zod": "^3.25.51"
   },
   "devDependencies": {
@@ -111,6 +112,7 @@
     "@types/react-headroom": "^3.2.3",
     "@types/set-cookie-parser": "^2.4.10",
     "@types/uuid": "^10.0.0",
+    "@types/zipcodes": "^8.0.5",
     "autoprefixer": "^10.4.21",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",

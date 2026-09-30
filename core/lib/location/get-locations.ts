@@ -15,6 +15,12 @@ const responseSchema = z.object({
           state: z.string().nullish(),
           zip: z.string().nullish(),
           country_code: z.string().nullish(),
+          geo_coordinates: z
+            .object({
+              latitude: z.number(),
+              longitude: z.number(),
+            })
+            .nullish(),
         })
         .nullish(),
     }),
@@ -29,6 +35,7 @@ const responseSchema = z.object({
 export interface ShoppingLocation {
   id: number;
   label: string;
+  coordinates?: { latitude: number; longitude: number } | null;
   address?: {
     address1?: string | null;
     address2?: string | null;
@@ -85,6 +92,7 @@ export async function getAllLocations(): Promise<ShoppingLocation[]> {
   return locations.map(({ id, label, address }) => ({
     id,
     label,
+    coordinates: address?.geo_coordinates,
     address: address
       ? {
           address1: address.address1,

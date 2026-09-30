@@ -1,11 +1,8 @@
-import { cookies } from 'next/headers';
+import { getShoppingLocation } from './get-shopping-location';
+import { DEFAULT_LOCATION_ID } from './select-location';
 
-export const DEFAULT_LOCATION_ID = 1;
-export const LOCATION_COOKIE = 'shopping-location';
+export { DEFAULT_LOCATION_ID, LOCATION_COOKIE } from './select-location';
 
 export async function getPreferredLocationId(): Promise<number> {
-  const value = (await cookies()).get(LOCATION_COOKIE)?.value;
-  const locationId = Number(value);
-
-  return Number.isInteger(locationId) && locationId > 0 ? locationId : DEFAULT_LOCATION_ID;
+  return (await getShoppingLocation()).activeLocation?.id ?? DEFAULT_LOCATION_ID;
 }
