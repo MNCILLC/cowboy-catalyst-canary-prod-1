@@ -56,9 +56,14 @@ function getStockLevelMessage(
       };
     }
 
-    if (!isLowStock && process.env.ENABLE_IN_STOCK_MESSAGE === 'true') {
+    const showInStockMessage = process.env.ENABLE_IN_STOCK_MESSAGE === 'true';
+
+    if (
+      !isLowStock &&
+      (showInStockMessage || process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true')
+    ) {
       return {
-        stockLevelMessage: 'IN STOCK',
+        stockLevelMessage: showInStockMessage ? 'IN STOCK' : formatStock(stockQuantity),
         stockLevelStatus: 'success',
       };
     }

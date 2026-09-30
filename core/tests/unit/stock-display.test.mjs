@@ -24,7 +24,11 @@ const inventory = (quantity, warningLevel = 5) => ({
 const formatStock = (quantity) => `Current stock: ${quantity}`;
 const display = (stock, overrides = {}) =>
   getStockDisplayData(stock, { ...settings, ...overrides }, formatStock);
-const flagNames = ['ENABLE_LOW_STOCK_MESSAGE', 'ENABLE_IN_STOCK_MESSAGE'];
+const flagNames = [
+  'ENABLE_LOW_STOCK_MESSAGE',
+  'ENABLE_IN_STOCK_MESSAGE',
+  'ENABLE_ENHANCED_STOCK_DISPLAY',
+];
 let savedFlags;
 
 beforeEach(() => {
@@ -172,4 +176,55 @@ test('blank and non-true values do not enable either behavior', () => {
       });
     });
   });
+});
+
+test('enhanced normal stock uses success colors independently of the in-stock message flag', () => {
+  ['true', 'false'].forEach((enhanced) => {
+    ['true', 'false'].forEach((normal) => {
+      process.env.ENABLE_ENHANCED_STOCK_DISPLAY = enhanced;
+      process.env.ENABLE_IN_STOCK_MESSAGE = normal;
+
+      [
+        [6, 5],
+        [1, 0],
+      ].forEach(([quantity, threshold]) => {
+        const result = display(inventory(quantity, threshold));
+
+        assert.equal(
+          result.stockLevelMessage,
+          normal === 'true' ? 'IN STOCK' : formatStock(quantity),
+        );
+        assert.equal(
+          result.stockLevelStatus,
+          enhanced === 'true' || normal === 'true' ? 'success' : undefined,
+        );
+      });
+    });
+  });
+});
+
+test('enhanced styling does not mark low, unavailable, or unknown stock as success', () => {
+  process.env.ENABLE_ENHANCED_STOCK_DISPLAY = 'true';
+
+  ['true', 'false'].forEach((low) => {
+    process.env.ENABLE_LOW_STOCK_MESSAGE = low;
+
+    [1, 5].forEach((quantity) => {
+      assert.equal(
+        display(inventory(quantity)).stockLevelStatus,
+        low === 'true' ? 'error' : undefined,
+      );
+    });
+  });
+  assert.equal(display({ ...inventory(10), isInStock: false }).stockLevelStatus, undefined);
+  assert.equal(display({ isInStock: true }), null);
+
+  const backorder = inventory(0);
+
+  backorder.aggregated.unlimitedBackorder = true;
+
+  assert.equal(
+    display(backorder, { showBackorderAvailabilityPrompt: true }).stockLevelStatus,
+    undefined,
+  );
 });
