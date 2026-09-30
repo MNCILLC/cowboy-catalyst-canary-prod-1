@@ -62,26 +62,6 @@ interface Props {
   searchParams: Promise<SearchParams>;
 }
 
-function getLocationStockDisplay(
-  inventory: { availableToSell: number; isInStock: boolean } | undefined,
-  showOutOfStockMessage: boolean,
-  defaultOutOfStockMessage: string,
-  formatStock: (quantity: number) => string,
-) {
-  if (!inventory) return undefined;
-
-  if (!inventory.isInStock) {
-    return showOutOfStockMessage
-      ? { stockLevelMessage: defaultOutOfStockMessage, backorderAvailabilityPrompt: null }
-      : null;
-  }
-
-  return {
-    stockLevelMessage: formatStock(inventory.availableToSell),
-    backorderAvailabilityPrompt: null,
-  };
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, locale } = await params;
 
@@ -267,6 +247,7 @@ export default async function Product({ params, searchParams }: Props) {
         availableToSell: 0,
         isInStock: false,
         locationEntityId: preferredLocationId,
+        warningLevel: 0,
       }
     );
   });
@@ -368,33 +349,6 @@ export default async function Product({ params, searchParams }: Props) {
     return await getStreamableInventorySettingsQuery(customerAccessToken);
   });
 
-  const getBackorderAvailabilityPrompt = ({
-    showBackorderAvailabilityPrompt,
-    backorderAvailabilityPrompt,
-    availableForBackorder,
-    unlimitedBackorder,
-  }: {
-    showBackorderAvailabilityPrompt: boolean;
-    backorderAvailabilityPrompt: string | null;
-    availableForBackorder?: number | null;
-    unlimitedBackorder?: boolean;
-  }) => {
-    if (!showBackorderAvailabilityPrompt || !backorderAvailabilityPrompt) {
-      return null;
-    }
-
-    const hasBackorderAvailablity = !!availableForBackorder || unlimitedBackorder;
-
-    if (!hasBackorderAvailablity) {
-      return null;
-    }
-
-    return backorderAvailabilityPrompt;
-  };
-
-  // Inventory display follows BigCommerce's stock, warning, and backorder settings in addition to
-  // the shopper's selected location, so keeping the decision tree together makes the precedence clear.
-  // eslint-disable-next-line complexity
   const streamableStockDisplayData = Streamable.from(async () => {
     const [product, variant, inventorySetting, selectedInventory] = await Streamable.all([
       streamableProductInventory,
@@ -402,98 +356,24 @@ export default async function Product({ params, searchParams }: Props) {
       streamableInventorySettings,
       streamableSelectedLocationInventory,
     ]);
-
-    let inventory;
-
-    if (product.inventory.hasVariantInventory) {
-      inventory = variant?.inventory;
-    } else {
-      inventory = product.inventory;
-    }
-
-    if (!inventory || !inventorySetting) {
-      return null;
-    }
-
-    const {
-      showOutOfStockMessage,
-      stockLevelDisplay,
-      defaultOutOfStockMessage,
-      showBackorderAvailabilityPrompt,
-      showBackorderMessage,
-      showQuantityOnBackorder,
-      backorderAvailabilityPrompt,
-    } = inventorySetting;
-
-    const locationStockDisplay = getLocationStockDisplay(
-      selectedInventory,
-      showOutOfStockMessage,
-      defaultOutOfStockMessage,
-      (quantity) => t('ProductDetails.currentStock', { quantity }),
-    );
-
-    if (locationStockDisplay !== undefined) return locationStockDisplay;
-
-    if (!inventory.isInStock) {
-      return showOutOfStockMessage
-        ? { stockLevelMessage: defaultOutOfStockMessage, backorderAvailabilityPrompt: null }
-        : null;
-    }
-
-    const {
-      availableToSell,
-      warningLevel,
-      availableOnHand,
-      availableForBackorder,
-      unlimitedBackorder,
-    } = inventory.aggregated ?? {};
-
-    if (stockLevelDisplay === 'DONT_SHOW') {
-      return null;
-    }
-
-    const showsBackorderInfo =
-      showBackorderAvailabilityPrompt || showBackorderMessage || showQuantityOnBackorder;
-
-    // if no backorder info is to be displayed, then availableToSell is the stock quantity to be used
-    const stockQuantity = showsBackorderInfo ? availableOnHand : availableToSell;
-
-    if (!showsBackorderInfo && !stockQuantity) {
-      return null;
-    }
-
-    if (stockLevelDisplay === 'SHOW_WHEN_LOW') {
-      if (!warningLevel) {
-        return null;
-      }
-
-      if (stockQuantity && stockQuantity > warningLevel) {
-        return null;
-      }
-    }
-
-    const availabilityMessage = getBackorderAvailabilityPrompt({
-      showBackorderAvailabilityPrompt,
-      backorderAvailabilityPrompt,
-      availableForBackorder,
-      unlimitedBackorder,
-    });
-
-    if (!availabilityMessage && stockQuantity === undefined) {
-      return null;
-    }
-
-    return {
-      stockLevelMessage: t('ProductDetails.currentStock', {
-        quantity: stockQuantity ?? 0,
-      }),
-      backorderAvailabilityPrompt: availabilityMessage,
-    };
-
-    const stockDisplayData = getStockDisplayData(
-      product.inventory.hasVariantInventory ? variant?.inventory : product.inventory,
-      inventorySetting,
-      (quantity) => t('ProductDetails.currentStock', { quantity }),
+    const storefrontInventory = product.inventory.hasVariantInventory
+      ? variant?.inventory
+      : product.inventory;
+    // Match card display rules using only the selected location's quantity and warning threshold.
+    const inventory = selectedInventory
+      ? {
+          isInStock: selectedInventory.isInStock,
+          aggregated: {
+            availableToSell: selectedInventory.availableToSell,
+            availableOnHand: selectedInventory.availableToSell,
+            warningLevel: selectedInventory.warningLevel,
+            availableForBackorder: 0,
+            unlimitedBackorder: false,
+          },
+        }
+      : storefrontInventory;
+    const stockDisplayData = getStockDisplayData(inventory, inventorySetting, (quantity) =>
+      t('ProductDetails.currentStock', { quantity }),
     );
 
     return stockDisplayData
