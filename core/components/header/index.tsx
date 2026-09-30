@@ -13,6 +13,7 @@ import { routing } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getShoppingLocation } from '~/lib/location/get-shopping-location';
+import { isLocationSwitchingEnabled } from '~/lib/location/switching';
 import { SiteHeader as HeaderSection } from '~/lib/makeswift/components/site-header';
 
 import { search } from './_actions/search';
@@ -190,6 +191,7 @@ export const Header = async () => {
         locations,
         activeLocationId: activeLocation?.id,
         locationAction: switchLocation,
+        locationSwitchingEnabled: isLocationSwitchingEnabled(),
         switchLocationLabel: 'Choose shopping location',
       }}
     />

@@ -143,6 +143,7 @@ interface Props<S extends SearchResult> {
   locations?: Location[];
   activeLocationId?: number;
   locationAction?: LocationAction;
+  locationSwitchingEnabled?: boolean;
   switchLocationLabel?: string;
   giftCertificatesLabel?: string;
   giftCertificatesHref: string;
@@ -318,6 +319,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
     locations,
     activeLocationId,
     locationAction,
+    locationSwitchingEnabled = true,
     switchLocationLabel = 'Choose shopping location',
     giftCertificatesLabel = 'Gift Certificates',
     giftCertificatesHref,
@@ -428,6 +430,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
                     <LocationSwitcher
                       action={locationAction}
                       activeLocationId={activeLocationId}
+                      enabled={locationSwitchingEnabled}
                       label={switchLocationLabel}
                       locations={locations}
                     />
@@ -591,6 +594,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
               action={locationAction}
               activeLocationId={activeLocationId}
               className="hidden @2xl:block"
+              enabled={locationSwitchingEnabled}
               label={switchLocationLabel}
               locations={locations}
             />
@@ -712,12 +716,14 @@ function LocationSwitcher({
   action,
   activeLocationId,
   className,
+  enabled,
   label,
   locations,
 }: {
   action: LocationAction;
   activeLocationId?: number;
   className?: string;
+  enabled: boolean;
   label: string;
   locations: Location[];
 }) {
@@ -727,6 +733,20 @@ function LocationSwitcher({
   const activeLocation = locations.find(({ id }) => id === activeLocationId) ?? locations[0];
 
   if (!activeLocation) return null;
+
+  if (!enabled) {
+    return (
+      <div className={className}>
+        <span
+          className="flex max-w-48 items-center gap-1.5 px-2 py-1.5 text-xs text-[var(--nav-button-icon,hsl(var(--foreground)))]"
+          title={activeLocation.label}
+        >
+          <MapPin aria-hidden="true" size={18} strokeWidth={1.5} />
+          <span className="truncate">{activeLocation.label}</span>
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
