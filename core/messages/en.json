@@ -431,6 +431,7 @@
   },
   "Cart": {
     "title": "Cart",
+    "shippingPickupLocation": "Shipping / pickup location",
     "freeShippingMessage": "Spend {amount} more to receive free shipping.",
     "heading": "Your cart",
     "proceedToCheckout": "Proceed to checkout",

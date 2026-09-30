@@ -12,6 +12,7 @@ import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { getShoppingLocation } from '~/lib/location/get-shopping-location';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { exists } from '~/lib/utils';
@@ -251,7 +252,10 @@ export default async function Cart({ params }: Props) {
     checkout?.shippingConsignments?.find((consignment) => consignment.selectedShippingOption) ||
     checkout?.shippingConsignments?.[0];
 
-  const shippingCountries = await getShippingCountries();
+  const [shippingCountries, { activeLocation }] = await Promise.all([
+    getShippingCountries(),
+    getShoppingLocation(),
+  ]);
 
   const countries = shippingCountries.map((country) => ({
     value: country.code,
@@ -465,6 +469,11 @@ export default async function Cart({ params }: Props) {
             addShippingLabel: t('CheckoutSummary.Shipping.addShipping'),
             noShippingOptionsLabel: t('CheckoutSummary.Shipping.noShippingOptions'),
           }}
+          shippingLocation={
+            activeLocation
+              ? { label: t('shippingPickupLocation'), name: activeLocation.label }
+              : undefined
+          }
           summaryTitle={t('CheckoutSummary.title')}
           title={t('title')}
         />

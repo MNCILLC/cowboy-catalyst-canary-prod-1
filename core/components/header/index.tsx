@@ -12,8 +12,7 @@ import { logoTransformer } from '~/data-transformers/logo-transformer';
 import { routing } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 import { getPreferredCurrencyCode } from '~/lib/currency';
-import { DEFAULT_LOCATION_ID, getPreferredLocationId } from '~/lib/location';
-import { getAllLocations } from '~/lib/location/get-locations';
+import { getShoppingLocation } from '~/lib/location/get-shopping-location';
 import { SiteHeader as HeaderSection } from '~/lib/makeswift/components/site-header';
 
 import { search } from './_actions/search';
@@ -34,47 +33,6 @@ const GetCartCountQuery = graphql(`
     }
   }
 `);
-
-const GetLocationsQuery = graphql(`
-  query GetLocationsQuery {
-    inventory {
-      locations(first: 50) {
-        edges {
-          node {
-            entityId
-            label
-          }
-        }
-      }
-    }
-  }
-`);
-
-const getStorefrontLocations = cache(async () => {
-  const { data } = await client.fetch({
-    document: GetLocationsQuery,
-    fetchOptions: { next: { revalidate } },
-  });
-
-  return (data.inventory.locations.edges ?? []).map(({ node }) => ({
-    id: node.entityId,
-    label: node.label,
-  }));
-});
-
-const getLocations = cache(async () => {
-  try {
-    const locations = await getAllLocations();
-
-    if (locations.length > 0) return locations;
-  } catch (error) {
-    // Keep the header usable when the management token does not have the Locations read scope.
-    // eslint-disable-next-line no-console
-    console.error('Unable to load all BigCommerce locations', error);
-  }
-
-  return getStorefrontLocations();
-});
 
 const getCartCount = cache(async (cartId: string, customerAccessToken?: string) => {
   const response = await client.fetch({
@@ -119,14 +77,10 @@ export const Header = async () => {
   const t = await getTranslations('Components.Header');
   const locale = await getLocale();
 
-  const [data, locations, preferredLocationId] = await Promise.all([
+  const [data, { locations, activeLocation }] = await Promise.all([
     getHeaderData(),
-    getLocations(),
-    getPreferredLocationId(),
+    getShoppingLocation(),
   ]);
-  const activeLocationId = locations.some(({ id }) => id === preferredLocationId)
-    ? preferredLocationId
-    : (locations.find(({ id }) => id === DEFAULT_LOCATION_ID)?.id ?? locations[0]?.id);
 
   const logo = data.settings ? logoTransformer(data.settings) : '';
 
@@ -234,7 +188,7 @@ export const Header = async () => {
         currencyAction: switchCurrency,
         switchCurrencyLabel: t('SwitchCurrency.label'),
         locations,
-        activeLocationId,
+        activeLocationId: activeLocation?.id,
         locationAction: switchLocation,
         switchLocationLabel: 'Choose shopping location',
       }}

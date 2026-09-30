@@ -3,7 +3,7 @@
 import { SubmissionResult, useForm } from '@conform-to/react';
 import { clsx } from 'clsx';
 import debounce from 'lodash.debounce';
-import { ArrowRight, GiftIcon, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowRight, GiftIcon, MapPin, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import {
   ComponentPropsWithoutRef,
   FormEvent,
@@ -163,6 +163,7 @@ interface Shipping {
 
 export interface CartProps<LineItem extends CartLineItem> {
   title?: string;
+  shippingLocation?: { label: string; name: string };
   freeShippingMessage?: string;
   freeShippingBackgroundClass?: string;
   freeShippingTextClass?: string;
@@ -222,6 +223,7 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
  */
 export function CartClient<LineItem extends CartLineItem>({
   title,
+  shippingLocation,
   freeShippingMessage,
   freeShippingBackgroundClass,
   freeShippingTextClass,
@@ -653,6 +655,19 @@ export function CartClient<LineItem extends CartLineItem>({
             {displayTotalQuantity} {displayTotalQuantity === 1 ? 'Product' : 'Products'}
           </p>
         </div>
+        {shippingLocation && (
+          <div
+            aria-atomic="true"
+            className="mb-6 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"
+            role="status"
+          >
+            <MapPin aria-hidden="true" className="shrink-0" size={20} />
+            <p className="min-w-0 break-words">
+              {shippingLocation.label}:{' '}
+              <span className="font-semibold">{shippingLocation.name}</span>
+            </p>
+          </div>
+        )}
         {/* Cart Items */}
         <ul className="flex flex-col gap-5">
           {displayLineItems.map((lineItem) => (
