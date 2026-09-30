@@ -216,7 +216,7 @@ test('enhanced styling does not mark low, unavailable, or unknown stock as succe
       );
     });
   });
-  assert.equal(display({ ...inventory(10), isInStock: false }).stockLevelStatus, undefined);
+  assert.equal(display({ ...inventory(10), isInStock: false }).stockLevelStatus, 'error');
   assert.equal(display({ isInStock: true }), null);
 
   const backorder = inventory(0);
@@ -227,4 +227,43 @@ test('enhanced styling does not mark low, unavailable, or unknown stock as succe
     display(backorder, { showBackorderAvailabilityPrompt: true }).stockLevelStatus,
     undefined,
   );
+});
+
+test('enhanced out-of-stock badges are shown independently of in-stock text and store display settings', () => {
+  process.env.ENABLE_ENHANCED_STOCK_DISPLAY = 'true';
+
+  ['true', 'false'].forEach((normal) => {
+    process.env.ENABLE_IN_STOCK_MESSAGE = normal;
+
+    ['SHOW', 'SHOW_WHEN_LOW', 'DONT_SHOW'].forEach((stockLevelDisplay) => {
+      [true, false].forEach((showOutOfStockMessage) => {
+        assert.deepEqual(
+          display({ isInStock: false }, { stockLevelDisplay, showOutOfStockMessage }),
+          {
+            stockLevelMessage: 'OUT OF STOCK',
+            stockLevelStatus: 'error',
+            backorderAvailabilityPrompt: null,
+          },
+        );
+      });
+    });
+  });
+  assert.deepEqual(getStockDisplayData({ isInStock: false }, null, formatStock), {
+    stockLevelMessage: 'OUT OF STOCK',
+    stockLevelStatus: 'error',
+    backorderAvailabilityPrompt: null,
+  });
+  assert.equal(display(null), null);
+});
+
+test('disabled enhanced display keeps the configured out-of-stock message and visibility', () => {
+  ['', 'false', 'TRUE'].forEach((enhanced) => {
+    process.env.ENABLE_ENHANCED_STOCK_DISPLAY = enhanced;
+
+    assert.deepEqual(display({ isInStock: false }), {
+      stockLevelMessage: 'Sold out',
+      backorderAvailabilityPrompt: null,
+    });
+    assert.equal(display({ isInStock: false }, { showOutOfStockMessage: false }), null);
+  });
 });

@@ -72,29 +72,37 @@ function getStockLevelMessage(
   return { stockLevelMessage: formatStock(stockQuantity ?? 0) };
 }
 
+function getOutOfStockDisplay(
+  settings: StockDisplaySettings | null | undefined,
+): StockDisplayData | null {
+  if (process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true') {
+    return {
+      stockLevelMessage: 'OUT OF STOCK',
+      stockLevelStatus: 'error',
+      backorderAvailabilityPrompt: null,
+    };
+  }
+
+  return settings?.showOutOfStockMessage
+    ? { stockLevelMessage: settings.defaultOutOfStockMessage, backorderAvailabilityPrompt: null }
+    : null;
+}
+
 export function getStockDisplayData(
   inventory: StockDisplayInventory | null | undefined,
   settings: StockDisplaySettings | null | undefined,
   formatStock: (quantity: number) => string,
 ): StockDisplayData | null {
-  if (!inventory || !settings) {
-    return null;
-  }
+  if (!inventory) return null;
+  if (!inventory.isInStock) return getOutOfStockDisplay(settings);
+  if (!settings) return null;
 
   const {
-    showOutOfStockMessage,
     stockLevelDisplay,
-    defaultOutOfStockMessage,
     showBackorderAvailabilityPrompt,
     showBackorderMessage,
     showQuantityOnBackorder,
   } = settings;
-
-  if (!inventory.isInStock) {
-    return showOutOfStockMessage
-      ? { stockLevelMessage: defaultOutOfStockMessage, backorderAvailabilityPrompt: null }
-      : null;
-  }
 
   const { availableToSell, warningLevel, availableOnHand } = inventory.aggregated ?? {};
 
