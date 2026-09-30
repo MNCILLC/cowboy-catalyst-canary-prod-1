@@ -3,7 +3,7 @@
 import { SubmissionResult, useForm } from '@conform-to/react';
 import { clsx } from 'clsx';
 import debounce from 'lodash.debounce';
-import { ArrowRight, GiftIcon, MapPin, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowRight, GiftIcon, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import {
   ComponentPropsWithoutRef,
   FormEvent,
@@ -32,6 +32,7 @@ import { Link } from '~/components/link';
 
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
 import { FreeShippingAlert } from './free-shipping-alert';
+import { LocationInfo } from './location-info';
 import { ShippingForm, ShippingFormState } from './shipping-form';
 
 import { CartEmptyState } from '.';
@@ -163,7 +164,8 @@ interface Shipping {
 
 export interface CartProps<LineItem extends CartLineItem> {
   title?: string;
-  shippingLocation?: { label: string; name: string };
+  shippingLocation?: { label: string; name: string; address?: string };
+  totalItemsLabel?: string;
   freeShippingMessage?: string;
   freeShippingBackgroundClass?: string;
   freeShippingTextClass?: string;
@@ -224,6 +226,7 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
 export function CartClient<LineItem extends CartLineItem>({
   title,
   shippingLocation,
+  totalItemsLabel = 'Total items',
   freeShippingMessage,
   freeShippingBackgroundClass,
   freeShippingTextClass,
@@ -656,17 +659,11 @@ export function CartClient<LineItem extends CartLineItem>({
           </p>
         </div>
         {shippingLocation && (
-          <div
-            aria-atomic="true"
-            className="mb-6 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"
-            role="status"
-          >
-            <MapPin aria-hidden="true" className="shrink-0" size={20} />
-            <p className="min-w-0 break-words">
-              {shippingLocation.label}:{' '}
-              <span className="font-semibold">{shippingLocation.name}</span>
-            </p>
-          </div>
+          <LocationInfo
+            location={shippingLocation}
+            totalItemsLabel={totalItemsLabel}
+            totalQuantity={displayTotalQuantity}
+          />
         )}
         {/* Cart Items */}
         <ul className="flex flex-col gap-5">

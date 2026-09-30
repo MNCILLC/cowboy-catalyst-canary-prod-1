@@ -16,6 +16,14 @@ const GetLocationsQuery = graphql(`
           node {
             entityId
             label
+            address {
+              address1
+              address2
+              city
+              stateOrProvince
+              postalCode
+              countryCode
+            }
           }
         }
       }
@@ -32,6 +40,7 @@ const getStorefrontLocations = cache(async () => {
   return (data.inventory.locations.edges ?? []).map(({ node }) => ({
     id: node.entityId,
     label: node.label,
+    address: node.address,
   }));
 });
 

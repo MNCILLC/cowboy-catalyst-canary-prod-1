@@ -471,11 +471,28 @@ export default async function Cart({ params }: Props) {
           }}
           shippingLocation={
             activeLocation
-              ? { label: t('shippingPickupLocation'), name: activeLocation.label }
+              ? {
+                  label: t('shippingPickupLocation'),
+                  name: activeLocation.label,
+                  address: activeLocation.address
+                    ? [
+                        activeLocation.address.address1,
+                        activeLocation.address.address2,
+                        activeLocation.address.city,
+                        [activeLocation.address.stateOrProvince, activeLocation.address.postalCode]
+                          .filter(Boolean)
+                          .join(' '),
+                        activeLocation.address.countryCode,
+                      ]
+                        .filter((part) => part?.trim())
+                        .join(', ')
+                    : undefined,
+                }
               : undefined
           }
           summaryTitle={t('CheckoutSummary.title')}
           title={t('title')}
+          totalItemsLabel={t('totalItems')}
         />
       </CartAnalyticsProvider>
 

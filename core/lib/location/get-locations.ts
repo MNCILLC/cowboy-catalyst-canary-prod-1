@@ -7,6 +7,16 @@ const responseSchema = z.object({
     z.object({
       id: z.number().int().positive(),
       label: z.string().min(1),
+      address: z
+        .object({
+          address1: z.string().nullish(),
+          address2: z.string().nullish(),
+          city: z.string().nullish(),
+          state: z.string().nullish(),
+          zip: z.string().nullish(),
+          country_code: z.string().nullish(),
+        })
+        .nullish(),
     }),
   ),
   meta: z
@@ -19,6 +29,14 @@ const responseSchema = z.object({
 export interface ShoppingLocation {
   id: number;
   label: string;
+  address?: {
+    address1?: string | null;
+    address2?: string | null;
+    city?: string | null;
+    stateOrProvince?: string | null;
+    postalCode?: string | null;
+    countryCode?: string | null;
+  } | null;
 }
 
 async function getLocationsPage(
@@ -64,5 +82,18 @@ export async function getAllLocations(): Promise<ShoppingLocation[]> {
   );
   const locations = [firstPage, ...remainingPages].flatMap(({ data }) => data);
 
-  return locations.map(({ id, label }) => ({ id, label }));
+  return locations.map(({ id, label, address }) => ({
+    id,
+    label,
+    address: address
+      ? {
+          address1: address.address1,
+          address2: address.address2,
+          city: address.city,
+          stateOrProvince: address.state,
+          postalCode: address.zip,
+          countryCode: address.country_code,
+        }
+      : undefined,
+  }));
 }
