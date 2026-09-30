@@ -21,6 +21,8 @@ import {
   PickupCheckoutError,
   prepareShippingCheckout,
 } from '~/lib/pickup/prepare-pickup-checkout';
+import { ProUseRequiredError } from '~/lib/pro-use/policy';
+import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
 
 const CheckoutEligibilityQuery = graphql(`
@@ -139,6 +141,12 @@ async function handleCheckoutError(error: unknown, locale: string, errorMessage:
     return redirect({ href: '/logout?redirectTo=/checkout/', locale });
   }
 
+  if (error instanceof ProUseRequiredError) {
+    await serverToast.error(error.message);
+
+    return redirect({ href: '/cart', locale });
+  }
+
   if (isPickupPreparationError(error)) {
     // eslint-disable-next-line no-console
     console.error('Unable to prepare BigCommerce pickup checkout', error);
@@ -180,6 +188,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   const consent = await getConsentCookie();
 
   try {
+    await assertProUseCart(cartId);
+
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
       document: CheckoutEligibilityQuery,

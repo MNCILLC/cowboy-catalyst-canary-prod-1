@@ -6,20 +6,35 @@ import { SearchParams } from 'nuqs/server';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { FeaturedProductCarousel } from '@/vibes/soul/sections/featured-product-carousel';
+import { EnhancedProductAttributes } from '@/vibes/soul/sections/product-detail/enhanced-product-attributes';
+import { IncludedItems } from '@/vibes/soul/sections/product-detail/included-items';
 import { ProductVideos } from '@/vibes/soul/sections/product-detail/product-videos';
+import { ShowAudience } from '@/vibes/soul/sections/product-detail/show-audience';
+import { ShowComparison } from '@/vibes/soul/sections/product-detail/show-comparison';
+import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
-import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
 import { productOptionsTransformer } from '~/data-transformers/product-options-transformer';
+import { showComparisonTransformer } from '~/data-transformers/show-comparison-transformer';
+import {
+  isShowCrateProduct,
+  showCrateProductTransformer,
+} from '~/data-transformers/show-crate-product-transformer';
+import { getProductCartQuantity } from '~/lib/cart/get-product-cart-quantity';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getPreferredLocationId } from '~/lib/location';
 import { getLocationInventory } from '~/lib/location/get-location-inventory';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
+import { isProUseProduct } from '~/lib/pro-use/policy';
+import { getProductAttributes, productFilterDefinitions } from '~/lib/product-metafield-filters';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { getStockDisplayData } from '~/lib/stock-display';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -32,6 +47,7 @@ import { WishlistButton } from './_components/wishlist-button';
 import { WishlistButtonForm } from './_components/wishlist-button/form';
 import {
   getProduct,
+  getProductAttributeMetafields,
   getProductPageMetadata,
   getProductPricingAndRelatedProducts,
   getStreamableInventorySettingsQuery,
@@ -39,6 +55,7 @@ import {
   getStreamableProductInventory,
   getStreamableProductVariantInventory,
 } from './page-data';
+import { getShowComparisonProducts } from './show-comparison-data';
 
 interface Props {
   params: Promise<{ slug: string; locale: string }>;
@@ -118,13 +135,19 @@ export default async function Product({ params, searchParams }: Props) {
 
   const t = await getTranslations('Product');
   const format = await getFormatter();
+  const productCardT = await getTranslations('Components.ProductCard');
 
   const productId = Number(slug);
 
-  const [{ product: baseProduct, settings }, recaptchaSiteKey] = await Promise.all([
+  const [{ product: baseProduct, settings, batfeMessage }, recaptchaSiteKey] = await Promise.all([
     getProduct(productId, customerAccessToken),
     getRecaptchaSiteKey(),
   ]);
+
+  const quantityInCart =
+    process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+      ? Streamable.from(() => getProductCartQuantity(productId, customerAccessToken))
+      : undefined;
 
   const reviewsEnabled = Boolean(settings?.reviews.enabled && !settings.display.showProductRating);
   const showRating = Boolean(settings?.reviews.enabled && settings.display.showProductRating);
@@ -133,6 +156,45 @@ export default async function Product({ params, searchParams }: Props) {
   if (!baseProduct) {
     return notFound();
   }
+
+  const currencyCode = await getPreferredCurrencyCode();
+  const streamableShowComparison = Streamable.from(async () => {
+    const result = await getShowComparisonProducts(
+      process.env.SHOW_COMPARISON_CATEGORY_PATH?.trim() || '/july-4th',
+      currencyCode,
+      customerAccessToken,
+    );
+
+    return showComparisonTransformer(result.products, format, result.taxDisplay);
+  });
+  const visibilityVariables = {
+    entityId: productId,
+    optionValueIds,
+    useDefaultOptionSelections: true,
+    currencyCode,
+  };
+  const visibilityPricing = await getProductPricingAndRelatedProducts(
+    visibilityVariables,
+    customerAccessToken,
+  );
+
+  if (
+    !visibilityPricing ||
+    (!isShowCrateProduct(visibilityPricing) && hasZeroPrice(visibilityPricing))
+  ) {
+    return notFound();
+  }
+
+  const isShow = isShowCrateProduct(visibilityPricing);
+  const enhancedAttributesEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
+  const includedItems = (removeEdgesAndNodes(baseProduct.includedItems).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const intendedAudience = (removeEdgesAndNodes(baseProduct.intendedAudience).at(0)?.value ?? '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
   const streamableProduct = Streamable.from(async () => {
     const variables = {
@@ -202,8 +264,6 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamableProductPricingAndRelatedProducts = Streamable.from(async () => {
-    const currencyCode = await getPreferredCurrencyCode();
-
     const variables = {
       entityId: Number(productId),
       optionValueIds,
@@ -427,6 +487,18 @@ export default async function Product({ params, searchParams }: Props) {
       }),
       backorderAvailabilityPrompt: availabilityMessage,
     };
+    const stockDisplayData = getStockDisplayData(
+      product.inventory.hasVariantInventory ? variant?.inventory : product.inventory,
+      inventorySetting,
+      (quantity) => t('ProductDetails.currentStock', { quantity }),
+    );
+
+    return stockDisplayData
+      ? {
+          ...stockDisplayData,
+          enhanced: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+        }
+      : null;
   });
 
   const streamableBackorderDisplayData = Streamable.from(async () => {
@@ -501,35 +573,73 @@ export default async function Product({ params, searchParams }: Props) {
     };
   });
 
-  const streameableAccordions = Streamable.from(async () => {
+  const streamableSpecifications = Streamable.from(async () => {
     const product = await streamableProduct;
 
     const customFields = removeEdgesAndNodes(product.customFields);
+    const weightValue = product.weight?.value;
+    const hasWeight =
+      weightValue != null && String(weightValue).trim() !== '' && Number(weightValue) !== 0;
 
-    const specifications = [
+    return [
       {
         name: t('ProductDetails.Accordions.sku'),
         value: product.sku,
       },
-      {
-        name: t('ProductDetails.Accordions.weight'),
-        value: `${product.weight?.value} ${product.weight?.unit}`,
-      },
-      {
-        name: t('ProductDetails.Accordions.condition'),
-        value: product.condition,
-      },
+      ...(hasWeight
+        ? [
+            {
+              name: t('ProductDetails.Accordions.weight'),
+              value: `${weightValue} ${product.weight?.unit}`,
+            },
+          ]
+        : []),
       ...customFields.map((field) => ({
-        name: field.name,
+        name: `${field.name.charAt(0).toLocaleUpperCase(locale)}${field.name.slice(1)}`,
         value: field.value,
       })),
     ];
+  });
+
+  const streamableEnhancedAttributes = Streamable.from(async () => {
+    if (!enhancedAttributesEnabled) return [];
+
+    const [metafields, specifications, filters, attributeT] = await Promise.all([
+      getProductAttributeMetafields(productId, customerAccessToken),
+      streamableSpecifications,
+      getMetafieldFilters(),
+      getTranslations('Faceted.FacetedSearch.Metafields'),
+    ]);
+    // Keep attributes visible even when no filter options are configured for a key.
+    const attributeDefinitions = productFilterDefinitions.map(({ productKey }) => ({
+      paramName: `mf_${productKey}`,
+      label: attributeT(productKey),
+      options: filters.find(({ paramName }) => paramName === `mf_${productKey}`)?.options ?? [],
+    }));
+    const attributes = getProductAttributes(metafields, attributeDefinitions);
 
     return [
-      ...(specifications.length
+      ...specifications,
+      ...attributes.map(({ key, label, values }) => ({
+        name: label,
+        value: values.map(({ label: valueLabel }) => valueLabel).join(', '),
+        ...(key === 'colors' ? { colors: values } : {}),
+      })),
+    ].filter(({ name, value }) => name.trim() && value.trim());
+  });
+
+  const streameableAccordions = Streamable.from(async () => {
+    const [product, specifications] = await Streamable.all([
+      streamableProduct,
+      streamableSpecifications,
+    ]);
+
+    return [
+      ...(!enhancedAttributesEnabled && !isShow && specifications.length
         ? [
             {
               title: t('ProductDetails.Accordions.specifications'),
+              defaultOpen: true,
               content: (
                 <div className="prose @container">
                   <dl className="flex flex-col gap-4">
@@ -638,16 +748,37 @@ export default async function Product({ params, searchParams }: Props) {
             />
           }
           additionalInformationTitle={t('ProductDetails.additionalInformation')}
+          afterPurchaseContent={
+            isShow &&
+            (enhancedAttributesEnabled ? (
+              <Stream fallback={null} value={streamableEnhancedAttributes}>
+                {(attributes) => (
+                  <EnhancedProductAttributes
+                    attributes={attributes}
+                    title={t('ProductDetails.Accordions.specifications')}
+                  />
+                )}
+              </Stream>
+            ) : (
+              <ShowProductSpecifications
+                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
+                textSize="base"
+                title={t('ProductDetails.Accordions.specifications')}
+              />
+            ))
+          }
           ctaDisabled={streameableCtaDisabled}
           ctaLabel={streameableCtaLabel}
           decrementLabel={t('ProductDetails.decreaseQuantity')}
           emptySelectPlaceholder={t('ProductDetails.emptySelectPlaceholder')}
           fields={productOptionsTransformer(baseProduct.productOptions)}
+          galleryAspectRatio={enhancedAttributesEnabled ? '4:3' : '4:5'}
           incrementLabel={t('ProductDetails.increaseQuantity')}
           loadMoreImagesAction={getMoreProductImages}
           prefetch={true}
           product={{
             id: baseProduct.entityId.toString(),
+            isProUseOnly: isProUseProduct(baseProduct),
             title: baseProduct.name,
             description: (
               <div
@@ -672,6 +803,7 @@ export default async function Product({ params, searchParams }: Props) {
           }}
           productId={baseProduct.entityId}
           promotionCallouts={promotionCallouts}
+          quantityInCart={quantityInCart}
           quantityLabel={t('ProductDetails.quantity')}
           recaptchaSiteKey={recaptchaSiteKey}
           reviewFormAction={submitReview}
@@ -687,20 +819,69 @@ export default async function Product({ params, searchParams }: Props) {
         />
       </ProductAnalyticsProvider>
 
+      {enhancedAttributesEnabled && !isShow && (
+        <Stream fallback={null} value={streamableEnhancedAttributes}>
+          {(attributes) => (
+            <EnhancedProductAttributes
+              attributes={attributes}
+              title={t('ProductDetails.Accordions.specifications')}
+            />
+          )}
+        </Stream>
+      )}
+
       <Stream fallback={null} value={streamableVideos}>
-        {(videos) => videos.length > 0 && <ProductVideos videos={videos} />}
+        {(videos) =>
+          videos.length > 0 && (
+            <ProductVideos
+              title={isShow ? t('ProductDetails.showVideosTitle') : undefined}
+              videos={videos}
+            />
+          )
+        }
       </Stream>
 
-      <FeaturedProductCarousel
-        cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
-        emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
-        emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
-        nextLabel={t('RelatedProducts.nextProducts')}
-        previousLabel={t('RelatedProducts.previousProducts')}
-        products={streameableRelatedProducts}
-        scrollbarLabel={t('RelatedProducts.scrollbar')}
-        title={t('RelatedProducts.title')}
-      />
+      {isShow && (
+        <>
+          <IncludedItems items={includedItems} title={t('ProductDetails.includedItemsTitle')} />
+          <ShowAudience
+            items={intendedAudience}
+            message={
+              batfeMessage.trim() ? (
+                <div
+                  dangerouslySetInnerHTML={{ __html: rewriteWysiwygContentUrls(batfeMessage) }}
+                />
+              ) : undefined
+            }
+            title={t('ProductDetails.intendedAudienceTitle')}
+          />
+          <Stream fallback={null} value={streamableShowComparison}>
+            {(data) => (
+              <ShowComparison
+                currentProductId={baseProduct.entityId.toString()}
+                data={data}
+                featureLabel={t('ProductDetails.Comparison.feature')}
+                priceLabel={t('ProductDetails.Comparison.price')}
+                title={t('ProductDetails.Comparison.title')}
+                unavailablePriceLabel={productCardT('callForPricing')}
+              />
+            )}
+          </Stream>
+        </>
+      )}
+
+      {!isShow && (
+        <FeaturedProductCarousel
+          cta={{ label: t('RelatedProducts.cta'), href: '/shop-all' }}
+          emptyStateSubtitle={t('RelatedProducts.browseCatalog')}
+          emptyStateTitle={t('RelatedProducts.noRelatedProducts')}
+          nextLabel={t('RelatedProducts.nextProducts')}
+          previousLabel={t('RelatedProducts.previousProducts')}
+          products={streameableRelatedProducts}
+          scrollbarLabel={t('RelatedProducts.scrollbar')}
+          title={t('RelatedProducts.title')}
+        />
+      )}
 
       {showRating && (
         <div id="reviews">

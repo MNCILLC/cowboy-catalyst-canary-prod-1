@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import {
   getBestSellingProducts,
+  getCategoryProducts,
   getFeaturedProducts,
   getNewestProducts,
 } from '~/client/queries/get-products';
@@ -24,30 +25,52 @@ export const GET = async (
     );
   }
 
-  const querySchema = z.enum(['best-selling', 'featured', 'newest']);
+  const querySchema = z
+    .object({
+      group: z.enum(['best-selling', 'featured', 'newest', 'category']),
+      limit: z.coerce.number().int().min(1).max(50).optional(),
+      categoryId: z.coerce.number().int().positive().optional(),
+    })
+    .refine((value) => value.group !== 'category' || value.categoryId !== undefined);
 
-  const parseResult = querySchema.safeParse(group);
+  const parseResult = querySchema.safeParse({
+    group,
+    limit: searchParams.get('limit') ?? undefined,
+    categoryId: searchParams.get('categoryId') ?? undefined,
+  });
 
   if (!parseResult.success) {
     return NextResponse.json(
-      { status: 'error', error: 'Invalid group parameter' },
+      { status: 'error', error: 'Invalid group, limit, or categoryId parameter' },
       { status: 400 },
     );
   }
 
   let result;
+  const { limit, categoryId } = parseResult.data;
 
-  switch (parseResult.data) {
+  switch (parseResult.data.group) {
     case 'best-selling':
-      result = await getBestSellingProducts({ locale });
+      result = await getBestSellingProducts({ locale, limit });
       break;
 
     case 'featured':
-      result = await getFeaturedProducts({ locale });
+      result = await getFeaturedProducts({ locale, limit });
       break;
 
     case 'newest':
-      result = await getNewestProducts({ locale });
+      result = await getNewestProducts({ locale, limit });
+      break;
+
+    case 'category':
+      if (categoryId === undefined) {
+        return NextResponse.json(
+          { status: 'error', error: 'categoryId is required' },
+          { status: 400 },
+        );
+      }
+
+      result = await getCategoryProducts({ categoryId, locale, limit });
       break;
   }
 

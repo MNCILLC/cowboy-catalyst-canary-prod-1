@@ -11,6 +11,7 @@ import {
 
 import { runtime } from '~/lib/makeswift/runtime';
 
+import { searchCategories } from '../../utils/search-categories';
 import { searchProducts } from '../../utils/search-products';
 
 import { MSProductsCarousel } from './client';
@@ -28,10 +29,23 @@ runtime.registerComponent(MSProductsCarousel, {
         { value: 'best-selling', label: 'Best selling' },
         { value: 'newest', label: 'Newest' },
         { value: 'featured', label: 'Featured' },
+        { value: 'category', label: 'Category' },
       ],
       defaultValue: 'best-selling',
     }),
-    limit: Number({ label: 'Max collection items', defaultValue: 12 }),
+    categoryId: Combobox({
+      label: 'Product category',
+      description: 'Choose a category when Product collection is set to Category.',
+      getOptions: searchCategories,
+    }),
+    limit: Number({
+      label: 'Max products',
+      description: 'Maximum total products, including additional products (1–50).',
+      defaultValue: 12,
+      min: 1,
+      max: 50,
+      step: 1,
+    }),
     additionalProducts: List({
       label: 'Additional products',
       type: Group({
@@ -84,6 +98,11 @@ runtime.registerComponent(MSProductsCarousel, {
     hideOverflow: Checkbox({
       label: 'Hide overflow',
       defaultValue: true,
+    }),
+    showStockLevel: Checkbox({
+      label: 'Show stock level',
+      description: 'Show stock messages using the store inventory display settings.',
+      defaultValue: false,
     }),
     showWholesalePricingBanner: Checkbox({
       label: 'Show wholesale pricing banner',

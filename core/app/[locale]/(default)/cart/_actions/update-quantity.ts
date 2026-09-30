@@ -8,6 +8,7 @@ import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { TAGS } from '~/client/tags';
 import { getCartId } from '~/lib/cart';
+import { assertProUseCart, assertProUseLineItems } from '~/lib/pro-use/server';
 
 import { removeItem } from './remove-item';
 
@@ -60,6 +61,10 @@ export const updateQuantity = async ({
 
     return result;
   }
+
+  // Verify the existing item too: productEntityId is supplied by the client.
+  await assertProUseCart(cartId, lineItemEntityId);
+  await assertProUseLineItems([{ productEntityId, variantEntityId }]);
 
   const cartLineItemData = Object.assign(
     { quantity, productEntityId },

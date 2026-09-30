@@ -3,7 +3,7 @@
 import { SubmissionResult, useForm } from '@conform-to/react';
 import { clsx } from 'clsx';
 import debounce from 'lodash.debounce';
-import { ArrowRight, GiftIcon, Minus, Plus, Trash2 } from 'lucide-react';
+import { ArrowRight, GiftIcon, Minus, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import {
   ComponentPropsWithoutRef,
   FormEvent,
@@ -31,6 +31,7 @@ import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
+import { FreeShippingAlert } from './free-shipping-alert';
 import { ShippingForm, ShippingFormState } from './shipping-form';
 
 import { CartEmptyState } from '.';
@@ -162,12 +163,17 @@ interface Shipping {
 
 export interface CartProps<LineItem extends CartLineItem> {
   title?: string;
+  freeShippingMessage?: string;
+  freeShippingBackgroundClass?: string;
+  freeShippingTextClass?: string;
   summaryTitle?: string;
   emptyState?: CartEmptyState;
   lineItemAction: Action<CartState<LineItem>, FormData>;
   checkoutAction: Action<SubmissionResult | null, FormData> | string;
   checkoutAuthenticationRequired: boolean;
   checkoutLabel?: string;
+  checkoutMessage?: string;
+  checkoutMessageTitle?: string;
   deleteLineItemLabel?: string;
   decrementLineItemLabel?: string;
   incrementLineItemLabel?: string;
@@ -216,6 +222,9 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
  */
 export function CartClient<LineItem extends CartLineItem>({
   title,
+  freeShippingMessage,
+  freeShippingBackgroundClass,
+  freeShippingTextClass,
   cart,
   couponCode,
   giftCertificate,
@@ -230,6 +239,8 @@ export function CartClient<LineItem extends CartLineItem>({
   checkoutAction,
   checkoutAuthenticationRequired,
   checkoutLabel = 'Checkout',
+  checkoutMessage,
+  checkoutMessageTitle,
   emptyState = defaultEmptyState,
   summaryTitle,
   shipping,
@@ -595,6 +606,30 @@ export function CartClient<LineItem extends CartLineItem>({
               />
             </div>
           )}
+          {checkoutMessage != null && (
+            <Alert
+              className="mt-4 w-full !min-w-0 !max-w-none"
+              message={
+                <>
+                  {checkoutMessageTitle != null && (
+                    <span className="mb-1 flex items-center gap-2 font-semibold">
+                      <TriangleAlert aria-hidden="true" className="shrink-0" size={18} />
+                      {checkoutMessageTitle}
+                    </span>
+                  )}
+                  <span className="block">{checkoutMessage}</span>
+                </>
+              }
+              variant="warning"
+            />
+          )}
+          {freeShippingMessage != null && !isCartMutationPending && (
+            <FreeShippingAlert
+              backgroundClass={freeShippingBackgroundClass}
+              message={freeShippingMessage}
+              textClass={freeShippingTextClass}
+            />
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
@@ -610,12 +645,14 @@ export function CartClient<LineItem extends CartLineItem>({
       sidebarSize="1/3"
     >
       <div className="w-full">
-        <h1 className="mb-10 font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
-          {title}
-          <span className="ml-4 text-[var(--cart-subtext-text,hsl(var(--contrast-300)))] contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
-            {displayTotalQuantity}
-          </span>
-        </h1>
+        <div className="mb-10">
+          <h1 className="font-[family-name:var(--cart-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none @xl:text-5xl">
+            {title}
+          </h1>
+          <p className="text-lg text-contrast-300 contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
+            {displayTotalQuantity} {displayTotalQuantity === 1 ? 'Product' : 'Products'}
+          </p>
+        </div>
         {/* Cart Items */}
         <ul className="flex flex-col gap-5">
           {displayLineItems.map((lineItem) => (

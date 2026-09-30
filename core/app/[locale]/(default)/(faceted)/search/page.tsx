@@ -7,13 +7,18 @@ import { Streamable } from '@/vibes/soul/lib/streamable';
 import { createCompareLoader } from '@/vibes/soul/primitives/compare-drawer/loader';
 import { ProductsListSection } from '@/vibes/soul/sections/products-list-section';
 import { getFilterParsers } from '@/vibes/soul/sections/products-list-section/filter-parsers';
+import { addToCart } from '~/app/[locale]/(default)/compare/_actions/add-to-cart';
 import { getSessionCustomerAccessToken } from '~/auth';
+import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { facetsTransformer } from '~/data-transformers/facets-transformer';
 import { pageInfoTransformer } from '~/data-transformers/page-info-transformer';
 import { productCardTransformer } from '~/data-transformers/product-card-transformer';
+import { getCartProductQuantities } from '~/lib/cart/get-product-cart-quantity';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
+import { getPreferredProductView, isProductListViewEnabled } from '~/lib/product-view';
 
 import { MAX_COMPARE_LIMIT } from '../../compare/page-data';
 import { getCompareProducts as getCompareProductsData } from '../fetch-compare-products';
@@ -118,6 +123,7 @@ export default async function Search(props: Props) {
 
   const streamableProducts = Streamable.from(async () => {
     const format = await getFormatter();
+    const productDetailsT = await getTranslations('Product.ProductDetails');
 
     const searchParams = await props.searchParams;
     const searchTerm = typeof searchParams.term === 'string' ? searchParams.term : '';
@@ -138,6 +144,14 @@ export default async function Search(props: Props) {
       showOutOfStockMessage ? defaultOutOfStockMessage : undefined,
       showBackorderMessage,
       taxDisplay,
+      {
+        settings: settings?.inventory,
+        formatStock: (quantity) => productDetailsT('currentStock', { quantity }),
+      },
+      process.env.ENABLE_PRODUCT_CARD_ATTRIBUTES === 'true' ||
+        process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'
+        ? await getMetafieldFilters()
+        : [],
     );
   });
 
@@ -244,17 +258,27 @@ export default async function Search(props: Props) {
 
   return (
     <ProductsListSection
+      addToCartAction={addToCart}
       breadcrumbs={[
         { label: t('Search.Breadcrumbs.home'), href: '/' },
         { label: t('Search.Breadcrumbs.search'), href: `#` },
       ]}
+      cartQuantities={
+        process.env.ENABLE_PRODUCT_CART_QUANTITY === 'true'
+          ? Streamable.from(() => getCartProductQuantities(customerAccessToken))
+          : undefined
+      }
       compareLabel={t('Compare.compare')}
       compareProducts={streamableCompareProducts}
+      defaultExpandedFilters={!isCustomProductFilteringEnabled}
       emptyStateSubtitle={t('Search.Empty.subtitle')}
       emptyStateTitle={streamableEmptyStateTitle}
+      enableEnhancedProductAttributes={process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'}
+      enableListView={isProductListViewEnabled}
       filterLabel={t('FacetedSearch.filters')}
       filters={streamableFilters}
       filtersPanelTitle={t('FacetedSearch.filters')}
+      initialView={await getPreferredProductView()}
       maxCompareLimitMessage={t('Compare.maxCompareLimit')}
       maxItems={MAX_COMPARE_LIMIT}
       paginationInfo={streamablePagination}
@@ -265,8 +289,11 @@ export default async function Search(props: Props) {
       rangeFilterApplyLabel={t('FacetedSearch.Range.apply')}
       removeLabel={t('Compare.remove')}
       resetFiltersLabel={t('FacetedSearch.resetFilters')}
+      showAppliedFilters={isCustomProductFilteringEnabled}
       showCompare={productComparisonsEnabled}
+      showFilters={process.env.HIDE_PRODUCT_FILTERS !== 'true'}
       showRating={showRating}
+      showSort={process.env.HIDE_PRODUCT_SORT !== 'true'}
       sortDefaultValue={defaultProductSort?.toLowerCase() ?? 'featured'}
       sortLabel={t('SortBy.sortBy')}
       sortOptions={[

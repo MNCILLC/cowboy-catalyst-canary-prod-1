@@ -55,7 +55,18 @@ export interface ProductGalleryProps {
  * }
  * ```
  */
-export function ProductGallery({
+export function ProductGallery(props: ProductGalleryProps) {
+  // Variant changes provide a new image set. Reset the selected slide and
+  // pagination together so the gallery cannot retain the previous variant.
+  return (
+    <ProductGalleryContent
+      {...props}
+      key={JSON.stringify([props.productId, props.images, props.pageInfo])}
+    />
+  );
+}
+
+function ProductGalleryContent({
   images: initialImages,
   className,
   thumbnailLabel = 'View image number',

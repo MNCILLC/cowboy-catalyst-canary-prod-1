@@ -1,10 +1,14 @@
+import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
 import { cache } from 'react';
 
 import { client } from '~/client';
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProUseProductFragment } from '~/client/fragments/pro-use';
+import { ProductAttributesFragment } from '~/client/fragments/product-attributes';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { FeaturedProductsCarouselFragment } from '~/components/featured-products-carousel/fragment';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 import { ProductVariantsInventoryFragment } from '~/components/product-variants-inventory/fragment';
 
 import { ProductSchemaFragment } from './_components/product-schema/fragment';
@@ -171,6 +175,24 @@ export const getProductPageMetadata = cache(
 const ProductQuery = graphql(
   `
     query ProductQuery($entityId: Int!) {
+      channel {
+        batfeMessage: metafields(namespace: "custom_site", keys: ["batfe_message"], first: 1) {
+          edges {
+            node {
+              value
+            }
+          }
+        }
+      }
+      store {
+        batfeMessage: metafields(namespace: "custom_site", keys: ["batfe_message"], first: 1) {
+          edges {
+            node {
+              value
+            }
+          }
+        }
+      }
       site {
         settings {
           reviews {
@@ -204,12 +226,27 @@ const ProductQuery = graphql(
               }
             }
           }
+          includedItems: metafields(namespace: "custom", keys: ["included_items"], first: 1) {
+            edges {
+              node {
+                value
+              }
+            }
+          }
+          intendedAudience: metafields(namespace: "custom", keys: ["intended_audience"], first: 1) {
+            edges {
+              node {
+                value
+              }
+            }
+          }
+          ...ProUseProductFragment
           ...ProductOptionsFragment
         }
       }
     }
   `,
-  [ProductOptionsFragment],
+  [ProductOptionsFragment, ProUseProductFragment],
 );
 
 export const getProduct = cache(async (entityId: number, customerAccessToken?: string) => {
@@ -220,7 +257,14 @@ export const getProduct = cache(async (entityId: number, customerAccessToken?: s
     fetchOptions: customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } },
   });
 
-  return data.site;
+  return {
+    ...data.site,
+    // Prefer the current storefront's message, falling back to the store-wide value.
+    batfeMessage:
+      removeEdgesAndNodes(data.channel.batfeMessage).at(0)?.value ??
+      removeEdgesAndNodes(data.store.batfeMessage).at(0)?.value ??
+      '',
+  };
 });
 
 const StreamableProductVariantInventoryBySkuQuery = graphql(`
@@ -430,6 +474,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
           optionValueIds: $optionValueIds
           useDefaultOptionSelections: $useDefaultOptionSelections
         ) {
+          ...ShowCrateProductCardFragment
           ...PricingFragment
           relatedProducts(first: 8) {
             edges {
@@ -442,7 +487,7 @@ const ProductPricingAndRelatedProductsQuery = graphql(
       }
     }
   `,
-  [PricingFragment, FeaturedProductsCarouselFragment],
+  [PricingFragment, FeaturedProductsCarouselFragment, ShowCrateProductCardFragment],
 );
 
 export const getProductPricingAndRelatedProducts = cache(
@@ -485,3 +530,29 @@ export const getStreamableInventorySettingsQuery = cache(async (customerAccessTo
 
   return data.site.settings?.inventory;
 });
+
+const ProductAttributesQuery = graphql(
+  `
+    query ProductAttributesQuery($entityId: Int!) {
+      site {
+        product(entityId: $entityId) {
+          ...ProductAttributesFragment
+        }
+      }
+    }
+  `,
+  [ProductAttributesFragment],
+);
+
+export const getProductAttributeMetafields = cache(
+  async (entityId: number, customerAccessToken?: string) => {
+    const { data } = await client.fetch({
+      document: ProductAttributesQuery,
+      variables: { entityId },
+      customerAccessToken,
+      fetchOptions: customerAccessToken ? { cache: 'no-store' } : { next: { revalidate } },
+    });
+
+    return data.site.product ? removeEdgesAndNodes(data.site.product.attributeMetafields) : [];
+  },
+);

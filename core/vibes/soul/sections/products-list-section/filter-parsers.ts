@@ -15,6 +15,7 @@ export function getFilterParsers(filters: Filter[]): Record<string, ParserBuilde
             [filter.maxParamName]: parseAsInteger,
           };
 
+        case 'checkbox-group':
         case 'toggle-group':
           return {
             ...acc,

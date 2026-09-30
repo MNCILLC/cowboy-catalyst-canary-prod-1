@@ -3,6 +3,7 @@ import { getFormatter, getTranslations } from 'next-intl/server';
 import { Order } from '@/vibes/soul/sections/order-list';
 import { getCustomerOrders } from '~/app/[locale]/(default)/account/orders/page-data';
 import { ExistingResultType } from '~/client/util';
+import { isProUseProduct } from '~/lib/pro-use/policy';
 
 export const ordersTransformer = (
   orders: ExistingResultType<typeof getCustomerOrders>['orders'],
@@ -25,6 +26,7 @@ export const ordersTransformer = (
 
           return {
             id: lineItem.entityId.toString(),
+            isProUseOnly: isProUseProduct(lineItem.baseCatalogProduct ?? {}),
             href: lineItem.baseCatalogProduct?.path ?? '#',
             title: lineItem.name,
             subtitle: lineItem.brand ?? undefined,

@@ -18,6 +18,7 @@ export type Card = CardProps & {
 export interface CardCarouselProps {
   cards: Streamable<Card[]>;
   aspectRatio?: '5:6' | '3:4' | '1:1';
+  imageFit?: CardProps['imageFit'];
   textColorScheme?: 'light' | 'dark';
   iconColorScheme?: 'light' | 'dark';
   carouselColorScheme?: 'light' | 'dark';
@@ -34,6 +35,7 @@ export interface CardCarouselProps {
 export function CardCarousel({
   cards: streamableCards,
   aspectRatio = '5:6',
+  imageFit = 'cover',
   textColorScheme,
   iconColorScheme,
   carouselColorScheme,
@@ -67,6 +69,7 @@ export function CardCarousel({
                   {...card}
                   aspectRatio={aspectRatio}
                   iconColorScheme={iconColorScheme}
+                  imageFit={card.imageFit ?? imageFit}
                   textColorScheme={textColorScheme}
                 />
               </CarouselItem>

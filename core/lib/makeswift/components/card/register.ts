@@ -13,6 +13,14 @@ runtime.registerComponent(MSCard, {
     title: TextInput({ label: 'Title', defaultValue: 'Card' }),
     imageSrc: Image({ label: 'Image' }),
     imageAlt: TextInput({ label: 'Image alt', defaultValue: 'Card image' }),
+    imageFit: Select({
+      label: 'Image fit',
+      options: [
+        { value: 'contain', label: 'Show full image' },
+        { value: 'cover', label: 'Fill card (crop)' },
+      ],
+      defaultValue: 'cover',
+    }),
     link: Link({ label: 'Link' }),
     aspectRatio: Select({
       label: 'Aspect ratio',

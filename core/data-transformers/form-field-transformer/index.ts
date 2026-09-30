@@ -135,3 +135,24 @@ export const injectCountryCodeOptions = (
 
   return field;
 };
+
+export const injectStateOrProvinceOptions = (
+  field: Field,
+  countries: Array<{ code: string; statesOrProvinces: Array<{ name: string }> }>,
+): Field => {
+  if (field.type !== 'text' || field.id !== String(FieldNameToFieldId.stateOrProvince))
+    return field;
+
+  return {
+    ...field,
+    type: 'dependent-select',
+    dependsOn: 'countryCode',
+    allowCustomValue: true,
+    options: Object.fromEntries(
+      countries.map((country) => [
+        country.code,
+        country.statesOrProvinces.map((state) => ({ label: state.name, value: state.name })),
+      ]),
+    ),
+  };
+};

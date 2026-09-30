@@ -3,7 +3,12 @@ import { useCallback } from 'react';
 import { string, z } from 'zod';
 
 import { Product } from '@/vibes/soul/primitives/product-card';
-import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
+import {
+  isShowCrateProduct,
+  showCrateProductTransformer,
+} from '~/data-transformers/show-crate-product-transformer';
+import { isProUseProduct } from '~/lib/pro-use/policy';
 
 const priceSchema = z.object({
   value: z.number(),
@@ -22,6 +27,71 @@ const PricesSchema = z.object({
 });
 
 export const BcProductSchema = z.object({
+  proUseMetafields: z
+    .object({
+      edges: z.array(z.object({ node: z.object({ value: z.string() }) })).nullable(),
+    })
+    .optional(),
+  showDescription: z.string(),
+  description: z.string(),
+  cardStyleCategories: z.object({
+    edges: z
+      .array(
+        z.object({
+          node: z.object({
+            entityId: z.number(),
+            cardStyleMetafields: z.object({
+              edges: z
+                .array(z.object({ node: z.object({ key: z.string(), value: z.string() }) }))
+                .nullable(),
+            }),
+          }),
+        }),
+      )
+      .nullable(),
+  }),
+  cardImages: z.object({
+    edges: z
+      .array(z.object({ node: z.object({ altText: z.string(), url: z.string() }) }))
+      .nullable(),
+  }),
+  inventory: z.object({ isInStock: z.boolean() }),
+  showCartAction: z.boolean(),
+  minPurchaseQuantity: z.number().nullable(),
+  maxPurchaseQuantity: z.number().nullable(),
+  availabilityV2: z.object({ status: z.string() }),
+  productOptions: z.object({
+    edges: z.array(z.object({ node: z.object({ entityId: z.number() }) })).nullable(),
+  }),
+  showMetafields: z.object({
+    edges: z.array(z.object({ node: z.object({ key: z.string(), value: z.string() }) })).nullable(),
+  }),
+  showCustomFields: z.object({
+    edges: z
+      .array(
+        z.object({ node: z.object({ entityId: z.number(), name: z.string(), value: z.string() }) }),
+      )
+      .nullable(),
+  }),
+  stockDisplayData: z
+    .object({
+      stockLevelMessage: z.string(),
+      stockLevelStatus: z.enum(['error', 'success']).optional(),
+      backorderAvailabilityPrompt: z.string().nullable(),
+    })
+    .nullish(),
+  useEnhancedStockDisplay: z.boolean().optional(),
+  enhancedGridAttributes: z
+    .array(
+      z.object({
+        key: z.string(),
+        label: z.string(),
+        values: z.array(
+          z.object({ value: z.string(), label: z.string(), swatchColor: z.string().optional() }),
+        ),
+      }),
+    )
+    .optional(),
   entityId: z.number(),
   name: z.string(),
   defaultImage: z.object({ altText: z.string(), url: string() }).nullable(),
@@ -35,23 +105,51 @@ export type BcProductSchema = z.infer<typeof BcProductSchema>;
 
 export type { Product };
 
-export function useBcProductToVibesProduct(): (product: BcProductSchema) => Product {
+export function useBcProductToVibesProduct(
+  showStockLevel = false,
+  categoryId?: number,
+): (product: BcProductSchema) => Product {
   const format = useFormatter();
 
   return useCallback(
     (product) => {
       const { entityId, name, defaultImage, brand, path } = product;
-      const price = pricesTransformer(product, format);
+      const includeStockLevel =
+        showStockLevel ||
+        (isShowCrateProduct(product) &&
+          process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true');
+      const price =
+        isShowCrateProduct(product) && hasZeroPrice(product)
+          ? undefined
+          : pricesTransformer(product, format);
 
       return {
+        ...showCrateProductTransformer(product, categoryId),
+        enhancedGridAttributes: product.enhancedGridAttributes,
         id: entityId.toString(),
+        isProUseOnly: isProUseProduct(product),
         title: name,
+        descriptionHtml: product.description,
+        isInStock: product.inventory.isInStock,
+        hasOptions: (product.productOptions.edges?.length ?? 0) > 0,
+        canAddToCart:
+          product.showCartAction &&
+          product.availabilityV2.status !== 'Unavailable' &&
+          product.inventory.isInStock,
+        isPreorder: product.availabilityV2.status === 'Preorder',
+        minQuantity:
+          product.minPurchaseQuantity != null
+            ? Math.max(1, product.minPurchaseQuantity)
+            : undefined,
+        maxQuantity: product.maxPurchaseQuantity ?? undefined,
         href: path,
         image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
         price,
         subtitle: brand?.name,
+        stockDisplayData: includeStockLevel ? product.stockDisplayData : undefined,
+        useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
       };
     },
-    [format],
+    [format, showStockLevel, categoryId],
   );
 }

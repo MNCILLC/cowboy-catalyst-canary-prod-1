@@ -20,6 +20,10 @@ const BrandPageQuery = graphql(`
         inventory {
           defaultOutOfStockMessage
           showOutOfStockMessage
+          stockLevelDisplay
+          showBackorderAvailabilityPrompt
+          backorderAvailabilityPrompt
+          showQuantityOnBackorder
           showBackorderMessage
         }
         storefront {

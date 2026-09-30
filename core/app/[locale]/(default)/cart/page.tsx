@@ -8,6 +8,7 @@ import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components
 import { isLoggedIn } from '~/auth';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
 import { getCartId } from '~/lib/cart';
+import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
@@ -28,6 +29,9 @@ interface Props {
 }
 
 const CHECKOUT_URL = process.env.TRAILING_SLASH !== 'false' ? '/checkout/' : '/checkout';
+const SHOW_SHIPPING_QUOTE_MESSAGE =
+  process.env.SHIPPING_QUOTE_MESSAGE && process.env.SHOW_SHIPPING_QUOTE_MESSAGE === 'true';
+const SHIPPING_QUOTE_MESSAGE = process.env.SHIPPING_QUOTE_MESSAGE ?? '';
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -277,6 +281,7 @@ export default async function Cart({ params }: Props) {
     shippingConsignment?.address && !shippingConsignment.selectedShippingOption;
 
   const checkoutUrl = data.site.settings?.url.checkoutUrl;
+  const freeShippingAmountRemaining = getFreeShippingAmountRemaining(checkout?.subtotal?.value);
 
   return (
     <>
@@ -350,6 +355,8 @@ export default async function Cart({ params }: Props) {
           checkoutAction={CHECKOUT_URL}
           checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
           checkoutLabel={t('proceedToCheckout')}
+          checkoutMessage={SHOW_SHIPPING_QUOTE_MESSAGE ? SHIPPING_QUOTE_MESSAGE : undefined}
+          checkoutMessageTitle={SHOW_SHIPPING_QUOTE_MESSAGE ? 'Shipping Quotes Note' : undefined}
           couponCode={{
             action: updateCouponCode,
             couponCodes: checkout?.coupons.map((coupon) => coupon.code) ?? [],
@@ -364,6 +371,20 @@ export default async function Cart({ params }: Props) {
             subtitle: t('Empty.subtitle'),
             cta: { label: t('Empty.cta'), href: '/shop-all' },
           }}
+          freeShippingBackgroundClass={
+            process.env.FREE_SHIPPING_BACKGROUND_CLASS?.trim() || undefined
+          }
+          freeShippingMessage={
+            freeShippingAmountRemaining !== undefined
+              ? t('freeShippingMessage', {
+                  amount: format.number(freeShippingAmountRemaining, {
+                    style: 'currency',
+                    currency: cart.currencyCode,
+                  }),
+                })
+              : undefined
+          }
+          freeShippingTextClass={process.env.FREE_SHIPPING_TEXT_CLASS?.trim() || undefined}
           giftCertificate={
             giftCertificatesEnabled
               ? {

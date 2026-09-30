@@ -46,6 +46,14 @@ type SelectField = {
   defaultValue?: string;
 } & FormField;
 
+export type DependentSelectField = {
+  type: 'dependent-select';
+  dependsOn: string;
+  options: Record<string, Array<{ label: string; value: string }>>;
+  allowCustomValue?: boolean;
+  defaultValue?: string;
+} & FormField;
+
 type CheckboxField = {
   type: 'checkbox';
   defaultValue?: string;
@@ -159,6 +167,7 @@ export type Field =
   | CardRadioField
   | ButtonRadioField
   | SelectField
+  | DependentSelectField
   | PasswordField
   | ConfirmPasswordField
   | EmailInputField

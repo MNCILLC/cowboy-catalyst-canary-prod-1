@@ -5,8 +5,11 @@ import { z } from 'zod';
 import { client } from '~/client';
 import { PaginationFragment } from '~/client/fragments/pagination';
 import { graphql, VariablesOf } from '~/client/graphql';
+import { getMetafieldFilteredProducts } from '~/client/queries/get-metafield-filtered-products';
 import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
+import { getMetafieldSelections } from '~/lib/product-metafield-filters';
 
 const GetProductSearchResultsQuery = graphql(
   `
@@ -415,11 +418,29 @@ export const fetchFacetedSearch = cache(
     customerAccessToken?: string,
   ) => {
     const { after, before, limit = 9, sort, filters } = PublicToPrivateParams.parse(params);
+    const selections = isCustomProductFilteringEnabled ? getMetafieldSelections(params) : [];
+
+    if (selections.length > 0) {
+      const [search, products] = await Promise.all([
+        // Native facets are still evaluated by BigCommerce. Never send our cursors upstream.
+        getProductSearchResults({ limit: 1, sort, filters }, currencyCode, customerAccessToken),
+        getMetafieldFilteredProducts(
+          filters,
+          sort,
+          selections,
+          { after, before, limit },
+          currencyCode,
+          customerAccessToken,
+        ),
+      ]);
+
+      return { ...search, products };
+    }
 
     return getProductSearchResults(
       {
-        after,
-        before,
+        after: after?.startsWith('mf:') ? undefined : after,
+        before: before?.startsWith('mf:') ? undefined : before,
         limit,
         sort,
         filters,

@@ -7,6 +7,8 @@ interface Slide {
   imageSrc?: string;
   imageAlt: string;
   imageAlign: 'left' | 'center';
+  contentVerticalAlign?: 'top' | 'center' | 'bottom';
+  shadingVerticalAlign?: 'top' | 'center' | 'bottom' | 'off';
   showButton: boolean;
   buttonLink?: { href?: string; target?: string };
   buttonText: string;
@@ -23,14 +25,22 @@ interface MSAccordionsProps {
   aspectRatio?: string;
 }
 
-export function MSSlideshow({ className, slides, autoplay, interval, height, minHeight, aspectRatio }: MSAccordionsProps) {
+export function MSSlideshow({
+  className,
+  slides,
+  autoplay,
+  interval,
+  height,
+  minHeight,
+  aspectRatio,
+}: MSAccordionsProps) {
   return (
     <Slideshow
-      className={className}
-      interval={interval * 1000}
-      height={height}
-      minHeight={minHeight}
       aspectRatio={aspectRatio}
+      className={className}
+      height={height}
+      interval={interval * 1000}
+      minHeight={minHeight}
       playOnInit={autoplay}
       slides={slides.map(
         ({
@@ -40,6 +50,8 @@ export function MSSlideshow({ className, slides, autoplay, interval, height, min
           imageSrc,
           imageAlt,
           imageAlign,
+          contentVerticalAlign,
+          shadingVerticalAlign,
           showButton,
           buttonLink,
           buttonText,
@@ -50,7 +62,9 @@ export function MSSlideshow({ className, slides, autoplay, interval, height, min
             description,
             showDescription,
             image: imageSrc ? { alt: imageAlt, src: imageSrc } : undefined,
-            imageAlign: imageAlign,
+            imageAlign,
+            contentVerticalAlign,
+            shadingVerticalAlign,
             showCta: showButton,
             cta: { label: buttonText, href: buttonLink?.href ?? '#', variant: buttonColor },
           };

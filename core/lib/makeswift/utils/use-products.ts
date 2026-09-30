@@ -3,6 +3,9 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import { z } from 'zod';
 
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+
 import {
   BcProductSchema,
   Product,
@@ -19,20 +22,39 @@ const fetcher = (url: string) =>
     .then(ProductListSchema.parse);
 
 interface Props {
-  collection: 'none' | 'best-selling' | 'newest' | 'featured';
+  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
+  categoryId?: string;
+  showStockLevel?: boolean;
   collectionLimit?: number;
   additionalProductIds: string[];
 }
 
-export function useProducts({ collection, collectionLimit = 20, additionalProductIds }: Props): {
+export function useProducts({
+  collection,
+  categoryId,
+  collectionLimit = 20,
+  showStockLevel = false,
+  additionalProductIds,
+}: Props): {
   products: Product[] | null;
   isLoading: boolean;
 } {
-  const bcProductToVibesProduct = useBcProductToVibesProduct();
+  const bcProductToVibesProduct = useBcProductToVibesProduct(
+    showStockLevel,
+    collection === 'category' && categoryId ? Number(categoryId) : undefined,
+  );
   const locale = useLocale();
+  const collectionParams = new URLSearchParams({
+    locale,
+    limit: String(Math.min(50, Math.max(1, Math.floor(collectionLimit) || 20))),
+  });
+
+  if (collection === 'category' && categoryId) collectionParams.set('categoryId', categoryId);
+
+  const hasCollection = collection !== 'none' && (collection !== 'category' || Boolean(categoryId));
 
   const { data: collectionData, isLoading: isCollectionLoading } = useSWR(
-    collection !== 'none' ? `/api/products/group/${collection}?locale=${locale}` : null,
+    hasCollection ? `/api/products/group/${collection}?${collectionParams.toString()}` : null,
     fetcher,
   );
 
@@ -63,7 +85,12 @@ export function useProducts({ collection, collectionLimit = 20, additionalProduc
   const isLoading = isCollectionLoading || isAdditionalLoading;
 
   const products = useMemo(
-    () => (isLoading ? null : combinedProducts.map(bcProductToVibesProduct)),
+    () =>
+      isLoading
+        ? null
+        : combinedProducts
+            .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
+            .map(bcProductToVibesProduct),
     [isLoading, combinedProducts, bcProductToVibesProduct],
   );
 

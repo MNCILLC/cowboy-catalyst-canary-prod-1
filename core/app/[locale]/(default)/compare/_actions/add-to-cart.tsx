@@ -33,7 +33,7 @@ export const addToCart = async (
   }
 
   const productEntityId = Number(submission.value.id);
-  const quantity = 1;
+  const { quantity } = submission.value;
 
   try {
     await addToOrCreateCart({

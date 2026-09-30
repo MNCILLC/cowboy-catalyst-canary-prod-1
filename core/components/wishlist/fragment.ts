@@ -1,6 +1,8 @@
 import { PaginationFragment } from '~/client/fragments/pagination';
 import { PricingFragment } from '~/client/fragments/pricing';
+import { ProUseProductFragment } from '~/client/fragments/pro-use';
 import { graphql } from '~/client/graphql';
+import { ShowCrateProductCardFragment } from '~/components/product-card/show-crate-fragment';
 
 export const WishlistItemProductFragment = graphql(
   `
@@ -28,10 +30,12 @@ export const WishlistItemProductFragment = graphql(
       availabilityV2 {
         status
       }
+      ...ProUseProductFragment
+      ...ShowCrateProductCardFragment
       ...PricingFragment
     }
   `,
-  [PricingFragment],
+  [ProUseProductFragment, PricingFragment, ShowCrateProductCardFragment],
 );
 
 export const WishlistItemFragment = graphql(

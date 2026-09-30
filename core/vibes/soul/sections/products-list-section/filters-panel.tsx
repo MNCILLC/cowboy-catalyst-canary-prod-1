@@ -6,7 +6,7 @@
 
 import { clsx } from 'clsx';
 import { parseAsString, useQueryStates } from 'nuqs';
-import { useOptimistic, useState, useTransition } from 'react';
+import { useOptimistic, useSyncExternalStore, useTransition } from 'react';
 
 import { Checkbox } from '@/vibes/soul/form/checkbox';
 import { RangeInput } from '@/vibes/soul/form/range-input';
@@ -18,6 +18,13 @@ import { CursorPaginationInfo } from '@/vibes/soul/primitives/cursor-pagination'
 import { Rating } from '@/vibes/soul/primitives/rating';
 import { Link } from '~/components/link';
 
+import {
+  getFilterExpansionSnapshot,
+  getServerFilterExpansionSnapshot,
+  parseFilterExpansion,
+  saveFilterExpansion,
+  subscribeToFilterExpansion,
+} from './filter-expansion-state';
 import { getFilterParsers } from './filter-parsers';
 
 export interface LinkGroupFilter {
@@ -30,7 +37,18 @@ export interface ToggleGroupFilter {
   type: 'toggle-group';
   paramName: string;
   label: string;
-  options: Array<{ label: string; value: string; disabled?: boolean }>;
+  options: Array<{ label: string; appliedLabel?: string; value: string; disabled?: boolean }>;
+}
+
+export interface CheckboxGroupFilter extends Omit<ToggleGroupFilter, 'type' | 'options'> {
+  type: 'checkbox-group';
+  options: Array<{
+    label: string;
+    appliedLabel?: string;
+    value: string;
+    disabled?: boolean;
+    swatchColor?: string;
+  }>;
 }
 
 export interface RatingFilter {
@@ -56,10 +74,16 @@ export interface RangeFilter {
   disabled?: boolean;
 }
 
-export type Filter = ToggleGroupFilter | RangeFilter | RatingFilter | LinkGroupFilter;
+export type Filter =
+  | CheckboxGroupFilter
+  | ToggleGroupFilter
+  | RangeFilter
+  | RatingFilter
+  | LinkGroupFilter;
 
 interface Props {
   className?: string;
+  defaultExpanded?: boolean;
   filters: Streamable<Filter[]>;
   resetFiltersLabel?: Streamable<string>;
   paginationInfo?: Streamable<CursorPaginationInfo>;
@@ -78,6 +102,7 @@ function getParamCountLabel(params: Record<string, string | null | string[]>, ke
 
 export function FiltersPanel({
   className,
+  defaultExpanded,
   filters: streamableFilters,
   resetFiltersLabel,
   rangeFilterApplyLabel,
@@ -87,6 +112,7 @@ export function FiltersPanel({
       {(filters) => (
         <FiltersPanelInner
           className={className}
+          defaultExpanded={defaultExpanded}
           filters={filters}
           rangeFilterApplyLabel={rangeFilterApplyLabel}
           resetFiltersLabel={resetFiltersLabel}
@@ -98,6 +124,7 @@ export function FiltersPanel({
 
 export function FiltersPanelInner({
   className,
+  defaultExpanded = false,
   filters,
   resetFiltersLabel: streamableResetFiltersLabel,
   rangeFilterApplyLabel: streamableRangeFilterApplyLabel,
@@ -121,27 +148,26 @@ export function FiltersPanelInner({
   );
   const [isPending, startTransition] = useTransition();
   const [optimisticParams, setOptimisticParams] = useOptimistic(params);
-  const [expandedItems, setExpandedItems] = useState(() => {
-    const initial = new Set<string>();
-
-    filters
-      .filter((filter) => filter.type !== 'link-group')
-      .slice(0, 3)
-      .forEach((filter) => {
-        initial.add(filter.label.toLowerCase());
-      });
-
-    return initial;
-  });
-
+  const expansionSnapshot = useSyncExternalStore(
+    subscribeToFilterExpansion,
+    getFilterExpansionSnapshot,
+    getServerFilterExpansionSnapshot,
+  );
+  const expansionPreferences = parseFilterExpansion(expansionSnapshot);
   const accordionItems = filters
     .filter((filter) => filter.type !== 'link-group')
-    .map((filter) => {
+    .map((filter, index) => {
+      // Parameter names stay stable across pages and translated display labels.
+      const key =
+        filter.type === 'range'
+          ? JSON.stringify([filter.minParamName, filter.maxParamName])
+          : filter.paramName;
+
       return {
-        key: filter.label.toLowerCase(),
-        value: filter.label.toLowerCase(),
+        key,
+        value: key,
         filter,
-        expanded: expandedItems.has(filter.label.toLowerCase()),
+        expanded: expansionPreferences[key] ?? (defaultExpanded || index === 0),
       };
     });
 
@@ -172,7 +198,16 @@ export function FiltersPanelInner({
       ))}
       <Accordion
         onValueChange={(items) => {
-          setExpandedItems(new Set(items));
+          const expanded = new Set(items);
+
+          // Save only deliberate changes, leaving defaults for untouched filters.
+          saveFilterExpansion(
+            Object.fromEntries(
+              accordionItems
+                .filter((item) => item.expanded !== expanded.has(item.value))
+                .map((item) => [item.key, expanded.has(item.value)]),
+            ),
+          );
         }}
         type="multiple"
         value={accordionItems.filter((item) => item.expanded).map((item) => item.value)}
@@ -181,6 +216,59 @@ export function FiltersPanelInner({
           const { key, value, filter } = accordionItem;
 
           switch (filter.type) {
+            case 'checkbox-group':
+              return (
+                <AccordionItem
+                  key={key}
+                  title={`${filter.label}${getParamCountLabel(optimisticParams, filter.paramName)}`}
+                  value={value}
+                >
+                  <div className="max-h-72 space-y-3 overflow-y-auto px-1 py-1">
+                    {filter.options.map((option) => (
+                      <Checkbox
+                        checked={
+                          optimisticParams[filter.paramName]?.includes(option.value) ?? false
+                        }
+                        disabled={option.disabled}
+                        key={option.value}
+                        label={
+                          <span className="inline-flex items-center gap-2">
+                            {option.swatchColor != null && (
+                              <span
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0 rounded-sm border border-contrast-300"
+                                style={{ backgroundColor: option.swatchColor }}
+                              />
+                            )}
+                            {option.label}
+                          </span>
+                        }
+                        onCheckedChange={(checked) => {
+                          startTransition(async () => {
+                            const selected = new Set<string>(
+                              optimisticParams[filter.paramName] ?? [],
+                            );
+
+                            if (checked === true) selected.add(option.value);
+                            else selected.delete(option.value);
+
+                            const nextParams = {
+                              ...optimisticParams,
+                              [filter.paramName]: selected.size ? Array.from(selected) : null,
+                              [startCursorParamName]: null,
+                              [endCursorParamName]: null,
+                            };
+
+                            setOptimisticParams(nextParams);
+                            await setParams(nextParams);
+                          });
+                        }}
+                      />
+                    ))}
+                  </div>
+                </AccordionItem>
+              );
+
             case 'toggle-group':
               return (
                 <AccordionItem
@@ -295,8 +383,8 @@ export function FiltersPanelInner({
           startTransition(async () => {
             const nextParams = {
               ...Object.fromEntries(Object.entries(optimisticParams).map(([key]) => [key, null])),
-              [startCursorParamName]: optimisticParams[startCursorParamName],
-              [endCursorParamName]: optimisticParams[endCursorParamName],
+              [startCursorParamName]: null,
+              [endCursorParamName]: null,
             };
 
             setOptimisticParams(nextParams);

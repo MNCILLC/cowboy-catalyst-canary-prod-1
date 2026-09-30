@@ -6,6 +6,11 @@ const config = {
     './vibes/**/*.{ts,tsx}',
     './node_modules/storefront-kit/dist/**/*.{js,mjs}',
   ],
+  // Include configured alert colors even when they do not appear in source files.
+  safelist: [
+    `[&&]:${process.env.FREE_SHIPPING_BACKGROUND_CLASS?.trim() || 'bg-yellow-300'}`,
+    process.env.FREE_SHIPPING_TEXT_CLASS?.trim() || 'text-foreground',
+  ],
   theme: {
     extend: {
       typography: {

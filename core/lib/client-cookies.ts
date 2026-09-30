@@ -1,4 +1,5 @@
 export const FORCE_REFRESH_COOKIE = 'force-refresh';
+export const PRODUCT_VIEW_COOKIE = 'product-view';
 
 interface ClientCookieOptions {
   expires: Date;

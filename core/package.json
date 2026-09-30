@@ -18,7 +18,11 @@
     "start": "next start",
     "prelint": "next typegen",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:auth-refresh": "node --test lib/force-refresh.test.mts",
+    "test:pro-use": "node --test lib/pro-use/*.test.mts",
+    "test:product-filters": "node --test lib/product-metafield-filters.test.mts",
+    "test:applied-filters": "node --test lib/applied-product-filters.test.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -100,7 +104,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@types/gtag.js": "^0.0.20",
     "@types/lodash.debounce": "^4.0.9",
-    "@types/node": "^22.15.30",
+    "@types/node": "^24.13.3",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.6",
     "@types/react-google-recaptcha": "^2.1.9",

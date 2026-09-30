@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import { Fragment } from 'react';
 
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
+import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import {
   type Product,
   ProductCard,
@@ -81,21 +82,23 @@ export function CompareCard({
     >
       <div className="mb-2 space-y-4 pb-4">
         <ProductCard imageSizes={imageSizes} product={product} />
-        {addToCartAction &&
-          (product.hasVariants !== undefined && !product.hasVariants ? (
-            <AddToCartForm
-              addToCartAction={addToCartAction}
-              addToCartLabel={addToCartLabel}
-              disabled={product.disabled}
-              isPreorder={product.isPreorder}
-              preorderLabel={preorderLabel}
-              productId={product.id}
-            />
-          ) : (
-            <ButtonLink className="w-full" href={product.href} size="medium">
-              {viewOptionsLabel}
-            </ButtonLink>
-          ))}
+        <ProUseGate restricted={product.isProUseOnly}>
+          {addToCartAction &&
+            (product.hasVariants !== undefined && !product.hasVariants ? (
+              <AddToCartForm
+                addToCartAction={addToCartAction}
+                addToCartLabel={addToCartLabel}
+                disabled={product.disabled}
+                isPreorder={product.isPreorder}
+                preorderLabel={preorderLabel}
+                productId={product.id}
+              />
+            ) : (
+              <ButtonLink className="w-full" href={product.href} size="medium">
+                {viewOptionsLabel}
+              </ButtonLink>
+            ))}
+        </ProUseGate>
       </div>
       <div className="space-y-4 py-4">
         <div className="font-[family-name:var(--compare-card-font-family-secondary,var(--font-family-mono))] text-xs font-normal uppercase text-[var(--compare-card-label,hsl(var(--foreground)))]">
