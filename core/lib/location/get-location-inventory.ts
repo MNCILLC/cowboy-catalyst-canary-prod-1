@@ -29,36 +29,19 @@ export interface LocationInventory {
  * Reads authoritative location inventory. Storefront GraphQL can omit location records based on
  * storefront visibility and the store's multi-location inventory mode.
  * @param {number} locationId BigCommerce inventory location ID.
+ * @param {number} productId BigCommerce product ID, including products with no SKU.
  * @param {string} sku Product or selected variant SKU.
  * @returns {Promise<LocationInventory | undefined>} Inventory for the SKU at the chosen location.
  */
 export async function getLocationInventory(
   locationId: number,
+  productId: number,
   sku: string,
 ): Promise<LocationInventory | undefined> {
-  const accessToken = process.env.BIGCOMMERCE_ACCESS_TOKEN;
-  const storeHash = process.env.BIGCOMMERCE_STORE_HASH;
-
-  if (!accessToken || !storeHash || !sku) return undefined;
-
-  const response = await fetch(
-    `https://api.bigcommerce.com/stores/${storeHash}/v3/inventory/locations/${locationId}/items?sku:in=${encodeURIComponent(sku)}&limit=1`,
-    {
-      headers: {
-        Accept: 'application/json',
-        'X-Auth-Token': accessToken,
-      },
-      cache: 'no-store',
-    },
+  const items = await getLocationProductInventory(locationId, [productId]);
+  const item = items.find(
+    ({ identity }) => identity.product_id === productId && identity.sku === sku,
   );
-
-  if (!response.ok) {
-    throw new Error(`Unable to retrieve BigCommerce location inventory (${response.status}).`);
-  }
-
-  const item = responseSchema
-    .parse(await response.json())
-    .data.find(({ identity }) => identity.sku === sku);
 
   if (!item) return undefined;
 

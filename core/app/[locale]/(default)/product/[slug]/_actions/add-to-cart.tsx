@@ -185,8 +185,8 @@ export const addToCart = async (
       fetchOptions: { cache: 'no-store' },
     });
     const selectedProduct = productData.site.product;
-    const locationStock = selectedProduct
-      ? await getLocationInventory(locationId, selectedProduct.sku)
+    const locationStock = selectedProduct?.inventory.isStockTracked
+      ? await getLocationInventory(locationId, productEntityId, selectedProduct.sku)
       : undefined;
 
     if (

@@ -253,13 +253,21 @@ export default async function Product({ params, searchParams }: Props) {
 
   const streamableSelectedLocationInventory = Streamable.from(async () => {
     const product = await streamableProductInventory;
-    const selectedInventory = await getLocationInventory(preferredLocationId, product.sku);
+
+    if (!product.inventory.isStockTracked) return undefined;
+
+    const selectedInventory = await getLocationInventory(
+      preferredLocationId,
+      Number(productId),
+      product.sku,
+    );
 
     return (
-      selectedInventory ??
-      (product.inventory.isStockTracked
-        ? { availableToSell: 0, isInStock: false, locationEntityId: preferredLocationId }
-        : undefined)
+      selectedInventory ?? {
+        availableToSell: 0,
+        isInStock: false,
+        locationEntityId: preferredLocationId,
+      }
     );
   });
 
@@ -328,10 +336,7 @@ export default async function Product({ params, searchParams }: Props) {
       return t('ProductDetails.Submit.preorder');
     }
 
-    if (
-      !product.inventory.isInStock ||
-      (selectedInventory ? !selectedInventory.isInStock : false)
-    ) {
+    if (!(selectedInventory?.isInStock ?? product.inventory.isInStock)) {
       return t('ProductDetails.Submit.outOfStock');
     }
 
@@ -352,10 +357,7 @@ export default async function Product({ params, searchParams }: Props) {
       return false;
     }
 
-    if (
-      !product.inventory.isInStock ||
-      (selectedInventory ? !selectedInventory.isInStock : false)
-    ) {
+    if (!(selectedInventory?.isInStock ?? product.inventory.isInStock)) {
       return true;
     }
 
@@ -487,6 +489,7 @@ export default async function Product({ params, searchParams }: Props) {
       }),
       backorderAvailabilityPrompt: availabilityMessage,
     };
+
     const stockDisplayData = getStockDisplayData(
       product.inventory.hasVariantInventory ? variant?.inventory : product.inventory,
       inventorySetting,

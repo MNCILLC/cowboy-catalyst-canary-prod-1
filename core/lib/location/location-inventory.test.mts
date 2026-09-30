@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
 
-import { applyLocationInventory, getLocationProductInventory } from './get-location-inventory.ts';
+import {
+  applyLocationInventory,
+  getLocationInventory,
+  getLocationProductInventory,
+} from './get-location-inventory.ts';
 
 const product = {
   entityId: 42,
@@ -114,3 +118,41 @@ function setTestCredentials(t: TestContext) {
     });
   });
 }
+
+test('detail and cart stock lookups support blank SKUs at every selected location', async (t) => {
+  setTestCredentials(t);
+  t.mock.method(globalThis, 'fetch', async (input: string, options: RequestInit) => {
+    const url = new URL(input);
+    assert.equal(url.searchParams.get('product_id:in'), '42');
+    assert.equal(url.searchParams.has('sku:in'), false);
+    assert.equal(options.cache, 'no-store');
+    const locationId = Number(url.pathname.split('/').at(-2));
+    return Response.json({ data: [item(locationId * 10, '')] });
+  });
+  for (const locationId of [1, 2, 3, 4]) {
+    const stock = await getLocationInventory(locationId, 42, '');
+    assert.deepEqual(stock, {
+      availableToSell: locationId * 10,
+      isInStock: true,
+      locationEntityId: locationId,
+      warningLevel: 2,
+    });
+  }
+});
+
+test('detail stock matches the selected product and variant rather than the first record', async (t) => {
+  setTestCredentials(t);
+  t.mock.method(globalThis, 'fetch', async () =>
+    Response.json({
+      data: [
+        { ...item(99, ''), identity: { product_id: 99, sku: '' } },
+        item(0, 'variant-a'),
+        item(7, 'variant-b'),
+      ],
+    }),
+  );
+  assert.equal(await getLocationInventory(2, 42, ''), undefined);
+  assert.equal((await getLocationInventory(2, 42, 'variant-a'))?.isInStock, false);
+  assert.equal((await getLocationInventory(2, 42, 'variant-b'))?.availableToSell, 7);
+  assert.equal(await getLocationInventory(2, 42, 'missing-variant'), undefined);
+});
