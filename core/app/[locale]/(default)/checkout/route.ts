@@ -12,6 +12,8 @@ import { redirect } from '~/i18n/routing';
 import { getVisitIdCookie, getVisitorIdCookie } from '~/lib/analytics/bigcommerce';
 import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
+import { createCheckoutHandoff, isLocationCheckoutEnabled } from '~/lib/checkout/checkout-handoff';
+import { CheckoutHandoffError } from '~/lib/checkout/handoff-client';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
 import { getPreferredLocationId } from '~/lib/location';
@@ -62,11 +64,13 @@ const CheckoutRedirectMutation = graphql(`
     $analyticsConsent: Boolean!
     $functionalConsent: Boolean!
     $targetingConsent: Boolean!
+    $locationQueryParams: [CreateCartRedirectUrlsQueryParamsInput!]
   ) {
     cart {
       createCartRedirectUrls(
         input: {
           cartEntityId: $cartId
+          queryParams: $locationQueryParams
           analytics: {
             initiator: { visitId: $visitId, visitorId: $visitorId }
             request: { url: $referer, userAgent: $userAgent }
@@ -107,6 +111,18 @@ async function prepareCheckoutForShoppingLocation({
     throw new PickupCheckoutError(`Shopping location ${locationId} is not available.`);
   }
 
+  if (isLocationCheckoutEnabled()) {
+    await prepareShippingCheckout(checkout.entityId);
+
+    // The backend validates the live cart, inventory, product and channel. This saved
+    // allocation is authoritative; shoppers may freely edit their order comments.
+    return createCheckoutHandoff({
+      cartId: checkout.entityId,
+      channelId: Number(channelId ?? process.env.BIGCOMMERCE_CHANNEL_ID),
+      locationId: location.id,
+    });
+  }
+
   const pickupMethodId = await getLocationPickupMethodId(location.id);
   const marker = `[Shopping location: ${location.label} (#${location.id})][Pickup method: #${pickupMethodId}]`;
   const customerMessage = checkout.customerMessage?.replace(
@@ -130,8 +146,16 @@ async function prepareCheckoutForShoppingLocation({
   await prepareShippingCheckout(checkout.entityId);
 }
 
+function isAllowedCheckoutCart(cartId: string | undefined, sessionCartId: string | undefined) {
+  return Boolean(cartId) && (!isLocationCheckoutEnabled() || cartId === sessionCartId);
+}
+
 function isPickupPreparationError(error: unknown): boolean {
-  return error instanceof PickupCheckoutError || error instanceof z.ZodError;
+  return (
+    error instanceof PickupCheckoutError ||
+    error instanceof CheckoutHandoffError ||
+    error instanceof z.ZodError
+  );
 }
 
 async function handleCheckoutError(error: unknown, locale: string, errorMessage: string) {
@@ -166,7 +190,8 @@ async function handleCheckoutError(error: unknown, locale: string, errorMessage:
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const cartId = req.nextUrl.searchParams.get('cartId') ?? (await getCartId());
+  const sessionCartId = await getCartId();
+  const cartId = req.nextUrl.searchParams.get('cartId') ?? sessionCartId;
   const customerAccessToken = await getSessionCustomerAccessToken();
   const channelId = getChannelIdFromLocale(locale);
   const t = await getTranslations('Cart.Errors');
@@ -177,7 +202,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     return redirect({ href: '/login?redirectTo=/checkout/', locale });
   }
 
-  if (!cartId) {
+  if (!isAllowedCheckoutCart(cartId, sessionCartId) || !cartId) {
     await serverToast.error(t('cartNotFound'));
 
     return redirect({ href: '/cart', locale });
@@ -215,14 +240,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
     const checkout = eligibilityData.site.checkout;
 
-    if (checkout) {
-      await prepareCheckoutForShoppingLocation({ channelId, checkout, customerAccessToken });
-    }
+    const locationQueryParams = checkout
+      ? await prepareCheckoutForShoppingLocation({ channelId, checkout, customerAccessToken })
+      : undefined;
 
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
       variables: {
         cartId,
+        locationQueryParams,
         visitId: visitId ?? '',
         visitorId: visitorId ?? '',
         analyticsConsent: consent?.['c.measurement'] ?? false,
