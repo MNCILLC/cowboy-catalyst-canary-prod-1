@@ -43,8 +43,21 @@ export async function requestCheckoutHandoff(
   });
 
   if (!response.ok) {
+    // Only known public error codes become shopper messages; never forward raw backend errors.
+    const body: unknown = await response.json().catch(() => null);
+    const code = z.object({ code: z.string() }).safeParse(body);
+    const messages: Record<string, string> = {
+      unsupported_cart:
+        'This cart contains a product that is not supported for checkout. Please review your cart.',
+      unsupported_location:
+        'One or more cart products are not approved for your selected shipping location. Please review your cart and location.',
+      stock_unavailable:
+        'One or more cart products do not have enough stock at your selected shipping location. Please review your quantities.',
+    };
+
     throw new CheckoutHandoffError(
-      'We could not confirm stock at your selected shipping location. Please review your cart.',
+      (code.success ? messages[code.data.code] : undefined) ??
+        'We could not confirm your checkout. Please review your cart and try again.',
     );
   }
 

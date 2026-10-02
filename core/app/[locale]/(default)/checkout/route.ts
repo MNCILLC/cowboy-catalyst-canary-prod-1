@@ -173,8 +173,8 @@ async function handleCheckoutError(error: unknown, locale: string, errorMessage:
 
   if (isPickupPreparationError(error)) {
     // eslint-disable-next-line no-console
-    console.error('Unable to prepare BigCommerce pickup checkout', error);
-    await serverToast.error(errorMessage);
+    console.error('Unable to prepare BigCommerce checkout', error);
+    await serverToast.error(error instanceof CheckoutHandoffError ? error.message : errorMessage);
 
     return redirect({ href: '/cart', locale });
   }
