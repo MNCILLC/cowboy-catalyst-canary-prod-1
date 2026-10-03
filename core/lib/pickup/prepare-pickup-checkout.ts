@@ -26,6 +26,9 @@ const checkoutResponseSchema = z.object({
     consignments: z.array(
       z.object({
         id: z.string().min(1),
+        selected_pickup_option: z
+          .object({ pickup_method_id: z.number().int().positive() })
+          .nullish(),
         pickup_option: z.object({ pickup_method_id: z.number().int().positive() }).nullish(),
         line_item_ids: z.array(z.string()).optional(),
       }),
@@ -72,7 +75,10 @@ export async function prepareShippingCheckout(checkoutId: string): Promise<void>
 
   await Promise.all(
     checkout.consignments
-      .filter(({ pickup_option: pickupOption }) => pickupOption)
+      .filter(
+        ({ pickup_option: pickupOption, selected_pickup_option: selectedPickupOption }) =>
+          pickupOption || selectedPickupOption,
+      )
       .map(({ id }) =>
         managementFetch(
           `${baseUrl}/v3/checkouts/${encodedCheckoutId}/consignments/${encodeURIComponent(id)}`,
@@ -143,7 +149,8 @@ export async function preparePickupCheckout(checkoutId: string, locationId: numb
     const actualLineItemIds = [...(consignment.line_item_ids ?? [])].sort();
 
     return (
-      consignment.pickup_option?.pickup_method_id === pickupMethodId &&
+      (consignment.selected_pickup_option ?? consignment.pickup_option)?.pickup_method_id ===
+        pickupMethodId &&
       actualLineItemIds.length === expectedLineItemIds.length &&
       actualLineItemIds.every((id, index) => id === expectedLineItemIds[index])
     );
