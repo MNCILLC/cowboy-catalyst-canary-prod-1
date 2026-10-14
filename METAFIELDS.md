@@ -207,8 +207,9 @@ most **500 data rows** and **2 MB**; split larger imports into batches.
 | `action` | No | `create`, `update`, `upsert`, or `delete`; blank uses the selected Import mode. |
 | `product_name`, `product_sku` | No | Informational columns accepted from exports; ignored for matching and writes. |
 
-Headers must match these names. Unknown or duplicate headers are rejected, as
-are duplicate `product_id` / `namespace` / `key` combinations within a file.
+Headers must match these names. During import, unknown or duplicate headers
+produce a file-level error. Duplicate `product_id` / `namespace` / `key` rows
+are reported as failed rows while other valid rows continue.
 Namespace and key allow up to 64 characters each; value allows up to 65,535.
 
 Blank or omitted `permission_set` and `description` preserve existing settings
@@ -252,22 +253,30 @@ the spreadsheet cell or paste API-style backslash escaping into it.
    can provide a starting file with IDs and existing values. That export includes
    all visible product metafields across namespaces regardless of search filters;
    retain only the rows you intend to import.
-2. Use **Choose CSV file** or drag one CSV onto the upload area. Correct any file
-   validation errors before proceeding.
-3. Select **Import mode** using the behavior table below. Check any per-row
-   `action` values because they override this selection.
-4. Click **Preview import**. Preview reads data without changing it. Check product
-   names, IDs, old/new values, permissions, and proposed actions. Resolve every
-   preview error before importing.
-5. If the preview includes updates, click **Download backup**. The app requires
-   this before applying updates or deletions. Keep the JSON file; it preserves
-   original values and permissions for recovery through the product editor or API.
-6. Click **Import N rows** and keep the page open until it finishes. Writes happen
-   one row at a time. **Stop after current row** pauses the run; the import button
-   resumes remaining rows while the page stays open.
-7. Review the results and click **Download results CSV** before navigating away
-   or reloading. Results are retained only while the page is open.
-8. Inspect an imported product's fields and confirm its filter selections work
+2. Use **Choose CSV file** or drag one CSV onto the upload area. File count,
+   extension, and size are checked when selecting the file.
+3. Select **Import mode** using the behavior table below. Any per-row `action`
+   overrides this selection.
+4. Click **Preview import** to see the first five rows. This is a local sample:
+   no BigCommerce calls or row validation happen during preview. If the sample
+   cannot be parsed, the app shows the beginning of the file as text.
+5. For files containing intentional deletions, enable **Allow deletion rows in
+   this file**. Unconfirmed deletion rows fail during import; other rows continue.
+6. Click **Import rows**. CSV validation and product/permission checks now run.
+   Invalid rows are recorded as failures, and valid rows continue in file order.
+   File-level errors such as missing headers or malformed CSV prevent writes and
+   appear in the final report. The app captures original values in browser session
+   storage before updates or deletions; no manual backup step precedes import.
+7. Keep the page open until import finishes. **Stop after current row** pauses the
+   run, and **Resume N rows** continues with unprocessed rows. Completed rows are
+   not replayed.
+8. Review the final counts and row-specific errors. Click **Download results CSV**
+   to save all outcomes, and **Download backup** if updates or deletions occurred.
+   Results remain in page memory; the latest captured backup is also available
+   through **Download previous backup** after reopening the importer in the same
+   browser tab. Download it before closing the tab or starting another import
+   that captures a new backup.
+9. Inspect an imported product's fields and confirm its filter selections work
    on the storefront, allowing for caching. A successful import means the string
    was saved; matching still depends on the formats and option values above.
 
@@ -287,16 +296,20 @@ array rather than merging with it.
   row explicitly has `action=delete`. For an unknown numeric attribute, omit its
   row when creating data; use deletion to remove an existing value. `0` is an
   actual number, not an empty-value marker.
-- Deleting a field requires `action=delete`, the downloaded backup, and the app's
-  deletion confirmation. The value is ignored for deletion and may be blank.
+- Deleting a field requires `action=delete` and **Allow deletion rows in this file**.
+  Its original value is captured before writing. The value is ignored for deletion
+  and may be blank.
   A missing deletion target is skipped. Fields omitted from the file are not deleted.
 - Multiple existing fields with the same namespace/key must be resolved in the
   product editor. Read-only fields cannot be updated by this app.
-- If a field changes after preview or the preview expires (after two hours),
-  review the current data and preview again before importing.
-- Use **Preview failed rows again** to retry failures without repeating successful
-  rows. An **unknown** write outcome pauses the run: inspect that product before
-  starting a fresh preview because the write may have completed.
+- If a field changes between its import-time check and write, that row fails;
+  review its current data before retrying. If browser session storage cannot save
+  a backup, the affected update/deletion fails without writing.
+- Use **Retry failed rows** after resolving access or transient errors. Correct
+  CSV content errors in the file and upload it again. Successful rows and unknown
+  outcomes are excluded from the retry button.
+- An **unknown** write outcome is recorded while subsequent rows continue. Inspect
+  that product before importing it again because its write may have completed.
 
 The workflow and limits are based on the app's
 [README](../../bc-apps/metafield-manager/README.md),
