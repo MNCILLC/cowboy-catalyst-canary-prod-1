@@ -143,6 +143,11 @@ export function getMetafieldSelections(params: Record<string, unknown>) {
   });
 }
 
+// Compare list values consistently while preserving configured labels and URL values.
+function normalizeAttributeValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export function matchesMetafieldSelections(
   metafields: MetafieldValue[],
   selections: Array<{ key: string; values: string[] }>,
@@ -157,9 +162,10 @@ export function matchesMetafieldSelections(
 
     const attributes = metafields
       .filter((field) => field.key === key)
-      .flatMap((field) => parseAttributeValues(field.value));
+      .flatMap((field) => parseAttributeValues(field.value))
+      .map(normalizeAttributeValue);
 
-    return values.some((value) => attributes.includes(value));
+    return values.some((value) => attributes.includes(normalizeAttributeValue(value)));
   });
 }
 
@@ -269,6 +275,9 @@ function getAttributeOptions(
         .filter((value) => value.trim()),
     ),
   ].map(
-    (value) => filter.options.find((option) => option.value === value) ?? { value, label: value },
+    (value) =>
+      filter.options.find(
+        (option) => normalizeAttributeValue(option.value) === normalizeAttributeValue(value),
+      ) ?? { value, label: value },
   );
 }
