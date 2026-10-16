@@ -161,6 +161,7 @@
         "caliber": "Caliber",
         "performance_height": "Height",
         "duration": "Duration",
+        "shot_count": "Shot Count",
         "ignition_types": "Ignition types"
       },
       "Range": {

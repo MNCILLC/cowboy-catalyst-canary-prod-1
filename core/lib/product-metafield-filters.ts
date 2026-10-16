@@ -8,6 +8,7 @@ export const productFilterDefinitions = [
     productKey: 'performance_height',
   },
   { siteKey: 'duration_filters', productKey: 'duration' },
+  { siteKey: 'shot_count_filters', productKey: 'shot_count' },
   { siteKey: 'ignition_type_filters', productKey: 'ignition_types' },
 ] as const;
 
@@ -15,6 +16,7 @@ const numericAttributeUnits = new Map([
   ['caliber', 'mm'],
   ['performance_height', 'ft'],
   ['duration', 'sec'],
+  ['shot_count', ''],
 ]);
 
 export interface MetafieldFilterOption {
@@ -264,7 +266,12 @@ function getAttributeOptions(
 
     return numericValue === undefined
       ? []
-      : [{ value: String(numericValue), label: `${numericValue} ${unit}` }];
+      : [
+          {
+            value: String(numericValue),
+            label: unit ? `${numericValue} ${unit}` : String(numericValue),
+          },
+        ];
   }
 
   return [
