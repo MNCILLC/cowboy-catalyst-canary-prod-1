@@ -30,7 +30,6 @@ export function EnhancedGridProductCard({
   purchaseAction,
 }: ProductCardProps) {
   const t = useTranslations('Components.ProductCard');
-  const hasAttributes = Boolean(product.enhancedGridAttributes?.length);
 
   return (
     <article
@@ -46,12 +45,7 @@ export function EnhancedGridProductCard({
       data-card-variant="enhanced"
       data-layout="grid"
     >
-      <div
-        className={clsx(
-          'grid min-w-0 grid-cols-1 items-start gap-4',
-          hasAttributes && 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]',
-        )}
-      >
+      <div className="grid min-w-0 grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <div className="relative aspect-square min-w-0 overflow-hidden rounded-xl md:col-start-1 md:row-start-1">
           {product.image ? (
             <Image
