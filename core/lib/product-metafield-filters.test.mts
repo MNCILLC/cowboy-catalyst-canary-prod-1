@@ -575,3 +575,47 @@ test('cards display Caliber in mm, Height in ft, and Duration in sec', () => {
     ],
   );
 });
+
+test('colors match site values regardless of capitalization or surrounding whitespace', () => {
+  const fields = [{ key: 'colors', value: '["gold","silver"]' }];
+
+  for (const values of [['Gold'], ['Silver'], ['Gold', 'Silver'], [' GOLD ', 'Blue']]) {
+    assert.equal(matchesMetafieldSelections(fields, [{ key: 'colors', values }]), true);
+  }
+  assert.equal(
+    matchesMetafieldSelections(
+      [{ key: 'colors', value: '[" Gold ","SILVER"]' }],
+      [{ key: 'colors', values: ['gold'] }],
+    ),
+    true,
+  );
+  for (const values of [['Blue'], ['Gol'], ['Gold/Silver']]) {
+    assert.equal(matchesMetafieldSelections(fields, [{ key: 'colors', values }]), false);
+  }
+  assert.equal(
+    matchesMetafieldSelections(fields, [
+      { key: 'colors', values: ['Gold'] },
+      { key: 'effects', values: ['Willow'] },
+    ]),
+    false,
+  );
+});
+
+test('lowercase product colors resolve the configured labels and swatches without changing option values', () => {
+  const options = parseFilterOptions(
+    '[{"label":"Gold","value":"Gold","hex_value":"#FFD700"},{"label":"Silver","value":"Silver","hex_value":"#C0C0C0"}]',
+    true,
+  );
+
+  assert.deepEqual(
+    getProductAttributes(
+      [{ key: 'colors', value: '["gold"," SILVER "]' }],
+      [{ paramName: 'mf_colors', label: 'Colors', options }],
+    ),
+    [{ key: 'colors', label: 'Colors', values: options }],
+  );
+  assert.deepEqual(
+    options.map(({ value }) => value),
+    ['Gold', 'Silver'],
+  );
+});
