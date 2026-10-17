@@ -108,9 +108,10 @@ export const singleProductCardTransformer = (
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
   attributeFilters?: ProductAttributeFilter[],
+  categoryId?: number,
 ): Product => {
   return {
-    ...showCrateProductTransformer(product),
+    ...showCrateProductTransformer(product, categoryId),
     ...productCardAttributeVariants(product, attributeFilters),
     id: product.entityId.toString(),
     isProUseOnly: isProUseProduct(product),
@@ -153,6 +154,7 @@ export const singleProductCardTransformer = (
       'variants' in product
         ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
         : undefined,
+    isInStock: product.inventory.isInStock,
     stockDisplayData:
       stockDisplay && 'variants' in product
         ? getStockDisplayData(
@@ -182,6 +184,7 @@ export const productCardTransformer = (
   taxDisplay?: TaxDisplay | null,
   stockDisplay?: ProductCardStockDisplay,
   attributeFilters?: ProductAttributeFilter[],
+  categoryId?: number,
 ): Product[] => {
   return products
     .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
@@ -194,6 +197,7 @@ export const productCardTransformer = (
         taxDisplay,
         stockDisplay,
         attributeFilters,
+        categoryId,
       ),
     );
 };

@@ -79,6 +79,7 @@ export interface ProductDetailProps<F extends Field> {
   thumbnailLabel?: string;
   additionalInformationTitle?: string;
   additionalActions?: ReactNode;
+  afterPurchaseContent?: ReactNode;
   reviewFormEmailLabel?: string;
   reviewFormModalTitle?: string;
   reviewFormNameLabel?: string;
@@ -127,6 +128,7 @@ export function ProductDetail<F extends Field>({
   thumbnailLabel,
   additionalInformationTitle = 'Additional information',
   additionalActions,
+  afterPurchaseContent,
   reviewFormEmailLabel,
   reviewFormModalTitle,
   reviewFormNameLabel,
@@ -333,6 +335,9 @@ export function ProductDetail<F extends Field>({
                       </Stream>
                     </div>
                   </ProUseGate>
+                  {Boolean(afterPurchaseContent) && (
+                    <div className="mb-8">{afterPurchaseContent}</div>
+                  )}
                   <div className="group/product-description">
                     <Stream fallback={<ProductDescriptionSkeleton />} value={product.description}>
                       {(description) =>

@@ -196,6 +196,7 @@ export default async function Category(props: Props) {
         process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true'
         ? await getMetafieldFilters()
         : [],
+      categoryId,
     );
   });
 

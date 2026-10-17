@@ -1,4 +1,4 @@
-import { Checkbox, Select, Slot, Style } from '@makeswift/runtime/controls';
+import { Checkbox, Number, Select, Slot, Style } from '@makeswift/runtime/controls';
 
 import { SectionLayout } from '@/vibes/soul/sections/section-layout';
 import { runtime } from '~/lib/makeswift/runtime';
@@ -19,6 +19,20 @@ runtime.registerComponent(SectionLayout, {
         { value: '2xl', label: '2XL' },
       ],
       defaultValue: '2xl',
+    }),
+    paddingTop: Number({
+      label: 'Top padding',
+      description: 'Leave blank to use the default responsive spacing.',
+      suffix: 'px',
+      min: 0,
+      step: 1,
+    }),
+    paddingBottom: Number({
+      label: 'Bottom padding',
+      description: 'Leave blank to use the default responsive spacing.',
+      suffix: 'px',
+      min: 0,
+      step: 1,
     }),
     hideOverflow: Checkbox({
       label: 'Hide overflow',

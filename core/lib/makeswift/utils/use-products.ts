@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+import { useRecentlyViewed } from '~/lib/recently-viewed/use-recently-viewed';
 
 import {
   BcProductSchema,
@@ -16,13 +17,20 @@ const ProductListSchema = z.object({
   products: z.array(BcProductSchema),
 });
 
-const fetcher = (url: string) =>
-  fetch(url)
-    .then((res) => res.json())
-    .then(ProductListSchema.parse);
+const fetcher = async (url: string) => {
+  const response = await fetch(url);
+
+  if (!response.ok) throw new Error('Unable to load products.');
+
+  const result = ProductListSchema.safeParse(await response.json());
+
+  if (!result.success) throw new Error('Unable to load products.');
+
+  return result.data;
+};
 
 interface Props {
-  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
+  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category' | 'recently-viewed';
   categoryId?: string;
   showStockLevel?: boolean;
   collectionLimit?: number;
@@ -38,9 +46,15 @@ export function useProducts({
 }: Props): {
   products: Product[] | null;
   isLoading: boolean;
+  hasError: boolean;
 } {
-  const bcProductToVibesProduct = useBcProductToVibesProduct(showStockLevel);
+  const bcProductToVibesProduct = useBcProductToVibesProduct(
+    showStockLevel,
+    collection === 'category' && categoryId ? Number(categoryId) : undefined,
+  );
   const locale = useLocale();
+  const recentIds = useRecentlyViewed(collection === 'recently-viewed');
+  const productIds = collection === 'recently-viewed' ? recentIds : additionalProductIds;
   const collectionParams = new URLSearchParams({
     locale,
     limit: String(Math.min(50, Math.max(1, Math.floor(collectionLimit) || 20))),
@@ -48,30 +62,41 @@ export function useProducts({
 
   if (collection === 'category' && categoryId) collectionParams.set('categoryId', categoryId);
 
-  const hasCollection = collection !== 'none' && (collection !== 'category' || Boolean(categoryId));
+  const hasCollection =
+    collection !== 'recently-viewed' &&
+    collection !== 'none' &&
+    (collection !== 'category' || Boolean(categoryId));
 
-  const { data: collectionData, isLoading: isCollectionLoading } = useSWR(
+  const {
+    data: collectionData,
+    isLoading: isCollectionLoading,
+    error: collectionError,
+  } = useSWR<z.infer<typeof ProductListSchema>, Error>(
     hasCollection ? `/api/products/group/${collection}?${collectionParams.toString()}` : null,
     fetcher,
   );
 
   const searchParams = new URLSearchParams();
 
-  searchParams.append('ids', additionalProductIds.join(','));
+  searchParams.append('ids', productIds.join(','));
   searchParams.append('locale', locale);
 
   const additionalProductsUrl = `/api/products/ids?${searchParams.toString()}`;
 
-  const { data: additionalData, isLoading: isAdditionalLoading } = useSWR(
-    additionalProductIds.length ? additionalProductsUrl : null,
+  const {
+    data: additionalData,
+    isLoading: isAdditionalLoading,
+    error: additionalError,
+  } = useSWR<z.infer<typeof ProductListSchema>, Error>(
+    productIds.length ? additionalProductsUrl : null,
     fetcher,
   );
   const additionalProducts = useMemo(
     () =>
-      additionalProductIds
+      productIds
         .map((id) => additionalData?.products.find((product) => product.entityId.toString() === id))
         .filter((product) => product != null),
-    [additionalData, additionalProductIds],
+    [additionalData, productIds],
   );
 
   const combinedProducts = useMemo(
@@ -87,9 +112,10 @@ export function useProducts({
         ? null
         : combinedProducts
             .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
+            .slice(0, collection === 'recently-viewed' ? collectionLimit : undefined)
             .map(bcProductToVibesProduct),
-    [isLoading, combinedProducts, bcProductToVibesProduct],
+    [isLoading, combinedProducts, bcProductToVibesProduct, collection, collectionLimit],
   );
 
-  return { products, isLoading };
+  return { products, isLoading, hasError: Boolean(collectionError || additionalError) };
 }

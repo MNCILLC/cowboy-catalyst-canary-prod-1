@@ -2,11 +2,13 @@ import { clsx } from 'clsx';
 import { ReactNode } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
+import { FcCrateQuickViewCard } from '@/vibes/soul/primitives/fc-crate-quick-view-card';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProUseGate } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
+import { QuickViewPurchaseAction } from '~/components/product-card/quick-view-purchase-action';
 
 import { Rating } from '../rating';
 import { ShowCrateProductCard } from '../show-crate-product-card';
@@ -25,6 +27,18 @@ export interface Product {
   showName?: string;
   showDescription?: string;
   showFeatures?: Array<{ id: string; value: string }>;
+  cardStyle?: {
+    headerBackground?: string;
+    headerText?: string;
+    footerBackground?: string;
+    footerText?: string;
+    buttonBackground?: string;
+    buttonText?: string;
+    buttonLabel?: string;
+    bodyBackgroundTop?: string;
+    bodyBackgroundBottom?: string;
+    bodyText?: string;
+  };
   id: string;
   title: string;
   listViewDescription?: string;
@@ -37,11 +51,13 @@ export interface Product {
   enhancedGridAttributes?: Product['attributes'];
   href: string;
   image?: { src: string; alt: string };
+  images?: Array<{ src: string; alt: string }>;
   price?: Price;
   subtitle?: string;
   badge?: string;
   rating?: number;
   inventoryMessage?: string;
+  isInStock?: boolean;
   useEnhancedStockDisplay?: boolean;
   stockDisplayData?: {
     stockLevelMessage: string;
@@ -103,6 +119,15 @@ export function ProductCard({ purchaseAction, ...rest }: ProductCardProps) {
       <ProUseGate restricted={rest.product.isProUseOnly}>{purchaseAction}</ProUseGate>
     ) : undefined,
   };
+
+  if (props.product.isShow && process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true') {
+    return (
+      <FcCrateQuickViewCard
+        {...props}
+        purchaseAction={props.purchaseAction ?? <QuickViewPurchaseAction product={props.product} />}
+      />
+    );
+  }
 
   if (props.layout !== 'list' && props.product.enhancedGridAttributes !== undefined) {
     return <EnhancedGridProductCard {...props} />;
