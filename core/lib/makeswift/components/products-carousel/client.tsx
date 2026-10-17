@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { ComponentPropsWithoutRef } from 'react';
 
 import { ProductCarousel, ProductsCarouselSkeleton } from '@/vibes/soul/sections/product-carousel';
@@ -13,7 +14,7 @@ type MSProductsCarouselProps = Omit<
   'products'
 > & {
   className: string;
-  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'category';
+  collection: 'none' | 'best-selling' | 'newest' | 'featured' | 'recently-viewed' | 'category';
   categoryId?: string;
   limit: number;
   additionalProducts: Array<{
@@ -35,7 +36,8 @@ export function MSProductsCarousel({
 }: MSProductsCarouselProps) {
   const maxProducts = Number.isFinite(limit) ? Math.min(50, Math.max(1, Math.floor(limit))) : 12;
   const additionalProductIds = additionalProducts.map(({ entityId }) => entityId ?? '');
-  const { products, isLoading } = useProducts({
+  const t = useTranslations('ProductCollections');
+  const { products, isLoading, hasError } = useProducts({
     collection,
     categoryId,
     collectionLimit: maxProducts,
@@ -48,8 +50,20 @@ export function MSProductsCarousel({
     return <ProductsCarouselSkeleton className={className} hideOverflow={hideOverflow} />;
   }
 
+  if (hasError) {
+    return (
+      <p className={className} role="alert">
+        {t('error')}
+      </p>
+    );
+  }
+
   if (products == null || products.length === 0) {
-    return <ProductsCarouselSkeleton className={className} hideOverflow={hideOverflow} />;
+    return (
+      <p className={className}>
+        {t(collection === 'recently-viewed' ? 'recentlyViewedEmpty' : 'empty')}
+      </p>
+    );
   }
 
   return (

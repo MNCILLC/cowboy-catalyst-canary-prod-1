@@ -12,8 +12,10 @@ const ResponseSchema = z.object({
 
 // Store-level metafields are not exposed by the Storefront GraphQL schema.
 // Only their public filter labels/values leave this server-only module.
-export const getMetafieldFilters = cache(async () => {
-  const t = await getTranslations('Faceted.FacetedSearch.Metafields');
+export const getMetafieldFilters = cache(async (locale?: string) => {
+  const t = locale
+    ? await getTranslations({ locale, namespace: 'Faceted.FacetedSearch.Metafields' })
+    : await getTranslations('Faceted.FacetedSearch.Metafields');
   const storeHash = process.env.BIGCOMMERCE_STORE_HASH;
   const accessToken = process.env.BIGCOMMERCE_ACCESS_TOKEN;
 

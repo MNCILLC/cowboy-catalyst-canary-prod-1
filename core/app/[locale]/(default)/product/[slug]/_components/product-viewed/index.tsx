@@ -6,6 +6,7 @@ import { PricingFragment } from '~/client/fragments/pricing';
 import { FragmentOf } from '~/client/graphql';
 import { TaxDisplay } from '~/data-transformers/prices-transformer';
 import { useAnalytics } from '~/lib/analytics/react';
+import { useRecentlyViewed } from '~/lib/recently-viewed/use-recently-viewed';
 import { pickPricesForTaxDisplay } from '~/lib/tax-pricing';
 
 import { ProductViewedFragment } from './fragment';
@@ -18,6 +19,8 @@ interface Props {
 export const ProductViewed = ({ product, taxDisplay }: Props) => {
   const isMounted = useRef(false);
   const analytics = useAnalytics();
+
+  useRecentlyViewed(true, product.entityId.toString());
 
   useEffect(() => {
     if (isMounted.current) {
