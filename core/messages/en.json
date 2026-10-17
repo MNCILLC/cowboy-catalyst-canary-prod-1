@@ -1,4 +1,9 @@
 {
+  "ProductCollections": {
+    "error": "We couldn't load these products. Please try again shortly.",
+    "empty": "No products to display yet.",
+    "recentlyViewedEmpty": "Products you view will appear here."
+  },
   "Home": {
     "Slideshow": {
       "Slide01": {
