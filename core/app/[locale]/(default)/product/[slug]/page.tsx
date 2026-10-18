@@ -641,6 +641,7 @@ export default async function Product({ params, searchParams }: Props) {
               <Stream fallback={null} value={streamableImages}>
                 {(images) => (
                   <PageSocialSharing
+                    className="mt-0"
                     image={images.images[0]?.src}
                     locale={locale}
                     path={baseProduct.path}

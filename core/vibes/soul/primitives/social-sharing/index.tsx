@@ -28,7 +28,6 @@ export function SocialSharing({ services, label, serviceLabels, ...content }: Pr
 
   return (
     <div aria-label={label} className="flex flex-wrap items-center gap-2 print:hidden" role="group">
-      <span className="mr-1 text-sm font-medium">{label}</span>
       {services.map((service) => {
         const Icon = icons[service];
         const title = serviceLabels[service];

@@ -9,9 +9,10 @@ interface Props {
   locale: string;
   title: string;
   image?: string;
+  className?: string;
 }
 
-export async function PageSocialSharing({ path, locale, title, image }: Props) {
+export async function PageSocialSharing({ path, locale, title, image, className = 'mt-6' }: Props) {
   const services = await getSocialSharingServices();
 
   if (services.length === 0) return null;
@@ -22,7 +23,7 @@ export async function PageSocialSharing({ path, locale, title, image }: Props) {
   ]);
 
   return (
-    <div className="mt-6">
+    <div className={className}>
       <SocialSharing
         image={image?.replace('{:size}', '1200w')}
         label={t('label')}
