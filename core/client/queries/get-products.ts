@@ -38,7 +38,7 @@ async function withStockDisplay(
     ? await getTranslations({ locale, namespace: 'Product.ProductDetails' })
     : await getTranslations('Product.ProductDetails');
   const enhancedGridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
-  const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters() : [];
+  const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters(locale) : [];
 
   const locationProducts = await withLocationInventory(products);
 

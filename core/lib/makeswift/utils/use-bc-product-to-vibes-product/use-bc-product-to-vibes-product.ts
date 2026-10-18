@@ -125,7 +125,6 @@ export function useBcProductToVibesProduct(
 
       return {
         ...showCrateProductTransformer(product, categoryId),
-        enhancedGridAttributes: product.enhancedGridAttributes,
         id: entityId.toString(),
         isProUseOnly: isProUseProduct(product),
         title: name,

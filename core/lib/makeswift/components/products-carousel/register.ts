@@ -28,6 +28,7 @@ runtime.registerComponent(MSProductsCarousel, {
         { value: 'none', label: 'None (static only)' },
         { value: 'best-selling', label: 'Best selling' },
         { value: 'newest', label: 'Newest' },
+        { value: 'recently-viewed', label: 'Recently viewed' },
         { value: 'featured', label: 'Featured' },
         { value: 'category', label: 'Category' },
       ],

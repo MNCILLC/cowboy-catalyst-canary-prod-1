@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { ReactNode } from 'react';
 
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
@@ -31,12 +32,14 @@ interface Props {
   blogPost: Streamable<BlogPostContentBlogPost>;
   breadcrumbs?: Streamable<Breadcrumb[]>;
   className?: string;
+  sharing?: ReactNode;
 }
 
 export function BlogPostContent({
   blogPost: streamableBlogPost,
   className = '',
   breadcrumbs,
+  sharing,
 }: Props) {
   return (
     <section className={clsx('@container', className)}>
@@ -76,6 +79,7 @@ export function BlogPostContent({
                       ))}
                     </div>
                   )}
+                  {sharing}
                 </header>
 
                 {image?.src != null && image.src !== '' && (

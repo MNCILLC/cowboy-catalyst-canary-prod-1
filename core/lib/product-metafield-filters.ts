@@ -8,6 +8,7 @@ export const productFilterDefinitions = [
     productKey: 'performance_height',
   },
   { siteKey: 'duration_filters', productKey: 'duration' },
+  { siteKey: 'shot_count_filters', productKey: 'shot_count' },
   { siteKey: 'ignition_type_filters', productKey: 'ignition_types' },
 ] as const;
 
@@ -15,6 +16,7 @@ const numericAttributeUnits = new Map([
   ['caliber', 'mm'],
   ['performance_height', 'ft'],
   ['duration', 'sec'],
+  ['shot_count', ''],
 ]);
 
 export interface MetafieldFilterOption {
@@ -143,6 +145,11 @@ export function getMetafieldSelections(params: Record<string, unknown>) {
   });
 }
 
+// Compare list values consistently while preserving configured labels and URL values.
+function normalizeAttributeValue(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export function matchesMetafieldSelections(
   metafields: MetafieldValue[],
   selections: Array<{ key: string; values: string[] }>,
@@ -157,9 +164,10 @@ export function matchesMetafieldSelections(
 
     const attributes = metafields
       .filter((field) => field.key === key)
-      .flatMap((field) => parseAttributeValues(field.value));
+      .flatMap((field) => parseAttributeValues(field.value))
+      .map(normalizeAttributeValue);
 
-    return values.some((value) => attributes.includes(value));
+    return values.some((value) => attributes.includes(normalizeAttributeValue(value)));
   });
 }
 
@@ -258,7 +266,12 @@ function getAttributeOptions(
 
     return numericValue === undefined
       ? []
-      : [{ value: String(numericValue), label: `${numericValue} ${unit}` }];
+      : [
+          {
+            value: String(numericValue),
+            label: unit ? `${numericValue} ${unit}` : String(numericValue),
+          },
+        ];
   }
 
   return [
@@ -269,6 +282,9 @@ function getAttributeOptions(
         .filter((value) => value.trim()),
     ),
   ].map(
-    (value) => filter.options.find((option) => option.value === value) ?? { value, label: value },
+    (value) =>
+      filter.options.find(
+        (option) => normalizeAttributeValue(option.value) === normalizeAttributeValue(value),
+      ) ?? { value, label: value },
   );
 }
