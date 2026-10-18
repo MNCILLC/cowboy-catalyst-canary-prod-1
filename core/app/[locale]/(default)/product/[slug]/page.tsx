@@ -14,6 +14,7 @@ import { ShowComparison } from '@/vibes/soul/sections/product-detail/show-compar
 import { ShowProductSpecifications } from '@/vibes/soul/sections/product-detail/show-product-specifications';
 import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
+import { PageSocialSharing } from '~/components/social-sharing';
 import { WholesalePricingAlert } from '~/components/wholesale-pricing-alert';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { hasZeroPrice, pricesTransformer } from '~/data-transformers/prices-transformer';
@@ -617,23 +618,37 @@ export default async function Product({ params, searchParams }: Props) {
           }
           additionalInformationTitle={t('ProductDetails.additionalInformation')}
           afterPurchaseContent={
-            isShow &&
-            (enhancedAttributesEnabled ? (
-              <Stream fallback={null} value={streamableEnhancedAttributes}>
-                {(attributes) => (
-                  <EnhancedProductAttributes
-                    attributes={attributes}
+            <>
+              {isShow &&
+                (enhancedAttributesEnabled ? (
+                  <Stream fallback={null} value={streamableEnhancedAttributes}>
+                    {(attributes) => (
+                      <EnhancedProductAttributes
+                        attributes={attributes}
+                        title={t('ProductDetails.Accordions.specifications')}
+                      />
+                    )}
+                  </Stream>
+                ) : (
+                  <ShowProductSpecifications
+                    specifications={
+                      showCrateProductTransformer(visibilityPricing).showFeatures ?? []
+                    }
+                    textSize="base"
                     title={t('ProductDetails.Accordions.specifications')}
+                  />
+                ))}
+              <Stream fallback={null} value={streamableImages}>
+                {(images) => (
+                  <PageSocialSharing
+                    image={images.images[0]?.src}
+                    locale={locale}
+                    path={baseProduct.path}
+                    title={baseProduct.name}
                   />
                 )}
               </Stream>
-            ) : (
-              <ShowProductSpecifications
-                specifications={showCrateProductTransformer(visibilityPricing).showFeatures ?? []}
-                textSize="base"
-                title={t('ProductDetails.Accordions.specifications')}
-              />
-            ))
+            </>
           }
           ctaDisabled={streameableCtaDisabled}
           ctaLabel={streameableCtaLabel}
