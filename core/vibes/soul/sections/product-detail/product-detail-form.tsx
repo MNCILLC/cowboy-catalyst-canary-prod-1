@@ -337,20 +337,20 @@ export function ProductDetailForm<F extends Field>({
             <div className="flex flex-col items-start gap-2">
               <SubmitButton disabled={ctaDisabled}>{ctaLabel}</SubmitButton>
               {quantityInCart !== undefined && (
-                <div
-                  aria-live="polite"
-                  className="min-h-5 w-full whitespace-nowrap text-center text-sm text-[var(--product-detail-secondary-text,hsl(var(--contrast-500)))]"
-                >
-                  <Stream fallback={null} value={quantityInCart}>
-                    {(quantity) =>
-                      quantity > 0 ? (
+                <Stream fallback={null} value={quantityInCart}>
+                  {(quantity) =>
+                    quantity > 0 ? (
+                      <div
+                        aria-live="polite"
+                        className="min-h-5 w-full whitespace-nowrap text-center text-sm text-[var(--product-detail-secondary-text,hsl(var(--contrast-500)))]"
+                      >
                         <Link className="underline underline-offset-2" href="/cart">
                           {t('quantityInCart', { quantity })}
                         </Link>
-                      ) : null
-                    }
-                  </Stream>
-                </div>
+                      </div>
+                    ) : null
+                  }
+                </Stream>
               )}
             </div>
             {additionalActions}

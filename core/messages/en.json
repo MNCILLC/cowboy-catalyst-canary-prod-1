@@ -838,5 +838,14 @@
       "invalidInput": "Please check your input and try again",
       "invalidFormat": "The value entered does not match the required format"
     }
+  },
+  "SocialSharing": {
+    "label": "Share",
+    "facebook": "Share on Facebook",
+    "twitter": "Share on X",
+    "linkedin": "Share on LinkedIn",
+    "pinterest": "Share on Pinterest",
+    "email": "Share by email",
+    "print": "Print this page"
   }
 }
