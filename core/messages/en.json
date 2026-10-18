@@ -859,5 +859,10 @@
     "unavailable": "The message form is currently unavailable. Please contact us directly.",
     "success": "Thank you! Your message has been sent.",
     "send": "Send"
+  },
+  "MapSection": {
+    "title": "Store location",
+    "loading": "Loading map…",
+    "unavailable": "The map is currently unavailable."
   }
 }
