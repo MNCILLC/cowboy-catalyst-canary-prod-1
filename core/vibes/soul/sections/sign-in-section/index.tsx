@@ -13,6 +13,7 @@ interface Props {
   forgotPasswordHref?: string;
   forgotPasswordLabel?: string;
   error?: string;
+  notice?: React.ReactNode;
 }
 
 // eslint-disable-next-line valid-jsdoc
@@ -37,6 +38,7 @@ export function SignInSection({
   forgotPasswordHref = '/forgot-password',
   forgotPasswordLabel = 'Forgot your password?',
   error,
+  notice,
 }: Props) {
   return (
     <div className="@container">
@@ -57,6 +59,7 @@ export function SignInSection({
               {forgotPasswordLabel}
             </AnimatedUnderline>
           </Link>
+          {notice}
         </div>
 
         <div className="flex w-full flex-col @xl:max-w-md @xl:pl-10 @4xl:pl-20">{children}</div>
