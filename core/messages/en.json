@@ -77,6 +77,10 @@
         "passwordRequired": "Password is required",
         "invalidInput": "Please check your input and try again."
       },
+      "AccountMigration": {
+        "heading": "Welcome to Our New Website!",
+        "existingCustomers": "<strong>Existing Customers:</strong> If you've previously made a purchase, your account has been transferred to our new website. Select <strong>Forgot your password?</strong> below and follow the instructions to set a new password using your existing email address."
+      },
       "CreateAccount": {
         "title": "New customer?",
         "accountBenefits": "Create an account with us and you'll be able to:",
