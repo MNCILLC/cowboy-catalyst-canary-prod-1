@@ -5,7 +5,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { SignInSection } from '@/vibes/soul/sections/sign-in-section';
 import { buildConfig } from '~/build-config/reader';
-import { Link } from '~/components/link';
 import { Slot } from '~/lib/makeswift/slot';
 
 import { login } from './_actions/login';
@@ -40,6 +39,7 @@ export default async function Login({ params, searchParams }: Props) {
   const redirectUrl = new URL(redirectTo, vanityUrl);
   const redirectTarget = redirectUrl.pathname + redirectUrl.search;
   const tokenErrorMessage = error === 'InvalidToken' ? t('invalidToken') : undefined;
+  const showMigrationMessage = process.env.SHOW_LOGIN_MIGRATION_MESSAGE === 'true';
 
   return (
     <SignInSection
@@ -49,19 +49,21 @@ export default async function Login({ params, searchParams }: Props) {
       forgotPasswordHref="/login/forgot-password"
       forgotPasswordLabel={t('forgotPassword')}
       notice={
-        <aside
-          aria-labelledby="account-migration-heading"
-          className="mt-6 space-y-3 rounded-lg bg-contrast-100 p-4 text-sm leading-relaxed text-foreground"
-        >
-          <h2 className="font-semibold" id="account-migration-heading">
-            {t('AccountMigration.heading')}
-          </h2>
-          <p>
-            {t.rich('AccountMigration.existingCustomers', {
-              strong: (chunks) => <strong>{chunks}</strong>,
-            })}
-          </p>
-        </aside>
+        showMigrationMessage ? (
+          <aside
+            aria-labelledby="account-migration-heading"
+            className="mb-10 space-y-3 rounded-lg bg-contrast-100 p-4 text-sm leading-relaxed text-foreground"
+          >
+            <h2 className="font-semibold" id="account-migration-heading">
+              {t('AccountMigration.heading')}
+            </h2>
+            <p>
+              {t.rich('AccountMigration.existingCustomers', {
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
+            </p>
+          </aside>
+        ) : undefined
       }
       passwordLabel={t('password')}
       submitLabel={t('cta')}
