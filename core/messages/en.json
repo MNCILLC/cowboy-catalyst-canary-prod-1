@@ -77,6 +77,10 @@
         "passwordRequired": "Password is required",
         "invalidInput": "Please check your input and try again."
       },
+      "AccountMigration": {
+        "heading": "Welcome to Our New Website!",
+        "existingCustomers": "<strong>Existing Customers:</strong> If you've previously made a purchase, your account has been transferred to our new website. Select <strong>Forgot your password?</strong> below and follow the instructions to set a new password using your existing email address."
+      },
       "CreateAccount": {
         "title": "New customer?",
         "accountBenefits": "Create an account with us and you'll be able to:",
@@ -838,5 +842,31 @@
       "invalidInput": "Please check your input and try again",
       "invalidFormat": "The value entered does not match the required format"
     }
+  },
+  "SocialSharing": {
+    "label": "Share",
+    "facebook": "Share on Facebook",
+    "twitter": "Share on X",
+    "linkedin": "Share on LinkedIn",
+    "pinterest": "Share on Pinterest",
+    "email": "Share by email",
+    "print": "Print this page"
+  },
+  "ContactSection": {
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "email": "Email *",
+    "emailPlaceholder": "Your email",
+    "message": "Message *",
+    "messagePlaceholder": "How can we help?",
+    "loading": "Loading contact form…",
+    "unavailable": "The message form is currently unavailable. Please contact us directly.",
+    "success": "Thank you! Your message has been sent.",
+    "send": "Send"
+  },
+  "MapSection": {
+    "title": "Store location",
+    "loading": "Loading map…",
+    "unavailable": "The map is currently unavailable."
   }
 }

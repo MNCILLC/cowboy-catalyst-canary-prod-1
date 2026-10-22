@@ -82,6 +82,7 @@ export interface DynamicFormProps<F extends Field> {
   passwordComplexity?: PasswordComplexitySettings | null;
   errorTranslations?: FormErrorTranslationMap;
   recaptchaSiteKey?: string;
+  recaptchaSize?: 'normal' | 'compact';
 }
 
 export function DynamicForm<F extends Field>({
@@ -98,6 +99,7 @@ export function DynamicForm<F extends Field>({
   passwordComplexity,
   errorTranslations,
   recaptchaSiteKey,
+  recaptchaSize = 'normal',
 }: DynamicFormProps<F>) {
   const t = useTranslations('Form');
   const recaptchaRef = useRef<RecaptchaWidget>(null);
@@ -206,7 +208,7 @@ export function DynamicForm<F extends Field>({
             return <DynamicFormField field={field} formField={formField} key={formField.id} />;
           })}
           {recaptchaSiteKey ? (
-            <RecaptchaWidget ref={recaptchaRef} sitekey={recaptchaSiteKey} />
+            <RecaptchaWidget ref={recaptchaRef} sitekey={recaptchaSiteKey} size={recaptchaSize} />
           ) : null}
           <div className="flex gap-1 pt-3">
             {onCancel && (

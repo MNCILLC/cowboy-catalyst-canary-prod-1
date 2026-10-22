@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
-import { cache } from 'react';
+import { cache, Suspense } from 'react';
 
 import { BlogPostContent, BlogPostContentBlogPost } from '@/vibes/soul/sections/blog-post-content';
 import { Breadcrumb } from '@/vibes/soul/sections/breadcrumbs';
+import { PageSocialSharing } from '~/components/social-sharing';
 import { rewriteWysiwygContentUrls } from '~/data-transformers/html-content-transformer';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
@@ -108,12 +109,36 @@ async function getBlogPostBreadcrumbs(props: Props): Promise<Breadcrumb[]> {
   ];
 }
 
+async function BlogSharing(props: Props) {
+  const { blogId, locale } = await props.params;
+  const blog = await getBlogPageData(cachedBlogPageDataVariables(blogId));
+
+  if (!blog?.post) return null;
+
+  return (
+    <PageSocialSharing
+      image={blog.post.thumbnailImage?.url}
+      locale={locale}
+      path={blog.post.path}
+      title={blog.post.name}
+    />
+  );
+}
+
 export default async function Blog(props: Props) {
   const { locale } = await props.params;
 
   setRequestLocale(locale);
 
   return (
-    <BlogPostContent blogPost={getBlogPost(props)} breadcrumbs={getBlogPostBreadcrumbs(props)} />
+    <BlogPostContent
+      blogPost={getBlogPost(props)}
+      breadcrumbs={getBlogPostBreadcrumbs(props)}
+      sharing={
+        <Suspense fallback={null}>
+          <BlogSharing {...props} />
+        </Suspense>
+      }
+    />
   );
 }
