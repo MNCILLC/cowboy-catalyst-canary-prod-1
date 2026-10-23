@@ -80,6 +80,7 @@ export function EnhancedGridProductCard({
             <PriceLabel
               className="max-w-[50%] shrink-0 text-right text-base [&_abbr]:cursor-default [&_abbr]:no-underline"
               colorScheme={colorScheme}
+              loginClassName="mb-3 !text-sm"
               price={product.price ?? (product.isShow ? t('callForPricing') : '')}
             />
           </div>

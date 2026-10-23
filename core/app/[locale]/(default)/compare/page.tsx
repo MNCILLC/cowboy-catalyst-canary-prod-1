@@ -11,6 +11,7 @@ import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 import { pickPricesForTaxDisplay } from '~/lib/tax-pricing';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { addToCart } from './_actions/add-to-cart';
 import { CompareAnalyticsProvider } from './_components/compare-analytics-provider';
@@ -75,18 +76,20 @@ export default async function Compare(props: Props) {
     );
     const format = await getFormatter();
 
-    return products.map((product) => ({
-      ...singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
-      description: <div dangerouslySetInnerHTML={{ __html: product.description }} />,
-      customFields: [
-        { name: t('sku'), value: product.sku },
-        { name: t('weight'), value: `${product.weight?.value} ${product.weight?.unit}` },
-        ...removeEdgesAndNodes(product.customFields).map(({ name, value }) => ({ name, value })),
-      ],
-      hasVariants: removeEdgesAndNodes(product.productOptions).length > 0,
-      isPreorder: product.availabilityV2.status === 'Preorder',
-      disabled: product.availabilityV2.status === 'Unavailable' || !product.inventory.isInStock,
-    }));
+    return Promise.all(
+      products.map(async (product) => ({
+        ...(await singleProductCardTransformer(product, format, undefined, undefined, taxDisplay)),
+        description: <div dangerouslySetInnerHTML={{ __html: product.description }} />,
+        customFields: [
+          { name: t('sku'), value: product.sku },
+          { name: t('weight'), value: `${product.weight?.value} ${product.weight?.unit}` },
+          ...removeEdgesAndNodes(product.customFields).map(({ name, value }) => ({ name, value })),
+        ],
+        hasVariants: removeEdgesAndNodes(product.productOptions).length > 0,
+        isPreorder: product.availabilityV2.status === 'Preorder',
+        disabled: product.availabilityV2.status === 'Unavailable' || !product.inventory.isInStock,
+      })),
+    );
   });
 
   const streamableAnalyticsData = Streamable.from(async () => {
@@ -103,6 +106,8 @@ export default async function Compare(props: Props) {
       customerAccessToken,
     );
 
+    const hidePrices = await requiresPricingLogin();
+
     return products.map((product) => {
       const prices = pickPricesForTaxDisplay(product, taxDisplay);
 
@@ -111,7 +116,7 @@ export default async function Compare(props: Props) {
         name: product.name,
         sku: product.sku,
         brand: product.brand?.name ?? '',
-        price: prices?.price.value ?? 0,
+        price: hidePrices ? 0 : (prices?.price.value ?? 0),
         currency: prices?.price.currencyCode ?? '',
       };
     });

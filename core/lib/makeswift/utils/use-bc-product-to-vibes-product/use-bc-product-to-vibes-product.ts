@@ -9,6 +9,7 @@ import {
   showCrateProductTransformer,
 } from '~/data-transformers/show-crate-product-transformer';
 import { isProUseProduct } from '~/lib/pro-use/policy';
+import { hideWholesaleCardPrices } from '~/lib/wholesale-pricing-policy';
 
 const priceSchema = z.object({
   value: z.number(),
@@ -27,6 +28,7 @@ const PricesSchema = z.object({
 });
 
 export const BcProductSchema = z.object({
+  pricingRequiresLogin: z.boolean().optional(),
   proUseMetafields: z
     .object({
       edges: z.array(z.object({ node: z.object({ value: z.string() }) })).nullable(),
@@ -123,31 +125,34 @@ export function useBcProductToVibesProduct(
           ? undefined
           : pricesTransformer(product, format);
 
-      return {
-        ...showCrateProductTransformer(product, categoryId),
-        id: entityId.toString(),
-        isProUseOnly: isProUseProduct(product),
-        title: name,
-        descriptionHtml: product.description,
-        isInStock: product.inventory.isInStock,
-        hasOptions: (product.productOptions.edges?.length ?? 0) > 0,
-        canAddToCart:
-          product.showCartAction &&
-          product.availabilityV2.status !== 'Unavailable' &&
-          product.inventory.isInStock,
-        isPreorder: product.availabilityV2.status === 'Preorder',
-        minQuantity:
-          product.minPurchaseQuantity != null
-            ? Math.max(1, product.minPurchaseQuantity)
-            : undefined,
-        maxQuantity: product.maxPurchaseQuantity ?? undefined,
-        href: path,
-        image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
-        price,
-        subtitle: brand?.name,
-        stockDisplayData: includeStockLevel ? product.stockDisplayData : undefined,
-        useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
-      };
+      return hideWholesaleCardPrices(
+        {
+          ...showCrateProductTransformer(product, categoryId),
+          id: entityId.toString(),
+          isProUseOnly: isProUseProduct(product),
+          title: name,
+          descriptionHtml: product.description,
+          isInStock: product.inventory.isInStock,
+          hasOptions: (product.productOptions.edges?.length ?? 0) > 0,
+          canAddToCart:
+            product.showCartAction &&
+            product.availabilityV2.status !== 'Unavailable' &&
+            product.inventory.isInStock,
+          isPreorder: product.availabilityV2.status === 'Preorder',
+          minQuantity:
+            product.minPurchaseQuantity != null
+              ? Math.max(1, product.minPurchaseQuantity)
+              : undefined,
+          maxQuantity: product.maxPurchaseQuantity ?? undefined,
+          href: path,
+          image: defaultImage ? { src: defaultImage.url, alt: defaultImage.altText } : undefined,
+          price,
+          subtitle: brand?.name,
+          stockDisplayData: includeStockLevel ? product.stockDisplayData : undefined,
+          useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
+        },
+        product.pricingRequiresLogin === true,
+      );
     },
     [format, showStockLevel, categoryId],
   );

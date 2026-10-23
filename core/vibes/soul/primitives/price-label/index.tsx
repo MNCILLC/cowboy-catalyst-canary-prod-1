@@ -1,6 +1,8 @@
 import { clsx } from 'clsx';
 import { useTranslations } from 'next-intl';
 
+import { Link } from '~/components/link';
+
 export type TaxMode = 'INC' | 'EX' | 'BOTH';
 
 export interface Money {
@@ -28,10 +30,15 @@ export interface PriceSale {
   mode?: TaxMode;
 }
 
-export type Price = string | PricePlain | PriceRange | PriceSale;
+export interface PriceLogin {
+  type: 'login';
+}
+
+export type Price = string | PricePlain | PriceRange | PriceSale | PriceLogin;
 
 interface Props {
   className?: string;
+  loginClassName?: string;
   colorScheme?: 'light' | 'dark';
   price: Price;
 }
@@ -50,7 +57,7 @@ interface Props {
  * }
  * ```
  */
-export function PriceLabel({ className, colorScheme = 'light', price }: Props) {
+export function PriceLabel({ className, loginClassName, colorScheme = 'light', price }: Props) {
   const t = useTranslations('Components.Price');
 
   const baseColorClass = {
@@ -60,6 +67,22 @@ export function PriceLabel({ className, colorScheme = 'light', price }: Props) {
 
   if (typeof price === 'string') {
     return <span className={clsx('block font-semibold', baseColorClass, className)}>{price}</span>;
+  }
+
+  if (price.type === 'login') {
+    return (
+      <Link
+        className={clsx(
+          'relative z-10 block font-semibold underline underline-offset-4',
+          baseColorClass,
+          className,
+          loginClassName,
+        )}
+        href="/login"
+      >
+        Login for Wholesale Prices
+      </Link>
+    );
   }
 
   const mode: TaxMode = price.mode ?? 'EX';

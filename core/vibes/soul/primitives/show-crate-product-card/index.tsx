@@ -113,6 +113,7 @@ export function ShowCrateProductCard({
             <PriceLabel
               className="mt-2 [&_abbr]:cursor-default [&_abbr]:no-underline"
               colorScheme={colorScheme}
+              loginClassName="mb-3 !text-sm"
               price={price ?? t('callForPricing')}
             />
             {(product.isProUseOnly || !!badge) && (

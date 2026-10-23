@@ -12,13 +12,13 @@ export function WholesalePricingAlertPresentation({ className, redirectTo }: Pro
   return (
     <Alert
       className={clsx(
-        'w-full !min-w-0 !max-w-none !border-[#19294f] !bg-[#2a4176] [&>div>span]:!text-[#b3d2ff]',
+        'w-full !min-w-0 !max-w-none border-2 !border-warning py-4 shadow-md [&>div>span]:text-base [&>div>span]:font-semibold',
         className,
       )}
       message={
         <>
           <Link
-            className="font-medium text-[#b3d2ff] underline underline-offset-2"
+            className="font-bold text-foreground underline underline-offset-4"
             href={redirectTo ? `/login?redirectTo=${encodeURIComponent(redirectTo)}` : '/login'}
           >
             Login/Create Account
@@ -26,7 +26,7 @@ export function WholesalePricingAlertPresentation({ className, redirectTo }: Pro
           to see wholesale pricing.
         </>
       }
-      variant="info"
+      variant="warning"
     />
   );
 }
