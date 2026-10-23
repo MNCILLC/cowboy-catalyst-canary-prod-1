@@ -9,7 +9,7 @@ export async function LoyaltyCart({ subtotal, currency }: { subtotal: number; cu
   try {
     const state = await getLoyaltyBalance();
 
-    if (!state || (!state.balance.enabled && !state.balance.redemption)) return null;
+    if (!state?.balance.enabled) return null;
 
     return (
       <LoyaltyPoints
@@ -23,10 +23,6 @@ export async function LoyaltyCart({ subtotal, currency }: { subtotal: number; cu
   } catch (error) {
     rethrow(error);
 
-    return (
-      <p className="my-4 text-sm" role="status">
-        Loyalty points are temporarily unavailable. Refresh to try again.
-      </p>
-    );
+    return null;
   }
 }

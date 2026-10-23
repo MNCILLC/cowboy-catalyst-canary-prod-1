@@ -59,16 +59,7 @@ export async function AccountLoyalty({
   } catch (error) {
     rethrow(error);
 
-    return (
-      <section
-        aria-label={t('title')}
-        className="my-6 rounded-xl border border-[hsl(var(--contrast-200))] p-6"
-      >
-        <h2 className="text-xl font-medium">{t('title')}</h2>
-        <p className="mt-2 text-sm" role="status">
-          {t('unavailable')}
-        </p>
-      </section>
-    );
+    // Render loyalty only when the app has confirmed this store's program is enabled.
+    return null;
   }
 }

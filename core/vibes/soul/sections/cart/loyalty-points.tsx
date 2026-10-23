@@ -30,6 +30,8 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
     if (state.success) router.refresh();
   }, [state, router]);
 
+  if (!balance.enabled) return null;
+
   let controls = (
     <p className="mt-3 text-sm">
       You need at least 100 available points and $10 in eligible merchandise to redeem.
@@ -66,7 +68,6 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
 
   if (balance.currency !== currency)
     controls = <p className="mt-3 text-sm">Points can be redeemed in {balance.currency}.</p>;
-  if (!balance.enabled) controls = <p className="mt-3 text-sm">The loyalty program is paused.</p>;
 
   if (active) {
     controls = (

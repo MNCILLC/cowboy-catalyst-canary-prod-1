@@ -151,6 +151,10 @@ export async function getOrderLoyaltyRedemption(orderId: number) {
 
     if (!id) return null;
 
+    const balance = balanceSchema.parse(await callLoyalty({ action: 'balance', customerId: id }));
+
+    if (!balance.enabled) return null;
+
     const result = await callLoyalty({ action: 'order', customerId: id, orderId });
 
     return z
