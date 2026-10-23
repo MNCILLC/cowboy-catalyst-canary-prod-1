@@ -1,3 +1,6 @@
+export const wholesaleLoginText =
+  process.env.NEXT_PUBLIC_WHOLESALE_LOGIN_TEXT?.trim() || 'Login for Wholesale Prices';
+
 export const requiresWholesaleLogin = (enabled: string | undefined, isAuthenticated: boolean) =>
   enabled === 'true' && !isAuthenticated;
 

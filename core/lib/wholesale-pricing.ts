@@ -4,7 +4,7 @@ import { cache } from 'react';
 
 import { isLoggedIn } from '~/auth';
 
-import { requiresWholesaleLogin } from './wholesale-pricing-policy';
+import { requiresWholesaleLogin, wholesaleLoginText } from './wholesale-pricing-policy';
 
 export const isWholesalePricingMessageEnabled =
   process.env.ENABLE_WHOLESALE_PRICING_MESSAGE === 'true' ||
@@ -18,6 +18,6 @@ export const requiresPricingLogin = cache(
 
 export async function assertPricingAccess() {
   if (await requiresPricingLogin()) {
-    throw new Error('Login for Wholesale Prices');
+    throw new Error(wholesaleLoginText);
   }
 }

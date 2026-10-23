@@ -2,6 +2,7 @@ import { clsx } from 'clsx';
 import { useTranslations } from 'next-intl';
 
 import { Link } from '~/components/link';
+import { wholesaleLoginText } from '~/lib/wholesale-pricing-policy';
 
 export type TaxMode = 'INC' | 'EX' | 'BOTH';
 
@@ -80,7 +81,7 @@ export function PriceLabel({ className, loginClassName, colorScheme = 'light', p
         )}
         href="/login"
       >
-        Login for Wholesale Prices
+        {wholesaleLoginText}
       </Link>
     );
   }
