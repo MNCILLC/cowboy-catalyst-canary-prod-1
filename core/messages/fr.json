@@ -203,6 +203,8 @@
                 "digitalDelivery": "Livraison numérique à {email}",
                 "subtotal": "Sous-total",
                 "discounts": "Remises",
+                "loyaltyPoints": "Points de fidélité",
+                "loyaltyPointsRedeemed": "{count, number} points utilisés",
                 "shipping": "Livraison",
                 "tax": "Taxes",
                 "orderSummary": "Récapitulatif de la commande",

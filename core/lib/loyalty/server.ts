@@ -134,3 +134,30 @@ export async function assertLoyaltyCheckout(cartId: string) {
     );
   }
 }
+
+export async function getOrderLoyaltyRedemption(orderId: number) {
+  if (!loyaltyConfigured()) return null;
+
+  try {
+    const id = await customerId();
+
+    if (!id) return null;
+
+    const result = await callLoyalty({ action: 'order', customerId: id, orderId });
+
+    return z
+      .object({
+        redemption: z
+          .object({
+            points: z.number().int().positive(),
+            amount: z.number().positive(),
+            currency: z.string(),
+          })
+          .nullable(),
+      })
+      .parse(result).redemption;
+  } catch {
+    // Order history remains available with the generic discount if the loyalty app is unavailable.
+    return null;
+  }
+}

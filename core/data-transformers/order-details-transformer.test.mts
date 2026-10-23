@@ -71,3 +71,48 @@ test('orders without a non-coupon discount omit the extra row', () => {
     assert.equal(summary.lineItems.length, coupon ? 4 : 3);
   });
 });
+
+test('confirmed loyalty redemption shows its point count and keeps other discounts separate', () => {
+  const result = transform({
+    ...order(110, 10),
+    loyaltyRedemption: { points: 1000, amount: 100, currency: 'USD' },
+  }).summary;
+
+  assert.deepEqual(result.lineItems.slice(1, 4), [
+    { label: 'Loyalty points', value: '-$100.00', subtext: '1,000 points redeemed' },
+    { label: 'Discounts', value: '-$10.00' },
+    { label: 'SAVE10', value: '-$10.00' },
+  ]);
+  assert.equal(result.total, '$748.97');
+});
+
+test('order 489 displays only the loyalty discount when all non-coupon savings used points', () => {
+  const result = transform({
+    ...order(),
+    loyaltyRedemption: { points: 1000, amount: 100, currency: 'USD' },
+  }).summary;
+
+  assert.deepEqual(result.lineItems[1], {
+    label: 'Loyalty points',
+    value: '-$100.00',
+    subtext: '1,000 points redeemed',
+  });
+  assert.equal(
+    result.lineItems.some(({ label }) => label === 'Discounts'),
+    false,
+  );
+  assert.equal(result.total, '$768.97');
+});
+
+test('unverified or inconsistent loyalty details preserve the generic discount', () => {
+  [
+    null,
+    { points: 1000, amount: 100, currency: 'EUR' },
+    { points: 2000, amount: 200, currency: 'USD' },
+  ].forEach((loyaltyRedemption) => {
+    const result = transform({ ...order(), loyaltyRedemption }).summary;
+
+    assert.deepEqual(result.lineItems[1], { label: 'Discounts', value: '-$100.00' });
+    assert.equal(result.total, '$768.97');
+  });
+});

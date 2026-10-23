@@ -203,6 +203,8 @@
                 "digitalDelivery": "Consegna digitale a {email}",
                 "subtotal": "Subtotale",
                 "discounts": "Sconti",
+                "loyaltyPoints": "Punti fedeltà",
+                "loyaltyPointsRedeemed": "{count, number} punti utilizzati",
                 "shipping": "Spedizioni",
                 "tax": "Tasse",
                 "orderSummary": "Riepilogo ordine",

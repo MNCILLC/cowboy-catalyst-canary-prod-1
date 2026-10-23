@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digital delivery to {email}",
                 "subtotal": "Suma cząstkowa",
                 "discounts": "Rabaty",
+                "loyaltyPoints": "Punkty lojalnościowe",
+                "loyaltyPointsRedeemed": "Wykorzystane punkty: {count, number}",
                 "shipping": "Wysyłka",
                 "tax": "Podatek",
                 "orderSummary": "Podsumowanie zamówienia",

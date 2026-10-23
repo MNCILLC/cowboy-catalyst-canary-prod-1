@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digital levering til {email}",
                 "subtotal": "Subtotal",
                 "discounts": "Rabatter",
+                "loyaltyPoints": "Loyalitetspoint",
+                "loyaltyPointsRedeemed": "{count, number} point indløst",
                 "shipping": "Forsendelse",
                 "tax": "Moms",
                 "orderSummary": "Ordreoversigt",

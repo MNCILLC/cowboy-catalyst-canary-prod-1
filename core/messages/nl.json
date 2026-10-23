@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digitale levering naar {email}",
                 "subtotal": "Subtotaal",
                 "discounts": "Kortingen",
+                "loyaltyPoints": "Spaarpunten",
+                "loyaltyPointsRedeemed": "{count, number} punten ingewisseld",
                 "shipping": "Verzending",
                 "tax": "Belasting",
                 "orderSummary": "Besteloverzicht",

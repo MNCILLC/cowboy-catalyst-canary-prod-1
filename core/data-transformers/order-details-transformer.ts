@@ -41,6 +41,16 @@ export const orderDetailsTransformer = (
   format: ExistingResultType<typeof getFormatter>,
   tGiftCertificate: ExistingResultType<typeof getTranslations<'Cart.GiftCertificate'>>,
 ): Order => {
+  const nonCouponCents = Math.round(order.discounts.nonCouponDiscountTotal.value * 100);
+  const redemption = order.loyaltyRedemption;
+  const loyaltyCents =
+    redemption &&
+    redemption.currency === order.discounts.nonCouponDiscountTotal.currencyCode &&
+    Math.round(redemption.amount * 100) <= nonCouponCents
+      ? Math.round(redemption.amount * 100)
+      : 0;
+  const otherDiscountCents = nonCouponCents - loyaltyCents;
+
   const paymentMethods = removeEdgesAndNodes(order.payments).map((payment) => {
     if (payment.detail?.__typename === 'CreditCardPaymentInstrument') {
       return {
@@ -176,11 +186,23 @@ export const orderDetailsTransformer = (
             currency: order.subTotal.currencyCode,
           }),
         },
-        ...(order.discounts.nonCouponDiscountTotal.value > 0
+        ...(loyaltyCents > 0 && redemption
+          ? [
+              {
+                label: t('loyaltyPoints'),
+                value: format.number(-loyaltyCents / 100, {
+                  style: 'currency',
+                  currency: redemption.currency,
+                }),
+                subtext: t('loyaltyPointsRedeemed', { count: redemption.points }),
+              },
+            ]
+          : []),
+        ...(otherDiscountCents > 0
           ? [
               {
                 label: t('discounts'),
-                value: format.number(-order.discounts.nonCouponDiscountTotal.value, {
+                value: format.number(-otherDiscountCents / 100, {
                   style: 'currency',
                   currency: order.discounts.nonCouponDiscountTotal.currencyCode,
                 }),

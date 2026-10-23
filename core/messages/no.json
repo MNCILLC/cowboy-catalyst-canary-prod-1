@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digital levering til {email}",
                 "subtotal": "Delsum",
                 "discounts": "Rabatter",
+                "loyaltyPoints": "Lojalitetspoeng",
+                "loyaltyPointsRedeemed": "{count, number} poeng innløst",
                 "shipping": "Frakt",
                 "tax": "Avgift",
                 "orderSummary": "Bestillingssammendrag",

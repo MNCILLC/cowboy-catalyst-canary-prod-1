@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digital leverans till {email}",
                 "subtotal": "Delsumma",
                 "discounts": "Rabatter",
+                "loyaltyPoints": "Lojalitetspoäng",
+                "loyaltyPointsRedeemed": "{count, number} poäng använda",
                 "shipping": "Frakt",
                 "tax": "Beskatta",
                 "orderSummary": "Beställningssammanfattning",

@@ -227,6 +227,8 @@
         "digitalDelivery": "Digital delivery to {email}",
         "subtotal": "Subtotal",
         "discounts": "Discounts",
+        "loyaltyPoints": "Loyalty points",
+        "loyaltyPointsRedeemed": "{count, number} points redeemed",
         "shipping": "Shipping",
         "tax": "Tax",
         "orderSummary": "Order summary",

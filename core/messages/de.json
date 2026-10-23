@@ -203,6 +203,8 @@
                 "digitalDelivery": "Digitale Lieferung an {email}",
                 "subtotal": "Zwischensumme",
                 "discounts": "Rabatte",
+                "loyaltyPoints": "Treuepunkte",
+                "loyaltyPointsRedeemed": "{count, number} Punkte eingelöst",
                 "shipping": "Versand",
                 "tax": "Steuern",
                 "orderSummary": "Bestellübersicht",
