@@ -202,6 +202,7 @@
                 "destinationWithCount": "Destination {number, number}/{total, number}",
                 "digitalDelivery": "Digital leverans till {email}",
                 "subtotal": "Delsumma",
+                "discounts": "Rabatter",
                 "shipping": "Frakt",
                 "tax": "Beskatta",
                 "orderSummary": "Beställningssammanfattning",

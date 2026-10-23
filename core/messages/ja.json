@@ -202,6 +202,7 @@
                 "destinationWithCount": "目的地 {number, number}／{total, number}",
                 "digitalDelivery": "{email}へのデジタル配信",
                 "subtotal": "小計",
+                "discounts": "割引",
                 "shipping": "配送",
                 "tax": "税金",
                 "orderSummary": "注文概要",

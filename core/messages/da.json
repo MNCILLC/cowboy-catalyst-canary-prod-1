@@ -202,6 +202,7 @@
                 "destinationWithCount": "Destination {number, number}/{total, number}",
                 "digitalDelivery": "Digital levering til {email}",
                 "subtotal": "Subtotal",
+                "discounts": "Rabatter",
                 "shipping": "Forsendelse",
                 "tax": "Moms",
                 "orderSummary": "Ordreoversigt",

@@ -1,10 +1,10 @@
 import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
-import { getFormatter, getTranslations } from 'next-intl/server';
+import type { getFormatter, getTranslations } from 'next-intl/server';
 
-import { Order } from '@/vibes/soul/sections/order-details-section';
-import { ExistingResultType } from '~/client/util';
+import type { Order } from '@/vibes/soul/sections/order-details-section';
+import type { ExistingResultType } from '~/client/util';
 
-import { getCustomerOrderDetails } from '../app/[locale]/(default)/account/orders/[id]/page-data';
+import type { getCustomerOrderDetails } from '../app/[locale]/(default)/account/orders/[id]/page-data';
 
 function getStatusColor(
   status: ExistingResultType<typeof getCustomerOrderDetails>['status']['value'],
@@ -176,6 +176,17 @@ export const orderDetailsTransformer = (
             currency: order.subTotal.currencyCode,
           }),
         },
+        ...(order.discounts.nonCouponDiscountTotal.value > 0
+          ? [
+              {
+                label: t('discounts'),
+                value: format.number(-order.discounts.nonCouponDiscountTotal.value, {
+                  style: 'currency',
+                  currency: order.discounts.nonCouponDiscountTotal.currencyCode,
+                }),
+              },
+            ]
+          : []),
         ...order.discounts.couponDiscounts.map((discount) => {
           return {
             label: discount.couponCode,

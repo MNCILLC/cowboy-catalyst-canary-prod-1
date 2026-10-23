@@ -202,6 +202,7 @@
                 "destinationWithCount": "Destination {number, number}/{total, number}",
                 "digitalDelivery": "Livraison numérique à {email}",
                 "subtotal": "Sous-total",
+                "discounts": "Remises",
                 "shipping": "Livraison",
                 "tax": "Taxes",
                 "orderSummary": "Récapitulatif de la commande",

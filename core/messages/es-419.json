@@ -202,6 +202,7 @@
                 "destinationWithCount": "Destino {número, número}/{total, número}",
                 "digitalDelivery": "Entrega digital a {email}",
                 "subtotal": "Subtotal",
+                "discounts": "Descuentos",
                 "shipping": "Envío",
                 "tax": "Impuesto",
                 "orderSummary": "Resumen del pedido",

@@ -202,6 +202,7 @@
                 "destinationWithCount": "Destinasjon {number, number}/{total, number}",
                 "digitalDelivery": "Digital levering til {email}",
                 "subtotal": "Delsum",
+                "discounts": "Rabatter",
                 "shipping": "Frakt",
                 "tax": "Avgift",
                 "orderSummary": "Bestillingssammendrag",
