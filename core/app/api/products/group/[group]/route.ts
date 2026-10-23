@@ -74,5 +74,5 @@ export const GET = async (
       break;
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
 };

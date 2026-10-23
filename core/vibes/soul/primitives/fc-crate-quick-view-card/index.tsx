@@ -170,6 +170,7 @@ export function FcCrateQuickViewCard({
       <PriceLabel
         className="[&_abbr]:cursor-default [&_abbr]:no-underline"
         colorScheme="dark"
+        loginClassName="mb-3 !text-sm"
         price={price ?? t('callForPricing')}
       />
       <StockLevel product={product} />
@@ -225,7 +226,11 @@ export function FcCrateQuickViewCard({
                 <Dialog.Title className="break-words font-[family-name:var(--font-family-heading)] text-2xl font-semibold">
                   {title}
                 </Dialog.Title>
-                <PriceLabel className="text-xl" price={price ?? t('callForPricing')} />
+                <PriceLabel
+                  className="text-xl"
+                  loginClassName="mb-3 !text-sm"
+                  price={price ?? t('callForPricing')}
+                />
                 <StockLevel product={product} />
                 {Boolean(purchaseAction) && (
                   <div className="w-full [&_form]:flex-wrap">{purchaseAction}</div>

@@ -6,6 +6,10 @@ import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
+import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
 const GetQuickSearchResultsQuery = graphql(
   `
@@ -55,10 +59,14 @@ export const getSearchResults = cache(async (searchTerm: string, locale?: string
 
     const { products } = response.data.site.search.searchProducts;
 
+    const hidePrices = await requiresPricingLogin();
+
     return {
       status: 'success',
       data: {
-        products: removeEdgesAndNodes(products),
+        products: removeEdgesAndNodes(products)
+          .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
+          .map((product) => hideWholesalePrices(product, hidePrices)),
       },
     };
   } catch (error: unknown) {
