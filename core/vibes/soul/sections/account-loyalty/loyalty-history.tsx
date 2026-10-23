@@ -44,7 +44,7 @@ export function LoyaltyHistory({
 }: Props) {
   return (
     <div className="mt-6 border-t border-[hsl(var(--contrast-200))] pt-5" id="loyalty-history">
-      <h3 className="text-lg font-medium">{title}</h3>
+      <h2 className="text-lg font-medium">{title}</h2>
       <p className="mt-2 text-sm text-[hsl(var(--contrast-500))]">{description}</p>
       {notice != null && (
         <p className="mt-3 text-sm" role="status">

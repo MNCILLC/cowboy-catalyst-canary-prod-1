@@ -1,8 +1,8 @@
-import { unstable_rethrow as rethrow } from 'next/navigation';
+import { notFound, unstable_rethrow as rethrow } from 'next/navigation';
 import { getFormatter, getTranslations } from 'next-intl/server';
 import { Suspense } from 'react';
 
-import { AccountLoyaltyCard } from '@/vibes/soul/sections/account-settings/loyalty-card';
+import { AccountLoyaltyCard } from '@/vibes/soul/sections/account-loyalty/loyalty-card';
 import { getAccountLoyaltyBalance } from '~/lib/loyalty/server';
 
 import { AccountLoyaltyHistory } from './account-loyalty-history';
@@ -12,13 +12,13 @@ export async function AccountLoyalty({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const t = await getTranslations('Account.Settings.Loyalty');
+  const t = await getTranslations('Account.Loyalty');
   const format = await getFormatter();
 
   try {
     const balance = await getAccountLoyaltyBalance();
 
-    if (!balance?.enabled) return null;
+    if (!balance?.enabled) notFound();
 
     return (
       <AccountLoyaltyCard
@@ -60,6 +60,6 @@ export async function AccountLoyalty({
     rethrow(error);
 
     // Render loyalty only when the app has confirmed this store's program is enabled.
-    return null;
+    notFound();
   }
 }

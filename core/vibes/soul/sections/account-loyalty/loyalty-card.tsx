@@ -26,13 +26,12 @@ export function AccountLoyaltyCard({
   expirations,
 }: Props) {
   return (
-    <section
-      aria-label={title}
-      className="my-6 rounded-xl border border-[hsl(var(--contrast-200))] p-6 @container"
-    >
-      <h2 className="font-[family-name:var(--font-family-heading)] text-2xl font-medium">
-        {title}
-      </h2>
+    <section aria-label={title} className="w-full @container">
+      <header className="mb-6 min-h-[72px] border-b border-[hsl(var(--contrast-100))]">
+        <h1 className="font-[family-name:var(--font-family-heading)] text-4xl font-medium leading-none tracking-tight">
+          {title}
+        </h1>
+      </header>
       <div className="mt-5 grid gap-6 @2xl:grid-cols-2">
         <div>
           <p className="text-sm text-[hsl(var(--contrast-500))]">{availableLabel}</p>

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createHmac, randomUUID } from 'node:crypto';
+import { cache } from 'react';
 import { z } from 'zod';
 
 import { getSessionCustomerAccessToken } from '~/auth';
@@ -174,7 +175,7 @@ export async function getOrderLoyaltyRedemption(orderId: number) {
   }
 }
 
-export async function getAccountLoyaltyBalance() {
+export const getAccountLoyaltyBalance = cache(async () => {
   if (!loyaltyConfigured()) return null;
 
   const id = await customerId();
@@ -182,7 +183,7 @@ export async function getAccountLoyaltyBalance() {
   if (!id) return null;
 
   return balanceSchema.parse(await callLoyalty({ action: 'balance', customerId: id }));
-}
+});
 
 export async function getAccountLoyaltyHistory(page = 1) {
   if (!loyaltyConfigured()) return null;

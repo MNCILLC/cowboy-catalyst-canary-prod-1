@@ -1,7 +1,7 @@
 import { unstable_rethrow as rethrow } from 'next/navigation';
 import { getFormatter, getTranslations } from 'next-intl/server';
 
-import { LoyaltyHistory } from '@/vibes/soul/sections/account-settings/loyalty-history';
+import { LoyaltyHistory } from '@/vibes/soul/sections/account-loyalty/loyalty-history';
 import { getAccountLoyaltyHistory } from '~/lib/loyalty/server';
 
 export async function AccountLoyaltyHistory({
@@ -9,7 +9,7 @@ export async function AccountLoyaltyHistory({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const t = await getTranslations('Account.Settings.Loyalty.History');
+  const t = await getTranslations('Account.Loyalty.History');
   const format = await getFormatter();
 
   try {
@@ -59,11 +59,11 @@ export async function AccountLoyaltyHistory({
                 nextLabel: t('next'),
                 previousHref:
                   history.page > 1
-                    ? `/account/settings?loyaltyPage=${history.page - 1}#loyalty-history`
+                    ? `/account/loyalty-points?loyaltyPage=${history.page - 1}#loyalty-history`
                     : undefined,
                 nextHref:
                   history.page < history.pages
-                    ? `/account/settings?loyaltyPage=${history.page + 1}#loyalty-history`
+                    ? `/account/loyalty-points?loyaltyPage=${history.page + 1}#loyalty-history`
                     : undefined,
               }
             : undefined
@@ -77,7 +77,7 @@ export async function AccountLoyaltyHistory({
 
     return (
       <div className="mt-6 border-t border-[hsl(var(--contrast-200))] pt-5" id="loyalty-history">
-        <h3 className="text-lg font-medium">{t('title')}</h3>
+        <h2 className="text-lg font-medium">{t('title')}</h2>
         <p className="mt-2 text-sm" role="status">
           {t('unavailable')}
         </p>
