@@ -179,3 +179,30 @@ export async function getAccountLoyaltyBalance() {
 
   return balanceSchema.parse(await callLoyalty({ action: 'balance', customerId: id }));
 }
+
+export async function getAccountLoyaltyHistory(page = 1) {
+  if (!loyaltyConfigured()) return null;
+
+  const id = await customerId();
+
+  if (!id) return null;
+
+  return z
+    .object({
+      enabled: z.boolean(),
+      entries: z.array(
+        z.object({
+          id: z.string(),
+          type: z.enum(['earned', 'redeemed', 'adjusted', 'returned']),
+          points: z.number().int(),
+          date: z.string().datetime().nullable(),
+          orderId: z.number().int().positive(),
+          legacy: z.boolean().optional(),
+        }),
+      ),
+      page: z.number().int().positive(),
+      pages: z.number().int().positive(),
+      incomplete: z.boolean(),
+    })
+    .parse(await callLoyalty({ action: 'history', customerId: id, page }));
+}

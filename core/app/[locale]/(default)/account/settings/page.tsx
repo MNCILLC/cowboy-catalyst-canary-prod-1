@@ -50,6 +50,7 @@ function withDefaultValue(field: Field, value: unknown): Field {
 
 interface Props {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -62,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function Settings({ params }: Props) {
+export default async function Settings({ params, searchParams }: Props) {
   const { locale } = await params;
 
   setRequestLocale(locale);
@@ -111,7 +112,7 @@ export default async function Settings({ params }: Props) {
       isAccountSubscribed={isAccountSubscribed}
       loyalty={
         <Suspense fallback={null}>
-          <AccountLoyalty />
+          <AccountLoyalty searchParams={searchParams} />
         </Suspense>
       }
       newPasswordLabel={t('newPassword')}

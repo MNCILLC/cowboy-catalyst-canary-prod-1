@@ -1,10 +1,17 @@
 import { unstable_rethrow as rethrow } from 'next/navigation';
 import { getFormatter, getTranslations } from 'next-intl/server';
+import { Suspense } from 'react';
 
 import { AccountLoyaltyCard } from '@/vibes/soul/sections/account-settings/loyalty-card';
 import { getAccountLoyaltyBalance } from '~/lib/loyalty/server';
 
-export async function AccountLoyalty() {
+import { AccountLoyaltyHistory } from './account-loyalty-history';
+
+export async function AccountLoyalty({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const t = await getTranslations('Account.Settings.Loyalty');
   const format = await getFormatter();
 
@@ -28,6 +35,11 @@ export async function AccountLoyalty() {
           }),
         }))}
         expiresLabel={t('expires')}
+        history={
+          <Suspense fallback={null}>
+            <AccountLoyaltyHistory searchParams={searchParams} />
+          </Suspense>
+        }
         nextExpiry={
           balance.expirations === undefined && balance.nextExpiry && balance.available > 0
             ? t('nextExpiry', {

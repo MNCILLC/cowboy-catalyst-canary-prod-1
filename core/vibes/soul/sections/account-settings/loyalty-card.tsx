@@ -1,4 +1,7 @@
+import { ReactNode } from 'react';
+
 interface Props {
+  history?: ReactNode;
   title: string;
   availableLabel: string;
   available: string;
@@ -11,6 +14,7 @@ interface Props {
 }
 
 export function AccountLoyaltyCard({
+  history,
   title,
   availableLabel,
   available,
@@ -67,6 +71,7 @@ export function AccountLoyaltyCard({
           </div>
         )}
       </div>
+      {history}
     </section>
   );
 }
