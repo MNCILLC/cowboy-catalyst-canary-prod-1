@@ -2,6 +2,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { Suspense } from 'react';
 
 import { Field } from '@/vibes/soul/form/dynamic-form/schema';
 import { AccountSettingsSection } from '@/vibes/soul/sections/account-settings';
@@ -15,6 +16,7 @@ import { exists } from '~/lib/utils';
 import { changePassword } from './_actions/change-password';
 import { updateCustomer } from './_actions/update-customer';
 import { updateNewsletterSubscription } from './_actions/update-newsletter-subscription';
+import { AccountLoyalty } from './_components/account-loyalty';
 import { getAccountSettingsQuery } from './page-data';
 
 function withDefaultValue(field: Field, value: unknown): Field {
@@ -107,6 +109,11 @@ export default async function Settings({ params }: Props) {
       confirmPasswordLabel={t('confirmPassword')}
       currentPasswordLabel={t('currentPassword')}
       isAccountSubscribed={isAccountSubscribed}
+      loyalty={
+        <Suspense fallback={null}>
+          <AccountLoyalty />
+        </Suspense>
+      }
       newPasswordLabel={t('newPassword')}
       newsletterSubscriptionCtaLabel={t('cta')}
       newsletterSubscriptionEnabled={newsletterSubscriptionEnabled}

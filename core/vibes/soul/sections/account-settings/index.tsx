@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
   Field,
   FieldGroup,
@@ -13,6 +15,7 @@ import { Account, UpdateAccountAction, UpdateAccountForm } from './update-accoun
 
 export interface AccountSettingsSectionProps {
   title?: string;
+  loyalty?: ReactNode;
   account: Account;
   updateAccountAction: UpdateAccountAction;
   updateAccountCustomFields?: Array<Field | FieldGroup<Field>>;
@@ -48,6 +51,7 @@ export interface AccountSettingsSectionProps {
  */
 export function AccountSettingsSection({
   title = 'Account Settings',
+  loyalty,
   account,
   updateAccountAction,
   updateAccountCustomFields,
@@ -73,6 +77,7 @@ export function AccountSettingsSection({
           {title}
         </h1>
       </header>
+      {loyalty}
       <div className="flex flex-col gap-y-24 @xl:flex-row">
         <div className="my-4 flex w-full flex-col @xl:max-w-lg">
           <div className="pb-12">

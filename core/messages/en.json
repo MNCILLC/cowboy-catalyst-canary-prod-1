@@ -266,6 +266,17 @@
       }
     },
     "Settings": {
+      "Loyalty": {
+        "title": "Loyalty points",
+        "available": "Available points",
+        "description": "Points expire one year after they are earned. Your next expirations are listed first.",
+        "empty": "You have no available points. Earn 1 point per $1 in eligible merchandise once your order is completed.",
+        "points": "Points",
+        "expires": "Expires (UTC)",
+        "schedule": "Expiration schedule",
+        "nextExpiry": "Next expiration: {date} UTC",
+        "unavailable": "Your loyalty points are temporarily unavailable. Refresh to try again."
+      },
       "title": "Account settings",
       "changePassword": "Change password",
       "passwordUpdated": "Password has been updated successfully!",

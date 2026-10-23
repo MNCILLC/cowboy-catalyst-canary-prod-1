@@ -21,6 +21,14 @@ export const balanceSchema = z.object({
   currency: z.string(),
   available: z.number().int().nonnegative(),
   nextExpiry: z.string().nullable(),
+  expirations: z
+    .array(
+      z.object({
+        expiresAt: z.string().datetime(),
+        points: z.number().int().positive(),
+      }),
+    )
+    .optional(),
   rules: z.object({ minimum: z.number(), maximum: z.number(), centsPerPoint: z.number() }),
   redemption: z
     .object({ points: z.number(), phase: z.enum(['applying', 'active', 'removing']) })
@@ -160,4 +168,14 @@ export async function getOrderLoyaltyRedemption(orderId: number) {
     // Order history remains available with the generic discount if the loyalty app is unavailable.
     return null;
   }
+}
+
+export async function getAccountLoyaltyBalance() {
+  if (!loyaltyConfigured()) return null;
+
+  const id = await customerId();
+
+  if (!id) return null;
+
+  return balanceSchema.parse(await callLoyalty({ action: 'balance', customerId: id }));
 }
