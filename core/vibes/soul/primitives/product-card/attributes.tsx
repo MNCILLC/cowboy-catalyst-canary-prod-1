@@ -11,6 +11,8 @@ export function ProductCardAttributes({
   compact = false,
 }: Pick<Product, 'attributes'> &
   Pick<ProductCardProps, 'layout' | 'className'> & { compact?: boolean }) {
+  const stacked = process.env.NEXT_PUBLIC_PRODUCT_CARD_ATTRIBUTES_LAYOUT === 'stacked';
+
   if ((!compact && layout !== 'list') || !attributes?.length) return null;
 
   return (
@@ -24,13 +26,21 @@ export function ProductCardAttributes({
         {attributes.map(({ key, label, values }) => (
           <div
             className={clsx(
-              'grid min-w-0 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline bg-neutral-500',
+              'grid min-w-0 bg-neutral-500',
+              stacked
+                ? 'grid-cols-1 gap-y-1'
+                : 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline',
               compact ? 'gap-x-2 px-2 py-1.5' : 'gap-x-3 px-3 py-2',
             )}
             key={key}
           >
-            <dt className="break-words text-right font-semibold">{label}:</dt>
-            <dd className="min-w-0 break-words">
+            <dt
+              className={clsx('break-words font-semibold', stacked ? 'text-center' : 'text-right')}
+            >
+              {label}
+              {!stacked && ':'}
+            </dt>
+            <dd className={clsx('min-w-0 break-words', stacked && 'text-center')}>
               {values.map(({ value, label: valueLabel, swatchColor }, index) => (
                 <span className="mr-1 inline-flex items-center gap-1.5" key={value}>
                   {!!swatchColor && (
