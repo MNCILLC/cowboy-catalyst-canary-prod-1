@@ -1,5 +1,7 @@
 import { clsx } from 'clsx';
 
+import { ProductColorSwatch } from '@/vibes/soul/primitives/product-color-swatch';
+
 import type { Product, ProductCardProps } from './index';
 
 export function ProductCardAttributes({
@@ -32,11 +34,7 @@ export function ProductCardAttributes({
               {values.map(({ value, label: valueLabel, swatchColor }, index) => (
                 <span className="mr-1 inline-flex items-center gap-1.5" key={value}>
                   {!!swatchColor && (
-                    <span
-                      aria-hidden="true"
-                      className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/30"
-                      style={{ backgroundColor: swatchColor }}
-                    />
+                    <ProductColorSwatch borderClassName="border-white/30" color={swatchColor} />
                   )}
                   <span>
                     {valueLabel}
