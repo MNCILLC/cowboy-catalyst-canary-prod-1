@@ -42,15 +42,29 @@ export function ProductCardAttributes({
               {label}
               {!stacked && ':'}
             </dt>
-            <dd className={clsx('min-w-0 break-words', stacked && 'text-center')}>
+            <dd
+              className={clsx(
+                'min-w-0 break-words',
+                key === 'colors'
+                  ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-x-3 gap-y-1 text-left'
+                  : stacked && 'text-center',
+              )}
+            >
               {values.map(({ value, label: valueLabel, swatchColor }, index) => (
-                <span className="mr-1 inline-flex items-center gap-1.5 align-top" key={value}>
+                <span
+                  className={clsx(
+                    key === 'colors'
+                      ? 'flex min-w-0 items-start gap-1.5'
+                      : 'mr-1 inline-flex items-center gap-1.5 align-top',
+                  )}
+                  key={value}
+                >
                   {!!swatchColor && (
                     <ProductColorSwatch borderClassName="border-white/30" color={swatchColor} />
                   )}
-                  <span>
+                  <span className="min-w-0">
                     {valueLabel}
-                    {index < values.length - 1 ? ',' : ''}
+                    {key !== 'colors' && index < values.length - 1 ? ',' : ''}
                   </span>
                 </span>
               ))}
