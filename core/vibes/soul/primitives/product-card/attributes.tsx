@@ -43,18 +43,32 @@ export function ProductCardAttributes({
               {label}
               {!stacked && ':'}
             </dt>
-            {/* Extend separators through empty cells, then clip them at the grid edges.
+            {/* Stacked separators extend through empty cells and are clipped at the grid edges.
                 Use an opaque color so overlapping separators stay the same shade. */}
-            <dd className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-0 overflow-hidden break-words border-t border-[#ababab] text-left">
-              {values.map(({ value, label: valueLabel, swatchColor }) => (
+            <dd
+              className={clsx(
+                'min-w-0 break-words text-left',
+                stacked
+                  ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-0 overflow-hidden border-t border-[#ababab]'
+                  : ['self-start', compact ? 'px-2 py-1.5' : 'px-3 py-2'],
+              )}
+            >
+              {values.map(({ value, label: valueLabel, swatchColor }, index) => (
                 <span
-                  className="relative flex min-w-0 items-start justify-center gap-1.5 px-1.5 py-1 text-center before:pointer-events-none before:absolute before:-left-px before:-top-px before:h-[100vmax] before:w-[100vmax] before:border-l before:border-t before:border-[#ababab]"
+                  className={clsx(
+                    stacked
+                      ? 'relative flex min-w-0 items-start justify-center gap-1.5 px-1.5 py-1 text-center before:pointer-events-none before:absolute before:-left-px before:-top-px before:h-[100vmax] before:w-[100vmax] before:border-l before:border-t before:border-[#ababab]'
+                      : 'mr-1 inline-flex max-w-full items-start gap-1.5 align-top',
+                  )}
                   key={value}
                 >
                   {!!swatchColor && (
                     <ProductColorSwatch borderClassName="border-white/30" color={swatchColor} />
                   )}
-                  <span className="min-w-0">{valueLabel}</span>
+                  <span className="min-w-0">
+                    {valueLabel}
+                    {!stacked && index < values.length - 1 ? ',' : ''}
+                  </span>
                 </span>
               ))}
             </dd>
