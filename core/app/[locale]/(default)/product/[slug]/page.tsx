@@ -35,6 +35,7 @@ import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { resolveRelatedProducts } from '~/lib/related-products';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 import { getStockDisplayData } from '~/lib/stock-display';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -109,6 +110,7 @@ export default async function Product({ params, searchParams }: Props) {
     );
 
   const customerAccessToken = await getSessionCustomerAccessToken();
+  const pricingRequiresLogin = await requiresPricingLogin();
   const detachedWishlistFormId = 'product-add-to-wishlist-form';
 
   setRequestLocale(locale);
@@ -243,6 +245,8 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamablePrices = Streamable.from(async () => {
+    if (pricingRequiresLogin) return null;
+
     const product = await streamableProductPricingAndRelatedProducts;
 
     if (!product) {
@@ -528,7 +532,7 @@ export default async function Product({ params, searchParams }: Props) {
 
     const recommendations = await resolveRelatedProducts({
       productId: productId.toString(),
-      relatedProducts: productCardTransformer(
+      relatedProducts: await productCardTransformer(
         relatedProducts,
         format,
         undefined,
@@ -544,7 +548,13 @@ export default async function Product({ params, searchParams }: Props) {
 
         return {
           ...page,
-          products: productCardTransformer(page.products, format, undefined, undefined, taxDisplay),
+          products: await productCardTransformer(
+            page.products,
+            format,
+            undefined,
+            undefined,
+            taxDisplay,
+          ),
         };
       },
     });
@@ -579,7 +589,7 @@ export default async function Product({ params, searchParams }: Props) {
       name: extendedProduct.name,
       sku: extendedProduct.sku,
       brand: extendedProduct.brand?.name ?? '',
-      price: pricingProduct?.pricesIncludingTax?.price.value ?? 0,
+      price: pricingRequiresLogin ? 0 : (pricingProduct?.pricesIncludingTax?.price.value ?? 0),
       currency: pricingProduct?.pricesIncludingTax?.price.currencyCode ?? '',
     };
   });
@@ -661,6 +671,7 @@ export default async function Product({ params, searchParams }: Props) {
           loadMoreImagesAction={getMoreProductImages}
           prefetch={true}
           product={{
+            pricingRequiresLogin,
             id: baseProduct.entityId.toString(),
             isProUseOnly: isProUseProduct(baseProduct),
             title: baseProduct.name,
@@ -695,7 +706,7 @@ export default async function Product({ params, searchParams }: Props) {
           user={streamableUser}
           wholesalePricingAlert={
             <WholesalePricingAlert
-              className="-mt-2 mb-3"
+              className="my-3"
               isAuthenticated={customerAccessToken != null}
               redirectTo={baseProduct.path}
             />
@@ -790,16 +801,24 @@ export default async function Product({ params, searchParams }: Props) {
             <ProductSchema
               product={{
                 ...extendedProduct,
-                pricesIncludingTax: pricingProduct?.pricesIncludingTax ?? null,
-                pricesExcludingTax: pricingProduct?.pricesExcludingTax ?? null,
+                pricesIncludingTax: pricingRequiresLogin
+                  ? null
+                  : (pricingProduct?.pricesIncludingTax ?? null),
+                pricesExcludingTax: pricingRequiresLogin
+                  ? null
+                  : (pricingProduct?.pricesExcludingTax ?? null),
               }}
               taxDisplay={taxDisplay}
             />
             <ProductViewed
               product={{
                 ...extendedProduct,
-                pricesIncludingTax: pricingProduct?.pricesIncludingTax ?? null,
-                pricesExcludingTax: pricingProduct?.pricesExcludingTax ?? null,
+                pricesIncludingTax: pricingRequiresLogin
+                  ? null
+                  : (pricingProduct?.pricesIncludingTax ?? null),
+                pricesExcludingTax: pricingRequiresLogin
+                  ? null
+                  : (pricingProduct?.pricesExcludingTax ?? null),
               }}
               taxDisplay={taxDisplay}
             />

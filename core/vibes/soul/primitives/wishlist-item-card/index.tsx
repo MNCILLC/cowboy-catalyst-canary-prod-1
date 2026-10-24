@@ -45,16 +45,18 @@ export const WishlistItemCard = ({
       key={product.id}
     >
       <ProductCard aspectRatio="3:4" product={product} showCompare={false} {...props} />
-      <ProUseGate restricted={product.isProUseOnly}>
-        {callToAction && (
-          <WishlistItemAddToCart
-            action={action}
-            callToAction={callToAction}
-            productId={productId}
-            variantId={variantId}
-          />
-        )}
-      </ProUseGate>
+      {!product.pricingRequiresLogin && (
+        <ProUseGate restricted={product.isProUseOnly}>
+          {callToAction && (
+            <WishlistItemAddToCart
+              action={action}
+              callToAction={callToAction}
+              productId={productId}
+              variantId={variantId}
+            />
+          )}
+        </ProUseGate>
+      )}
       {removeAction && (
         <div className="absolute -right-3 -top-3 rounded-full transition-shadow duration-100 hover:shadow-md">
           <RemoveWishlistItemButton

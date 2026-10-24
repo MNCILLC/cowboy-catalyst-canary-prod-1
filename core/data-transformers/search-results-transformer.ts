@@ -21,8 +21,10 @@ export async function searchResultsTransformer(
   const productResults: SearchResult = {
     type: 'products',
     title: t('products'),
-    products: visibleProducts.map((product) =>
-      singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
+    products: await Promise.all(
+      visibleProducts.map((product) =>
+        singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
+      ),
     ),
   };
 

@@ -29,5 +29,5 @@ export const GET = async (request: NextRequest) => {
       ? await getProductsByIds({ entityIds: ids, locale })
       : { status: 'success', products: [] };
 
-  return NextResponse.json(result);
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'private, no-store' } });
 };
