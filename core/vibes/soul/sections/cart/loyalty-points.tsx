@@ -23,7 +23,16 @@ interface Props {
 export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }: Props) {
   const [state, formAction, pending] = useActionState(action, { success: false, message: '' });
   const router = useRouter();
-  const max = Math.min(balance.available, balance.rules.maximum, Math.floor(subtotal * 10));
+  const { minimum, maximum, centsPerPoint, pointsPerDollar, expiryMonths } = balance.rules;
+  const money = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: balance.currency }).format(
+      amount,
+    );
+  const max = Math.min(
+    balance.available,
+    maximum,
+    Math.floor(Math.round(subtotal * 100) / centsPerPoint),
+  );
   const active = balance.redemption;
 
   useEffect(() => {
@@ -34,11 +43,12 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
 
   let controls = (
     <p className="mt-3 text-sm">
-      You need at least 100 available points and $10 in eligible merchandise to redeem.
+      You need at least {minimum.toLocaleString()} available points and{' '}
+      {money((minimum * centsPerPoint) / 100)} in eligible merchandise to redeem.
     </p>
   );
 
-  if (max >= 100) {
+  if (max >= minimum) {
     controls = (
       <form action={formAction} className="mt-4 space-y-3">
         <label className="block text-sm" htmlFor="loyalty-points">
@@ -46,18 +56,19 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
         </label>
         <input
           className="w-full rounded-md border border-[hsl(var(--contrast-300))] bg-white px-3 py-2 text-black"
-          defaultValue={100}
+          defaultValue={minimum}
           disabled={pending}
           id="loyalty-points"
           max={max}
-          min={100}
+          min={minimum}
           name="points"
           required
           step={1}
           type="number"
         />
         <p className="text-xs">
-          Use 100–{max.toLocaleString()} points. Shipping and tax are excluded.
+          Use {minimum.toLocaleString()}–{max.toLocaleString()} points. Shipping and tax are
+          excluded.
         </p>
         <Button disabled={pending} name="action" size="small" type="submit" value="redeem">
           {pending ? 'Applying…' : 'Apply points'}
@@ -108,8 +119,9 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
             <strong>{balance.available.toLocaleString()} points</strong> available
           </p>
           <p className="mt-1 text-xs">
-            Earn 1 point per $1 spent. 100 points = $10 off merchandise. Points expire after one
-            year.
+            Earn {pointsPerDollar.toLocaleString()} points per {money(1)} spent. Each point is worth{' '}
+            {money(centsPerPoint / 100)} off merchandise. New points expire after {expiryMonths}{' '}
+            months. Existing points keep their original expiration dates.
           </p>
           {balance.nextExpiry !== null && (
             <p className="mt-2 text-xs">Next points expire {balance.nextExpiry.slice(0, 10)}.</p>

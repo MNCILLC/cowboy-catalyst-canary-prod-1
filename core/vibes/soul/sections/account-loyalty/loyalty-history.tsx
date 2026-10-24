@@ -17,7 +17,7 @@ interface Props {
     activity: string;
     points: string;
     order: string;
-    href: string;
+    href?: string;
   }>;
   pagination?: {
     label: string;
@@ -90,9 +90,13 @@ export function LoyaltyHistory({
                     {entry.points}
                   </td>
                   <td className="whitespace-nowrap py-3">
-                    <Link className="underline underline-offset-4" href={entry.href}>
-                      {entry.order}
-                    </Link>
+                    {entry.href ? (
+                      <Link className="underline underline-offset-4" href={entry.href}>
+                        {entry.order}
+                      </Link>
+                    ) : (
+                      entry.order
+                    )}
                   </td>
                 </tr>
               ))}

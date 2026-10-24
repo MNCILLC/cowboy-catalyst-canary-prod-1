@@ -39,10 +39,10 @@ export async function AccountLoyaltyHistory({
                 timeZone: 'UTC',
               })
             : t('unknownDate'),
-          activity: entry.legacy ? t('recordedEarnings') : t(entry.type),
+          activity: entry.activity ?? (entry.legacy ? t('recordedEarnings') : t(entry.type)),
           points: format.number(entry.points, { signDisplay: 'exceptZero' }),
-          order: t('orderNumber', { number: String(entry.orderId) }),
-          href: `/account/orders/${entry.orderId}`,
+          order: entry.orderId === null ? '—' : t('orderNumber', { number: String(entry.orderId) }),
+          href: entry.orderId === null ? undefined : `/account/orders/${entry.orderId}`,
         }))}
         legacyNote={history.entries.some((entry) => entry.legacy) ? t('legacy') : undefined}
         notice={history.incomplete ? t('incomplete') : undefined}

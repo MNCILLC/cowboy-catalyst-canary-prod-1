@@ -30,7 +30,13 @@ export const balanceSchema = z.object({
       }),
     )
     .optional(),
-  rules: z.object({ minimum: z.number(), maximum: z.number(), centsPerPoint: z.number() }),
+  rules: z.object({
+    minimum: z.number().int().positive(),
+    maximum: z.number().int().positive(),
+    centsPerPoint: z.number().int().positive(),
+    pointsPerDollar: z.number().positive().default(1),
+    expiryMonths: z.number().int().positive().default(12),
+  }),
   redemption: z
     .object({ points: z.number(), phase: z.enum(['applying', 'active', 'removing']) })
     .nullable(),
@@ -201,7 +207,8 @@ export async function getAccountLoyaltyHistory(page = 1) {
           type: z.enum(['earned', 'redeemed', 'adjusted', 'returned']),
           points: z.number().int(),
           date: z.string().datetime().nullable(),
-          orderId: z.number().int().positive(),
+          orderId: z.number().int().positive().nullable(),
+          activity: z.string().optional(),
           legacy: z.boolean().optional(),
         }),
       ),

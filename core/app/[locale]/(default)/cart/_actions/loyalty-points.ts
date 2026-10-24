@@ -20,7 +20,7 @@ export async function updateLoyaltyPoints(
     const action = z.enum(['redeem', 'remove']).parse(formData.get('action'));
     const points =
       action === 'redeem'
-        ? z.coerce.number().int().min(100).max(100000).parse(formData.get('points'))
+        ? z.coerce.number().int().min(1).max(1000000000).parse(formData.get('points'))
         : undefined;
 
     await changeLoyaltyPoints(action, points);
@@ -37,7 +37,8 @@ export async function updateLoyaltyPoints(
     let message = 'We could not update your points. Please retry shortly.';
 
     if (error instanceof LoyaltyCheckoutError) message = error.message;
-    if (error instanceof z.ZodError) message = 'Enter between 100 and 100,000 whole points.';
+    if (error instanceof z.ZodError)
+      message = 'Enter a positive whole number of points within the displayed redemption range.';
 
     return { success: false, message };
   }

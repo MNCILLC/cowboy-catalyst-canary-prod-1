@@ -303,7 +303,7 @@
     "Loyalty": {
       "title": "Loyalty points",
       "available": "Available points",
-      "description": "Points expire one year after they are earned. Your next expirations are listed first.",
+      "description": "Each award keeps the expiration date set when it was earned. Your next expirations are listed first.",
       "empty": "You have no available points. Earn 1 point per $1 in eligible merchandise once your order is completed.",
       "points": "Points",
       "expires": "Expires (UTC)",
