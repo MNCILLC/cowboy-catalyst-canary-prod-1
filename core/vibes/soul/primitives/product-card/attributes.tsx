@@ -35,7 +35,11 @@ export function ProductCardAttributes({
             key={key}
           >
             <dt
-              className={clsx('break-words font-semibold', stacked ? 'text-center' : 'text-right')}
+              className={clsx(
+                'break-words font-extrabold',
+                compact ? 'text-sm' : 'text-base',
+                stacked ? 'text-center' : 'text-right',
+              )}
             >
               {label}
               {!stacked && ':'}
