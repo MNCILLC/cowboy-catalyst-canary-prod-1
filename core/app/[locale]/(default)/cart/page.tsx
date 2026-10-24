@@ -7,6 +7,7 @@ import { Cart as CartComponent, CartEmptyState } from '@/vibes/soul/sections/car
 import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components/cart-analytics-provider';
 import { isLoggedIn } from '~/auth';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { redirect } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
@@ -15,6 +16,7 @@ import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { exists } from '~/lib/utils';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { updateCouponCode } from './_actions/update-coupon-code';
 import { updateGiftCertificate } from './_actions/update-gift-certificate';
@@ -82,6 +84,11 @@ export default async function Cart({ params }: Props) {
   const t = await getTranslations('Cart');
   const tGiftCertificates = await getTranslations('GiftCertificates');
   const format = await getFormatter();
+
+  if (await requiresPricingLogin()) {
+    redirect({ href: '/login?redirectTo=%2Fcart', locale });
+  }
+
   const cartId = await getCartId();
   const isAuthenticated = await isLoggedIn();
 

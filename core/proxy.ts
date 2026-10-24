@@ -22,6 +22,7 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)
+     * - images/ (public image files)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - _vercel (vercel internals, eg: web vitals)
@@ -31,6 +32,6 @@ export const config = {
      * - xmlsitemap.php (legacy sitemap route)
      * - robots.txt (robots route)
      */
-    '/((?!api|admin|_next/static|_next/image|_vercel|favicon.ico|xmlsitemap.php|sitemap.xml|robots.txt).*)',
+    '/((?!api|admin|images/|_next/static|_next/image|_vercel|favicon.ico|xmlsitemap.php|sitemap.xml|robots.txt).*)',
   ],
 };

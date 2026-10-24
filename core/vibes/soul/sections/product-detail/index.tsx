@@ -32,6 +32,7 @@ import { RatingLink } from './rating-link';
 import { Field } from './schema';
 
 interface ProductDetailProduct {
+  pricingRequiresLogin?: boolean;
   isProUseOnly?: boolean;
   id: string;
   title: string;
@@ -231,11 +232,13 @@ export function ProductDetail<F extends Field>({
                     </div>
                   )}
                   <div className="group/product-price">
-                    <Stream fallback={<PriceLabelSkeleton />} value={product.price}>
-                      {(price) => (
-                        <PriceLabel className="my-3 text-xl @xl:text-2xl" price={price ?? ''} />
-                      )}
-                    </Stream>
+                    {!product.pricingRequiresLogin && (
+                      <Stream fallback={<PriceLabelSkeleton />} value={product.price}>
+                        {(price) => (
+                          <PriceLabel className="my-3 text-xl @xl:text-2xl" price={price ?? ''} />
+                        )}
+                      </Stream>
+                    )}
                     {wholesalePricingAlert}
                   </div>
                   {promotionCallouts != null && (
@@ -290,51 +293,53 @@ export function ProductDetail<F extends Field>({
                       }
                     </Stream>
                   </div>
-                  <ProUseGate restricted={product.isProUseOnly}>
-                    <div className="group/product-detail-form">
-                      <Stream
-                        fallback={<ProductDetailFormSkeleton />}
-                        value={Streamable.all([
-                          streamableFields,
-                          streamableCtaLabel,
-                          streamableCtaDisabled,
-                          product.minQuantity,
-                          product.maxQuantity,
-                          product.stockDisplayData,
-                          product.backorderDisplayData,
-                        ])}
-                      >
-                        {([
-                          fields,
-                          ctaLabel,
-                          ctaDisabled,
-                          minQuantity,
-                          maxQuantity,
-                          stockDisplayData,
-                          backorderDisplayData,
-                        ]) => (
-                          <ProductDetailForm
-                            action={action}
-                            additionalActions={additionalActions}
-                            backorderDisplayData={backorderDisplayData ?? undefined}
-                            ctaDisabled={ctaDisabled ?? undefined}
-                            ctaLabel={ctaLabel ?? undefined}
-                            decrementLabel={decrementLabel}
-                            emptySelectPlaceholder={emptySelectPlaceholder}
-                            fields={fields}
-                            incrementLabel={incrementLabel}
-                            maxQuantity={maxQuantity ?? undefined}
-                            minQuantity={minQuantity ?? undefined}
-                            prefetch={prefetch}
-                            productId={product.id}
-                            quantityInCart={quantityInCart}
-                            quantityLabel={quantityLabel}
-                            stockDisplayData={stockDisplayData ?? undefined}
-                          />
-                        )}
-                      </Stream>
-                    </div>
-                  </ProUseGate>
+                  {!product.pricingRequiresLogin && (
+                    <ProUseGate restricted={product.isProUseOnly}>
+                      <div className="group/product-detail-form">
+                        <Stream
+                          fallback={<ProductDetailFormSkeleton />}
+                          value={Streamable.all([
+                            streamableFields,
+                            streamableCtaLabel,
+                            streamableCtaDisabled,
+                            product.minQuantity,
+                            product.maxQuantity,
+                            product.stockDisplayData,
+                            product.backorderDisplayData,
+                          ])}
+                        >
+                          {([
+                            fields,
+                            ctaLabel,
+                            ctaDisabled,
+                            minQuantity,
+                            maxQuantity,
+                            stockDisplayData,
+                            backorderDisplayData,
+                          ]) => (
+                            <ProductDetailForm
+                              action={action}
+                              additionalActions={additionalActions}
+                              backorderDisplayData={backorderDisplayData ?? undefined}
+                              ctaDisabled={ctaDisabled ?? undefined}
+                              ctaLabel={ctaLabel ?? undefined}
+                              decrementLabel={decrementLabel}
+                              emptySelectPlaceholder={emptySelectPlaceholder}
+                              fields={fields}
+                              incrementLabel={incrementLabel}
+                              maxQuantity={maxQuantity ?? undefined}
+                              minQuantity={minQuantity ?? undefined}
+                              prefetch={prefetch}
+                              productId={product.id}
+                              quantityInCart={quantityInCart}
+                              quantityLabel={quantityLabel}
+                              stockDisplayData={stockDisplayData ?? undefined}
+                            />
+                          )}
+                        </Stream>
+                      </div>
+                    </ProUseGate>
+                  )}
                   {Boolean(afterPurchaseContent) && (
                     <div className="mb-8">{afterPurchaseContent}</div>
                   )}

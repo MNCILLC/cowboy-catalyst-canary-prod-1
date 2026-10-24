@@ -8,9 +8,13 @@ import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
 import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import { getProductCardAttributes } from '~/data-transformers/product-card-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getStockDisplayData } from '~/lib/stock-display';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
+import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
 import { getMetafieldFilters } from './get-metafield-filters';
 
@@ -39,21 +43,25 @@ async function withStockDisplay(
   const enhancedGridEnabled = process.env.ENABLE_ENHANCED_PRODUCT_ATTRIBUTES === 'true';
   const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters(locale) : [];
 
-  return products.map((product) => ({
-    ...product,
-    enhancedGridAttributes: enhancedGridEnabled
-      ? getProductCardAttributes(product, attributeFilters)
-      : undefined,
-    useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
-    stockDisplayData: getStockDisplayData(
-      // Cards have no selected variant, so a combined quantity would be misleading.
-      product.inventory.hasVariantInventory
-        ? { isInStock: product.inventory.isInStock }
-        : product.inventory,
-      settings?.inventory,
-      (quantity) => t('currentStock', { quantity }),
-    ),
-  }));
+  const hidePrices = await requiresPricingLogin();
+
+  return products
+    .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
+    .map((product) => ({
+      ...hideWholesalePrices(product, hidePrices),
+      enhancedGridAttributes: enhancedGridEnabled
+        ? getProductCardAttributes(product, attributeFilters)
+        : undefined,
+      useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+      stockDisplayData: getStockDisplayData(
+        // Cards have no selected variant, so a combined quantity would be misleading.
+        product.inventory.hasVariantInventory
+          ? { isInStock: product.inventory.isInStock }
+          : product.inventory,
+        settings?.inventory,
+        (quantity) => t('currentStock', { quantity }),
+      ),
+    }));
 }
 
 const GetBestSellingProductsQuery = graphql(
