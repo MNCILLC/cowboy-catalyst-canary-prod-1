@@ -26,10 +26,8 @@ export function ProductCardAttributes({
         {attributes.map(({ key, label, values }) => (
           <div
             className={clsx(
-              'grid min-w-0 bg-neutral-500',
-              stacked
-                ? 'grid-cols-1 gap-y-1'
-                : 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline',
+              'grid min-w-0 content-start items-start bg-neutral-500',
+              stacked ? 'grid-cols-1 gap-y-1' : 'grid-cols-[minmax(0,2fr)_minmax(0,3fr)]',
               compact ? 'gap-x-2 px-2 py-1.5' : 'gap-x-3 px-3 py-2',
             )}
             key={key}
@@ -46,7 +44,7 @@ export function ProductCardAttributes({
             </dt>
             <dd className={clsx('min-w-0 break-words', stacked && 'text-center')}>
               {values.map(({ value, label: valueLabel, swatchColor }, index) => (
-                <span className="mr-1 inline-flex items-center gap-1.5" key={value}>
+                <span className="mr-1 inline-flex items-center gap-1.5 align-top" key={value}>
                   {!!swatchColor && (
                     <ProductColorSwatch borderClassName="border-white/30" color={swatchColor} />
                   )}
