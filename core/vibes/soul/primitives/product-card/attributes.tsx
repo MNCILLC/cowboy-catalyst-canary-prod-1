@@ -46,7 +46,7 @@ export function ProductCardAttributes({
               className={clsx(
                 'min-w-0 break-words',
                 key === 'colors'
-                  ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-x-3 gap-y-1 text-left'
+                  ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-0 border-l border-t border-white/40 text-left'
                   : stacked && 'text-center',
               )}
             >
@@ -54,7 +54,7 @@ export function ProductCardAttributes({
                 <span
                   className={clsx(
                     key === 'colors'
-                      ? 'flex min-w-0 items-start gap-1.5'
+                      ? 'flex min-w-0 items-start gap-1.5 border-b border-r border-white/40 px-1.5 py-1'
                       : 'mr-1 inline-flex items-center gap-1.5 align-top',
                   )}
                   key={value}
