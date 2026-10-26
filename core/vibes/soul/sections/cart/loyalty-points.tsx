@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import { useActionState, useEffect } from 'react';
 
 import { Button } from '@/vibes/soul/primitives/button';
@@ -23,7 +24,7 @@ interface Props {
 export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }: Props) {
   const [state, formAction, pending] = useActionState(action, { success: false, message: '' });
   const router = useRouter();
-  const { minimum, maximum, centsPerPoint, pointsPerDollar, expiryMonths } = balance.rules;
+  const { minimum, maximum, centsPerPoint } = balance.rules;
   const money = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: balance.currency }).format(
       amount,
@@ -52,27 +53,25 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
     controls = (
       <form action={formAction} className="mt-4 space-y-3">
         <label className="block text-sm" htmlFor="loyalty-points">
-          Points to apply
+          Enter the number of points you want to apply as a discount for this order.
         </label>
-        <input
-          className="w-full rounded-md border border-[hsl(var(--contrast-300))] bg-white px-3 py-2 text-black"
-          defaultValue={minimum}
-          disabled={pending}
-          id="loyalty-points"
-          max={max}
-          min={minimum}
-          name="points"
-          required
-          step={1}
-          type="number"
-        />
-        <p className="text-xs">
-          Use {minimum.toLocaleString()}–{max.toLocaleString()} points. Shipping and tax are
-          excluded.
-        </p>
-        <Button disabled={pending} name="action" size="small" type="submit" value="redeem">
-          {pending ? 'Applying…' : 'Apply points'}
-        </Button>
+        <div className="grid grid-cols-2 gap-3">
+          <input
+            className="w-full min-w-0 rounded-md border border-[hsl(var(--contrast-300))] bg-white px-3 py-2 text-black"
+            defaultValue={minimum}
+            disabled={pending}
+            id="loyalty-points"
+            max={max}
+            min={minimum}
+            name="points"
+            required
+            step={1}
+            type="number"
+          />
+          <Button disabled={pending} name="action" size="small" type="submit" value="redeem">
+            {pending ? 'Applying…' : 'Apply'}
+          </Button>
+        </div>
       </form>
     );
   }
@@ -108,39 +107,42 @@ export function LoyaltyPoints({ action, balance, signedIn, subtotal, currency }:
   return (
     <section
       aria-labelledby="loyalty-title"
-      className="my-5 rounded-xl border border-[hsl(var(--contrast-200))] bg-[hsl(var(--contrast-100)/30%)] p-5"
+      className="my-5 rounded-xl border border-[hsl(var(--contrast-200))] bg-[hsl(var(--contrast-100)/30%)]"
     >
-      <h3 className="mb-2 text-lg font-semibold" id="loyalty-title">
-        Loyalty points
-      </h3>
-      {signedIn ? (
-        <>
-          <p className="text-sm">
-            <strong>{balance.available.toLocaleString()} points</strong> available
-          </p>
-          <p className="mt-1 text-xs">
-            Earn {pointsPerDollar.toLocaleString()} points per {money(1)} spent. Each point is worth{' '}
-            {money(centsPerPoint / 100)} off merchandise. New points expire after {expiryMonths}{' '}
-            months. Existing points keep their original expiration dates.
-          </p>
-          {balance.nextExpiry !== null && (
-            <p className="mt-2 text-xs">Next points expire {balance.nextExpiry.slice(0, 10)}.</p>
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-xl p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] [&::-webkit-details-marker]:hidden">
+          <h3 className="text-lg font-semibold" id="loyalty-title">
+            Apply Loyalty Points
+          </h3>
+          <ChevronDown
+            aria-hidden="true"
+            className="h-5 w-5 shrink-0 transition-transform group-open:rotate-180"
+          />
+        </summary>
+        <div className="border-t border-[hsl(var(--contrast-200))] p-5">
+          {signedIn ? (
+            <>
+              <p className="text-sm">
+                You have <strong>{balance.available.toLocaleString()} points</strong> available
+                (worth {money((balance.available * centsPerPoint) / 100)}).
+              </p>
+              {controls}
+            </>
+          ) : (
+            <p className="text-sm">
+              <Link className="underline" href="/login?redirectTo=/cart/">
+                Sign in
+              </Link>{' '}
+              to see and use your points.
+            </p>
           )}
-          {controls}
-        </>
-      ) : (
-        <p className="text-sm">
-          <Link className="underline" href="/login?redirectTo=/cart/">
-            Sign in
-          </Link>{' '}
-          to see and use your points.
-        </p>
-      )}
-      {state.message !== '' && (
-        <p className="mt-3 text-sm" role={state.success ? 'status' : 'alert'}>
-          {state.message}
-        </p>
-      )}
+          {state.message !== '' && (
+            <p className="mt-3 text-sm" role={state.success ? 'status' : 'alert'}>
+              {state.message}
+            </p>
+          )}
+        </div>
+      </details>
     </section>
   );
 }
