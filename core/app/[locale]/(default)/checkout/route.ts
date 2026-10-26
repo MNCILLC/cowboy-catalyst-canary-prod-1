@@ -13,6 +13,7 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { assertLoyaltyCheckout, LoyaltyCheckoutError } from '~/lib/loyalty/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
@@ -69,6 +70,12 @@ const CheckoutRedirectMutation = graphql(`
   }
 `);
 
+function isCheckoutPolicyError(
+  error: unknown,
+): error is ProUseRequiredError | LoyaltyCheckoutError {
+  return error instanceof ProUseRequiredError || error instanceof LoyaltyCheckoutError;
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const cartId = req.nextUrl.searchParams.get('cartId') ?? (await getCartId());
@@ -94,6 +101,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
   try {
     await assertProUseCart(cartId);
+    await assertLoyaltyCheckout(cartId);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
@@ -151,7 +159,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   } catch (error) {
     rethrow(error);
 
-    if (error instanceof ProUseRequiredError) {
+    if (isCheckoutPolicyError(error)) {
       await serverToast.error(error.message);
 
       return redirect({ href: '/cart', locale });

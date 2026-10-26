@@ -24,6 +24,7 @@ import { updateLineItem } from './_actions/update-line-item';
 import { updateShippingInfo } from './_actions/update-shipping-info';
 import { CartViewed } from './_components/cart-viewed';
 import { CheckoutPreconnect } from './_components/checkout-preconnect';
+import { LoyaltyCart } from './_components/loyalty-cart';
 import { getCart, getShippingCountries } from './page-data';
 
 interface Props {
@@ -295,6 +296,7 @@ export default async function Cart({ params }: Props) {
       <Slot label="Cart top content" snapshotId="cart-top-content" />
       <CartAnalyticsProvider data={Streamable.from(() => getAnalyticsData(cartId))}>
         {checkoutUrl ? <CheckoutPreconnect url={checkoutUrl} /> : null}
+        {/* Keep this keyed by cart ID only so mutations preserve pending item updates. */}
         <CartComponent
           authenticationRequiredMessage={t('Errors.authenticationRequired')}
           cart={{
@@ -406,11 +408,12 @@ export default async function Cart({ params }: Props) {
           }
           incrementLineItemLabel={t('increment')}
           isAuthenticated={isAuthenticated}
-          // Keyed by entityId only; keying by version too would remount the section on
-          // every mutation (see the pending-intent dispatcher notes in the Cart section).
           key={cart.entityId}
           lineItemAction={updateLineItem}
           lineItemActionPendingLabel={t('cartUpdateInProgress')}
+          loyalty={
+            <LoyaltyCart currency={cart.currencyCode} subtotal={checkout?.subtotal?.value ?? 0} />
+          }
           minimumOrderSubtotal={getMinimumOrderSubtotal()}
           shipping={{
             action: updateShippingInfo,

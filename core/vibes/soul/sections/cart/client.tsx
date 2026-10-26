@@ -7,6 +7,7 @@ import { ArrowRight, GiftIcon, Minus, Plus, Trash2, TriangleAlert } from 'lucide
 import {
   ComponentPropsWithoutRef,
   FormEvent,
+  ReactNode,
   startTransition,
   useActionState,
   useEffect,
@@ -167,6 +168,7 @@ export interface CartProps<LineItem extends CartLineItem> {
   freeShippingBackgroundClass?: string;
   freeShippingTextClass?: string;
   summaryTitle?: string;
+  loyalty?: ReactNode;
   emptyState?: CartEmptyState;
   lineItemAction: Action<CartState<LineItem>, FormData>;
   checkoutAction: Action<SubmissionResult | null, FormData> | string;
@@ -243,6 +245,7 @@ export function CartClient<LineItem extends CartLineItem>({
   checkoutMessageTitle,
   emptyState = defaultEmptyState,
   summaryTitle,
+  loyalty,
   shipping,
 }: CartProps<LineItem>) {
   const events = useEvents();
@@ -630,6 +633,7 @@ export function CartClient<LineItem extends CartLineItem>({
               textClass={freeShippingTextClass}
             />
           )}
+          {loyalty}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"

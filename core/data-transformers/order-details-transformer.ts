@@ -1,10 +1,10 @@
 import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
-import { getFormatter, getTranslations } from 'next-intl/server';
+import type { getFormatter, getTranslations } from 'next-intl/server';
 
-import { Order } from '@/vibes/soul/sections/order-details-section';
-import { ExistingResultType } from '~/client/util';
+import type { Order } from '@/vibes/soul/sections/order-details-section';
+import type { ExistingResultType } from '~/client/util';
 
-import { getCustomerOrderDetails } from '../app/[locale]/(default)/account/orders/[id]/page-data';
+import type { getCustomerOrderDetails } from '../app/[locale]/(default)/account/orders/[id]/page-data';
 
 function getStatusColor(
   status: ExistingResultType<typeof getCustomerOrderDetails>['status']['value'],
@@ -41,6 +41,16 @@ export const orderDetailsTransformer = (
   format: ExistingResultType<typeof getFormatter>,
   tGiftCertificate: ExistingResultType<typeof getTranslations<'Cart.GiftCertificate'>>,
 ): Order => {
+  const nonCouponCents = Math.round(order.discounts.nonCouponDiscountTotal.value * 100);
+  const redemption = order.loyaltyRedemption;
+  const loyaltyCents =
+    redemption &&
+    redemption.currency === order.discounts.nonCouponDiscountTotal.currencyCode &&
+    Math.round(redemption.amount * 100) <= nonCouponCents
+      ? Math.round(redemption.amount * 100)
+      : 0;
+  const otherDiscountCents = nonCouponCents - loyaltyCents;
+
   const paymentMethods = removeEdgesAndNodes(order.payments).map((payment) => {
     if (payment.detail?.__typename === 'CreditCardPaymentInstrument') {
       return {
@@ -176,6 +186,29 @@ export const orderDetailsTransformer = (
             currency: order.subTotal.currencyCode,
           }),
         },
+        ...(loyaltyCents > 0 && redemption
+          ? [
+              {
+                label: t('loyaltyPoints'),
+                value: format.number(-loyaltyCents / 100, {
+                  style: 'currency',
+                  currency: redemption.currency,
+                }),
+                subtext: t('loyaltyPointsRedeemed', { count: redemption.points }),
+              },
+            ]
+          : []),
+        ...(otherDiscountCents > 0
+          ? [
+              {
+                label: t('discounts'),
+                value: format.number(-otherDiscountCents / 100, {
+                  style: 'currency',
+                  currency: order.discounts.nonCouponDiscountTotal.currencyCode,
+                }),
+              },
+            ]
+          : []),
         ...order.discounts.couponDiscounts.map((discount) => {
           return {
             label: discount.couponCode,
