@@ -15,7 +15,7 @@ const secret = 'test-signing-secret-with-at-least-32-characters';
 const origin = 'https://store.example';
 
 function harness(overrides: Record<string, string> = {}) {
-  const env = {
+  const env: Record<string, string | undefined> = {
     STOREFRONT_PREVIEW_ENABLED: 'true',
     STOREFRONT_PREVIEW_CODE: code,
     STOREFRONT_PREVIEW_SECRET: secret,
@@ -193,6 +193,39 @@ test('valid cookies reach downstream routing and gate redirects to the original 
     {},
   );
   assert.equal(response.headers.get('location'), `${origin}/en/products`);
+});
+
+test('preview access defaults to disabled when the flag is absent, blank, or not exactly true', async () => {
+  for (const value of [undefined, '', 'false', 'FALSE', '0', '1', 'TRUE', ' true ']) {
+    const h = harness();
+    if (value === undefined) delete h.env.STOREFRONT_PREVIEW_ENABLED;
+    else h.env.STOREFRONT_PREVIEW_ENABLED = value;
+
+    assert.equal(h.access.getPreviewConfig().enabled, false, String(value));
+    for (const [path, method] of [
+      ['/', 'GET'],
+      ['/api/products/123', 'GET'],
+      ['/graphql', 'POST'],
+      ['/cart', 'POST'],
+      ['/robots.txt', 'GET'],
+    ]) {
+      const response = await h.proxy(request(path!, undefined, method), {});
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('location'), null);
+      assert.equal(response.headers.get('X-Robots-Tag'), null);
+    }
+    assert.equal(h.downstreamCalls, 5);
+
+    const gate = await h.proxy(request('/storefront-preview?returnTo=%2Fcart'), {});
+    assert.equal(gate.headers.get('location'), `${origin}/cart`);
+
+    delete h.env.STOREFRONT_PREVIEW_CODE;
+    delete h.env.STOREFRONT_PREVIEW_SECRET;
+    const submissionResponse = await h.route.POST(submission(code));
+    assert.equal(submissionResponse.status, 303);
+    assert.equal(submissionResponse.headers.get('location'), `${origin}/`);
+    assert.equal(submissionResponse.cookies.get('storefront-preview-access'), undefined);
+  }
 });
 
 test('disabled gate preserves public access and enabled incomplete configuration fails closed', async () => {

@@ -8,7 +8,8 @@ export const PREVIEW_PATH = '/storefront-preview';
 export const PREVIEW_MAX_AGE = 60 * 60 * 24 * 7;
 
 export function getPreviewConfig() {
-  const enabled = process.env.STOREFRONT_PREVIEW_ENABLED === 'true';
+  // Disabled by default; only an explicit lowercase 'true' enables the gate.
+  const enabled = (process.env.STOREFRONT_PREVIEW_ENABLED ?? 'false') === 'true';
   const code = process.env.STOREFRONT_PREVIEW_CODE ?? '';
   const secret = process.env.STOREFRONT_PREVIEW_SECRET ?? '';
 

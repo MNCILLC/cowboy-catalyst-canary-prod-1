@@ -91,7 +91,9 @@ Generate the signing secret with `openssl rand -hex 32`. Never commit real value
 use `NEXT_PUBLIC_` variables. Restart the server or redeploy after configuration changes.
 When running Next directly from `core/`, use a `core/.env.local` symlink to
 `../.env.local` so both commands share the same settings.
-Set `STOREFRONT_PREVIEW_ENABLED=false` to open the storefront. Enabling the gate without
+The gate defaults to disabled. Omit `STOREFRONT_PREVIEW_ENABLED` or set it to `false`
+to open the storefront. Only the exact value `true` enables it; blank or other values
+also leave it disabled. Enabling the gate without
 a code and a valid secret keeps access blocked, with an unavailable message on the gate.
 
 Visitors enter the code at `/storefront-preview` and return to their original path and
