@@ -1,3 +1,5 @@
+import { NextResponse } from 'next/server';
+
 import { composeProxies } from './proxies/compose-proxies';
 import { withAnalyticsCookies } from './proxies/with-analytics-cookies';
 import { withAuth } from './proxies/with-auth';
@@ -6,8 +8,9 @@ import { withGraphqlProxy } from './proxies/with-graphql-proxy';
 import { withIntl } from './proxies/with-intl';
 import { withMakeswift } from './proxies/with-makeswift';
 import { withRoutes } from './proxies/with-routes';
+import { withStorefrontPreview } from './proxies/with-storefront-preview';
 
-export const proxy = composeProxies(
+const storefrontProxy = composeProxies(
   withAuth,
   withMakeswift,
   withIntl,
@@ -17,21 +20,22 @@ export const proxy = composeProxies(
   withRoutes,
 );
 
+// Routes previously excluded from the Catalyst stack must still pass the access gate.
+export const proxy = withStorefrontPreview((request, event) => {
+  if (
+    /^\/(?:api(?:\/|$)|admin(?:\/|$)|sitemap\.xml$|xmlsitemap\.php$|robots\.txt$)/.test(
+      request.nextUrl.pathname,
+    )
+  ) {
+    return NextResponse.next();
+  }
+
+  return storefrontProxy(request, event);
+});
+
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - images/ (public image files)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - _vercel (vercel internals, eg: web vitals)
-     * - favicon.ico (favicon file)
-     * - admin (admin panel)
-     * - sitemap.xml (sitemap route)
-     * - xmlsitemap.php (legacy sitemap route)
-     * - robots.txt (robots route)
-     */
-    '/((?!api|admin|images/|_next/static|_next/image|_vercel|favicon.ico|xmlsitemap.php|sitemap.xml|robots.txt).*)',
+    // Only public assets and platform internals bypass the storefront access gate.
+    '/((?!images/|_next/static|_next/image|_vercel|favicon.ico).*)',
   ],
 };
