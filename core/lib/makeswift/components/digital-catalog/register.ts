@@ -22,6 +22,12 @@ runtime.registerComponent(DigitalCatalog, {
     }),
     title: TextInput({ label: 'Title', defaultValue: 'Digital catalog' }),
     description: TextArea({ label: 'Description' }),
+    twoUp: Checkbox({
+      label: 'Two-Up',
+      description:
+        'Each landscape PDF page contains two catalog pages. Display its left half, then its right half, as separate portrait pages. Downloads keep the original PDF.',
+      defaultValue: false,
+    }),
     pageLayout: Select({
       label: 'Page layout',
       options: [

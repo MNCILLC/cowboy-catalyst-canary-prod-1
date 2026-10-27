@@ -5,8 +5,10 @@
 import { RotateCcw } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useEffect, useRef, useState } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, pdfjs } from 'react-pdf';
 
+import { CatalogPage } from './catalog-page';
+import { getCatalogPageCount, getCatalogPageForDestination } from './page-mapping';
 import { buttonClass, CatalogToolbar } from './toolbar';
 
 import type { DigitalCatalogProps } from './index';
@@ -37,9 +39,11 @@ export function CatalogReader({
   downloadLabel = 'Download PDF',
   downloadFilename = 'catalog.pdf',
   pageLayout = 'spread',
+  twoUp = false,
 }: ReaderProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const pageCountRef = useRef(0);
   const downloadAbortRef = useRef<AbortController | null>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
@@ -52,7 +56,7 @@ export function CatalogReader({
   const [actionError, setActionError] = useState('');
   const [downloading, setDownloading] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const totalPages = pdf?.numPages ?? 0;
+  const totalPages = getCatalogPageCount(pdf?.numPages ?? 0, twoUp);
   const spread = pageLayout === 'spread' && width >= 720;
   const firstPage = spread && page > 1 ? page - (page % 2) : page;
   const lastPage = spread && firstPage > 1 ? Math.min(firstPage + 1, totalPages) : firstPage;
@@ -82,13 +86,17 @@ export function CatalogReader({
   }, []);
 
   useEffect(() => {
+    // React-PDF retains its initial link handler; read the loaded count through a ref.
+    pageCountRef.current = totalPages;
     viewportRef.current?.scrollTo({ top: 0, left: 0 });
-  }, [firstPage]);
+  }, [firstPage, totalPages]);
 
   function goToPage(requestedPage: number) {
-    if (!totalPages) return;
+    const availablePages = pageCountRef.current;
 
-    const clamped = Math.min(totalPages, Math.max(1, Math.trunc(requestedPage)));
+    if (!availablePages) return;
+
+    const clamped = Math.min(availablePages, Math.max(1, Math.trunc(requestedPage)));
 
     setPage(clamped);
   }
@@ -271,7 +279,7 @@ export function CatalogReader({
             </p>
           }
           onItemClick={({ pageNumber }) => {
-            if (pageNumber) goToPage(pageNumber);
+            if (pageNumber) goToPage(getCatalogPageForDestination(pageNumber, twoUp));
           }}
           onLoadError={() => setLoadingError(true)}
           onLoadSuccess={setPdf}
@@ -286,30 +294,11 @@ export function CatalogReader({
                 { length: lastPage > firstPage ? 2 : 1 },
                 (_, index) => firstPage + index,
               ).map((pageNumber) => (
-                <Page
-                  className="h-fit shadow-lg"
-                  devicePixelRatio={Math.min(window.devicePixelRatio || 1, 2)}
-                  error={
-                    <p className="bg-white p-8" role="alert">
-                      This page could not be displayed.{' '}
-                      <a
-                        className="underline"
-                        href={pdfUrl}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        Open PDF
-                      </a>
-                    </p>
-                  }
+                <CatalogPage
                   key={pageNumber}
-                  loading={
-                    <p className="bg-white p-8" role="status">
-                      Loading page {pageNumber}…
-                    </p>
-                  }
                   pageNumber={pageNumber}
-                  renderForms={false}
+                  pdfUrl={pdfUrl}
+                  twoUp={twoUp}
                   width={pageWidth}
                 />
               ))}

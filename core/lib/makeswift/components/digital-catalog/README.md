@@ -1,8 +1,18 @@
 # Digital Catalog
 
-In Makeswift, add **Sections / Digital Catalog**, open **PDF file**, and choose or upload a multipage PDF from the file library. This uses the same native library picker as the slideshow image control, configured to return a URL without requiring image dimensions. **PDF URL (fallback)** remains available for external URLs and previously saved catalogs; a selected library file takes priority. Configure the title, description, page layout, download visibility, button label, and download filename. The PDF extension is optional for URLs with query strings or CDN paths.
+In Makeswift, add **Sections / Digital Catalog**, open **PDF file**, and choose or upload a multipage PDF from the file library. This uses the same native library picker as the slideshow image control, configured to return a URL without requiring image dimensions. **PDF URL (fallback)** remains available for external URLs and previously saved catalogs; a selected library file takes priority. Configure the title, description, Two-Up setting, page layout, download visibility, button label, and download filename. The PDF extension is optional for URLs with query strings or CDN paths.
 
 The reader shows a standalone cover followed by spreads (2–3, 4–5, etc.). Containers narrower than 720px show one page at a time. Readers can navigate with previous/next, type a page number and press Enter, zoom to 200%, and enter full screen where the browser permits it. Focus the page area to use Left/Right and Home/End. Text selection and PDF links are supported. Only the visible pages are rendered.
+
+## Two-Up PDFs
+
+Enable **Two-Up** for landscape PDFs containing two equal-width portrait catalog pages per PDF page. Each source page is split vertically at its center and displayed in left-then-right order: PDF page 1 left, PDF page 1 right, PDF page 2 left, and so on. A 20-page PDF becomes 40 digital pages. The reader respects the PDF's displayed rotation and crops without stretching either half.
+
+The existing **Page layout** setting still controls whether to show a single digital page or a cover followed by spreads (2–3, 4–5, etc.). Page counts, jumps, keyboard navigation, and zoom use digital pages. Internal PDF links open the left half of their target PDF page. Visible text and links remain available; content completely outside the selected half is excluded from keyboard focus and the accessibility tree.
+
+Two-Up defaults to off. Changing it restarts the viewer at digital page 1. The original PDF is never rewritten: **Download PDF** still saves the original landscape document. This setting assumes sequential reading order, not printer-imposed spreads.
+
+Run `pnpm test:digital-catalog` for page-order and destination mapping checks. In a browser, use a landscape PDF with distinct left/right content to verify both halves, cross-sheet spreads, the last page, mobile width, zoom, setting changes, and an unchanged original download.
 
 ## Hosting
 

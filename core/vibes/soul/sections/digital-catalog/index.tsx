@@ -13,6 +13,7 @@ export interface DigitalCatalogProps {
   downloadLabel?: string;
   downloadFilename?: string;
   pageLayout?: 'single' | 'spread';
+  twoUp?: boolean;
 }
 
 // PDF.js requires browser APIs. Keep it out of server rendering and load it on demand.
@@ -48,6 +49,7 @@ export function DigitalCatalog({
   className,
   pdfFile = '',
   pdfUrl = '',
+  twoUp = false,
   title = 'Digital catalog',
   description,
   ...props
@@ -64,7 +66,13 @@ export function DigitalCatalog({
         </header>
       )}
       {source ? (
-        <CatalogReader key={source} {...props} pdfUrl={source} title={title || 'Digital catalog'} />
+        <CatalogReader
+          key={`${source}:${twoUp}`}
+          {...props}
+          pdfUrl={source}
+          title={title || 'Digital catalog'}
+          twoUp={twoUp}
+        />
       ) : (
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center text-gray-600">
           {selectedSource.trim()
