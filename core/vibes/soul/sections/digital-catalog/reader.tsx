@@ -8,7 +8,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Document, pdfjs } from 'react-pdf';
 
 import { CatalogPage } from './catalog-page';
-import { getCatalogPageCount, getCatalogPageForDestination } from './page-mapping';
+import {
+  getCatalogPageCount,
+  getCatalogPageForDestination,
+  getCatalogPageRange,
+} from './page-mapping';
 import { buttonClass, CatalogToolbar } from './toolbar';
 
 import type { DigitalCatalogProps } from './index';
@@ -58,8 +62,7 @@ export function CatalogReader({
   const [attempt, setAttempt] = useState(0);
   const totalPages = getCatalogPageCount(pdf?.numPages ?? 0, twoUp);
   const spread = pageLayout === 'spread' && width >= 720;
-  const firstPage = spread && page > 1 ? page - (page % 2) : page;
-  const lastPage = spread && firstPage > 1 ? Math.min(firstPage + 1, totalPages) : firstPage;
+  const { firstPage, lastPage } = getCatalogPageRange(page, totalPages, spread, twoUp);
   const pageWidth = Math.max(1, Math.floor((width - 48) / (spread ? 2 : 1))) * zoom;
 
   useEffect(() => {

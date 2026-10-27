@@ -61,7 +61,7 @@ export function DigitalCatalog({
     <section aria-label={title || 'Digital catalog'} className={clsx('w-full min-w-0', className)}>
       {Boolean(title || description) && (
         <header className="mb-6 space-y-2">
-          {Boolean(title) && <h2 className="font-heading text-3xl font-medium">{title}</h2>}
+          {Boolean(title) && <h2 className="ml-6 font-heading text-3xl font-medium">{title}</h2>}
           {Boolean(description) && <p className="text-base">{description}</p>}
         </header>
       )}

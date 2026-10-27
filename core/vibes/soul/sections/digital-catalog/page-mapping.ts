@@ -16,3 +16,19 @@ export function getCatalogPageSlice(catalogPage: number, twoUp: boolean) {
 export function getCatalogPageForDestination(pdfPage: number, twoUp: boolean): number {
   return twoUp ? (pdfPage - 1) * 2 + 1 : pdfPage;
 }
+
+// Two-Up spreads keep both halves of a source sheet together; ordinary catalogs have a cover.
+export function getCatalogPageRange(
+  page: number,
+  totalPages: number,
+  spread: boolean,
+  twoUp: boolean,
+) {
+  if (!spread || totalPages === 0 || (!twoUp && page === 1)) {
+    return { firstPage: page, lastPage: page };
+  }
+
+  const firstPage = twoUp ? page - ((page - 1) % 2) : page - (page % 2);
+
+  return { firstPage, lastPage: Math.min(firstPage + 1, totalPages) };
+}

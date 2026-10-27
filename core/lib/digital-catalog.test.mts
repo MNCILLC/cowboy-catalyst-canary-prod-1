@@ -5,6 +5,7 @@ import {
   getCatalogPageCount,
   getCatalogPageForDestination,
   getCatalogPageSlice,
+  getCatalogPageRange,
 } from '../vibes/soul/sections/digital-catalog/page-mapping.ts';
 
 test('a three-sheet Two-Up catalog reads left, right, then the next sheet', () => {
@@ -45,4 +46,40 @@ test('PDF links target the left half of the correct source sheet', () => {
   assert.equal(getCatalogPageForDestination(2, true), 3);
   assert.equal(getCatalogPageForDestination(3, true), 5);
   assert.equal(getCatalogPageForDestination(3, false), 3);
+});
+
+test('Two-Up spreads pair both halves of each original PDF sheet, including page jumps', () => {
+  for (const page of [1, 2, 3, 4, 5, 6]) {
+    const { firstPage, lastPage } = getCatalogPageRange(page, 6, true, true);
+    const sourcePage = Math.ceil(page / 2);
+
+    assert.deepEqual([firstPage, lastPage], [sourcePage * 2 - 1, sourcePage * 2]);
+    assert.deepEqual(getCatalogPageSlice(firstPage, true), { pdfPage: sourcePage, half: 'left' });
+    assert.deepEqual(getCatalogPageSlice(lastPage, true), { pdfPage: sourcePage, half: 'right' });
+  }
+  assert.deepEqual(getCatalogPageRange(1, 2, true, true), { firstPage: 1, lastPage: 2 });
+  assert.deepEqual(getCatalogPageRange(1, 0, true, true), { firstPage: 1, lastPage: 1 });
+});
+
+test('ordinary spreads retain a standalone cover and handle an unpaired last page', () => {
+  assert.deepEqual(
+    [1, 2, 3, 4].map((page) => getCatalogPageRange(page, 4, true, false)),
+    [
+      { firstPage: 1, lastPage: 1 },
+      { firstPage: 2, lastPage: 3 },
+      { firstPage: 2, lastPage: 3 },
+      { firstPage: 4, lastPage: 4 },
+    ],
+  );
+});
+
+test('single-page and narrow layouts preserve the requested page in either mode', () => {
+  for (const twoUp of [true, false]) {
+    for (const page of [1, 2, 3, 4, 5, 6]) {
+      assert.deepEqual(getCatalogPageRange(page, 6, false, twoUp), {
+        firstPage: page,
+        lastPage: page,
+      });
+    }
+  }
 });
