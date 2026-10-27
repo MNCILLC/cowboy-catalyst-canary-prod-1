@@ -22,6 +22,15 @@ const storefrontProxy = composeProxies(
 
 // Routes previously excluded from the Catalyst stack must still pass the access gate.
 export const proxy = withStorefrontPreview((request, event) => {
+  // Serve PDF renderer assets and locally hosted catalogs without storefront route resolution.
+  // These requests still pass through the preview access gate above.
+  if (
+    request.nextUrl.pathname.startsWith('/pdfjs/') ||
+    /^\/catalogs\/.+\.pdf$/i.test(request.nextUrl.pathname)
+  ) {
+    return NextResponse.next();
+  }
+
   if (
     /^\/(?:api(?:\/|$)|admin(?:\/|$)|sitemap\.xml$|xmlsitemap\.php$|robots\.txt$)/.test(
       request.nextUrl.pathname,

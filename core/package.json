@@ -12,7 +12,7 @@
   },
   "scripts": {
     "dev": "npm run generate && next dev",
-    "generate": "dotenv -e .env.local -- node ./scripts/generate.cjs",
+    "generate": "pnpm prepare:pdf && dotenv -e .env.local -- node ./scripts/generate.cjs",
     "build": "npm run generate && next build",
     "build:analyze": "ANALYZE=true npm run build",
     "start": "next start",
@@ -24,7 +24,9 @@
     "test:pro-use": "node --test lib/pro-use/*.test.mts",
     "test:product-filters": "node --test lib/product-metafield-filters.test.mts",
     "test:applied-filters": "node --test lib/applied-product-filters.test.mts",
-    "test:preview-access": "node --test lib/preview-access.test.mts"
+    "test:preview-access": "node --test lib/preview-access.test.mts",
+    "prepare:pdf": "node ./scripts/prepare-pdf-assets.cjs",
+    "test:digital-catalog": "node --test lib/digital-catalog.test.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -78,11 +80,13 @@
     "next-intl": "^4.6.1",
     "nuqs": "^2.4.3",
     "p-lazy": "^5.0.0",
+    "pdfjs-dist": "6.3.289",
     "react": "19.1.7",
     "react-day-picker": "^9.7.0",
     "react-dom": "19.1.7",
     "react-google-recaptcha": "^3.1.0",
     "react-headroom": "^3.2.1",
+    "react-pdf": "11.0.0",
     "schema-dts": "^1.1.5",
     "server-only": "^0.0.1",
     "set-cookie-parser": "^2.7.1",
