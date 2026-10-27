@@ -68,6 +68,7 @@ export interface Product {
   promotions?: Array<{ id: string; text: string }>;
   hasOptions?: boolean;
   canAddToCart?: boolean;
+  pricingRequiresLogin?: boolean;
   isPreorder?: boolean;
   minQuantity?: number;
   maxQuantity?: number;
@@ -115,16 +116,21 @@ export function ProductCard({ purchaseAction, ...rest }: ProductCardProps) {
   const props = {
     ...rest,
     product: { ...rest.product, badge: rest.product.isProUseOnly ? 'PRO' : rest.product.badge },
-    purchaseAction: purchaseAction ? (
-      <ProUseGate restricted={rest.product.isProUseOnly}>{purchaseAction}</ProUseGate>
-    ) : undefined,
+    purchaseAction:
+      purchaseAction && !rest.product.pricingRequiresLogin ? (
+        <ProUseGate restricted={rest.product.isProUseOnly}>{purchaseAction}</ProUseGate>
+      ) : undefined,
   };
 
   if (props.product.isShow && process.env.NEXT_PUBLIC_ENABLE_FCCRATE_QUICK_VIEW === 'true') {
     return (
       <FcCrateQuickViewCard
         {...props}
-        purchaseAction={props.purchaseAction ?? <QuickViewPurchaseAction product={props.product} />}
+        purchaseAction={
+          props.product.pricingRequiresLogin
+            ? undefined
+            : (props.purchaseAction ?? <QuickViewPurchaseAction product={props.product} />)
+        }
       />
     );
   }
@@ -238,6 +244,7 @@ function StandardProductCard({
     <PriceLabel
       className="[&_abbr]:cursor-default [&_abbr]:no-underline"
       colorScheme={colorScheme}
+      loginClassName="mb-3 !text-sm"
       price={price}
     />
   );

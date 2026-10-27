@@ -7,6 +7,7 @@ import { Cart as CartComponent, CartEmptyState } from '@/vibes/soul/sections/car
 import { CartAnalyticsProvider } from '~/app/[locale]/(default)/cart/_components/cart-analytics-provider';
 import { isLoggedIn } from '~/auth';
 import { pricesTransformer } from '~/data-transformers/prices-transformer';
+import { redirect } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
@@ -16,6 +17,7 @@ import { getShoppingLocation } from '~/lib/location/get-shopping-location';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { exists } from '~/lib/utils';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { updateCouponCode } from './_actions/update-coupon-code';
 import { updateGiftCertificate } from './_actions/update-gift-certificate';
@@ -23,6 +25,7 @@ import { updateLineItem } from './_actions/update-line-item';
 import { updateShippingInfo } from './_actions/update-shipping-info';
 import { CartViewed } from './_components/cart-viewed';
 import { CheckoutPreconnect } from './_components/checkout-preconnect';
+import { LoyaltyCart } from './_components/loyalty-cart';
 import { getCart, getShippingCountries } from './page-data';
 
 interface Props {
@@ -82,6 +85,11 @@ export default async function Cart({ params }: Props) {
   const t = await getTranslations('Cart');
   const tGiftCertificates = await getTranslations('GiftCertificates');
   const format = await getFormatter();
+
+  if (await requiresPricingLogin()) {
+    redirect({ href: '/login?redirectTo=%2Fcart', locale });
+  }
+
   const cartId = await getCartId();
   const isAuthenticated = await isLoggedIn();
 
@@ -292,6 +300,7 @@ export default async function Cart({ params }: Props) {
       <Slot label="Cart top content" snapshotId="cart-top-content" />
       <CartAnalyticsProvider data={Streamable.from(() => getAnalyticsData(cartId))}>
         {checkoutUrl ? <CheckoutPreconnect url={checkoutUrl} /> : null}
+        {/* Keep this keyed by cart ID only so mutations preserve pending item updates. */}
         <CartComponent
           authenticationRequiredMessage={t('Errors.authenticationRequired')}
           cart={{
@@ -403,11 +412,12 @@ export default async function Cart({ params }: Props) {
           }
           incrementLineItemLabel={t('increment')}
           isAuthenticated={isAuthenticated}
-          // Keyed by entityId only; keying by version too would remount the section on
-          // every mutation (see the pending-intent dispatcher notes in the Cart section).
           key={cart.entityId}
           lineItemAction={updateLineItem}
           lineItemActionPendingLabel={t('cartUpdateInProgress')}
+          loyalty={
+            <LoyaltyCart currency={cart.currencyCode} subtotal={checkout?.subtotal?.value ?? 0} />
+          }
           minimumOrderSubtotal={getMinimumOrderSubtotal()}
           shipping={{
             action: updateShippingInfo,

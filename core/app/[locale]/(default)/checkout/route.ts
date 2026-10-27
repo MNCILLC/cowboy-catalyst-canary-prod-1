@@ -23,6 +23,7 @@ import {
   PickupCheckoutError,
   prepareShippingCheckout,
 } from '~/lib/pickup/prepare-pickup-checkout';
+import { assertLoyaltyCheckout, LoyaltyCheckoutError } from '~/lib/loyalty/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
@@ -188,6 +189,12 @@ async function handleCheckoutError(error: unknown, locale: string, errorMessage:
   );
 }
 
+function isCheckoutPolicyError(
+  error: unknown,
+): error is ProUseRequiredError | LoyaltyCheckoutError {
+  return error instanceof ProUseRequiredError || error instanceof LoyaltyCheckoutError;
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const sessionCartId = await getCartId();
@@ -214,6 +221,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
   try {
     await assertProUseCart(cartId);
+    await assertLoyaltyCheckout(cartId);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
@@ -276,6 +284,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       locale,
     });
   } catch (error) {
-    return handleCheckoutError(error, locale, t('somethingWentWrong'));
+    rethrow(error);
+
+    if (isCheckoutPolicyError(error)) {
+      await serverToast.error(error.message);
+
+      return redirect({ href: '/cart', locale });
+    }
+
+    if (error instanceof BigCommerceAuthError) {
+      return redirect({ href: '/logout?redirectTo=/checkout/', locale });
+    }
+
+    // eslint-disable-next-line no-console
+    console.error(error);
+
+    return NextResponse.json(
+      { message: 'Server error' },
+      { status: 500, statusText: 'Server error' },
+    );
   }
 }

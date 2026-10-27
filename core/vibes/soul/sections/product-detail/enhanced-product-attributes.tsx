@@ -1,3 +1,5 @@
+import { ProductColorSwatch } from '@/vibes/soul/primitives/product-color-swatch';
+
 interface Props {
   title: string;
   attributes: Array<{
@@ -30,10 +32,9 @@ export function EnhancedProductAttributes({ title, attributes }: Props) {
                         key={colorValue}
                       >
                         {!!swatchColor && (
-                          <span
-                            aria-hidden="true"
-                            className="h-3.5 w-3.5 shrink-0 rounded-full border border-contrast-200"
-                            style={{ backgroundColor: swatchColor }}
+                          <ProductColorSwatch
+                            borderClassName="border-contrast-200"
+                            color={swatchColor}
                           />
                         )}
                         <span className="min-w-0">

@@ -77,6 +77,10 @@
         "passwordRequired": "Password is required",
         "invalidInput": "Please check your input and try again."
       },
+      "AccountMigration": {
+        "heading": "Welcome to Our New Website!",
+        "existingCustomers": "<strong>Existing Customers:</strong> If you've previously created an account, your account has been transferred to our new website. Select <strong>Forgot your password?</strong> below and follow the instructions to set a new password using your existing email address."
+      },
       "CreateAccount": {
         "title": "New customer?",
         "accountBenefits": "Create an account with us and you'll be able to:",
@@ -202,7 +206,8 @@
       "logout": "Logout",
       "orders": "Orders",
       "settings": "Account",
-      "wishlists": "Wish lists"
+      "wishlists": "Wish lists",
+      "loyalty": "Loyalty points"
     },
     "Orders": {
       "title": "Orders",
@@ -222,6 +227,9 @@
         "destinationWithCount": "Destination {number, number}/{total, number}",
         "digitalDelivery": "Digital delivery to {email}",
         "subtotal": "Subtotal",
+        "discounts": "Discounts",
+        "loyaltyPoints": "Loyalty points",
+        "loyaltyPointsRedeemed": "{count, number} points redeemed",
         "shipping": "Shipping",
         "tax": "Tax",
         "orderSummary": "Order summary",
@@ -290,6 +298,40 @@
         "passwordSpecialCharacterRequired": "Password must contain at least one special character",
         "passwordsMustMatch": "The passwords do not match",
         "confirmPasswordRequired": "Please confirm your password"
+      }
+    },
+    "Loyalty": {
+      "title": "Loyalty points",
+      "available": "Available points",
+      "description": "Each award keeps the expiration date set when it was earned. Your next expirations are listed first.",
+      "empty": "You have no available points. Earn 1 point per $1 in eligible merchandise once your order is completed.",
+      "points": "Points",
+      "expires": "Expires (UTC)",
+      "schedule": "Expiration schedule",
+      "nextExpiry": "Next expiration: {date} UTC",
+      "unavailable": "Your loyalty points are temporarily unavailable. Refresh to try again.",
+      "History": {
+        "title": "Points history",
+        "description": "Earnings, redemptions, and order adjustments, newest first. Available points exclude expired points and points reserved in your cart.",
+        "date": "Date (UTC)",
+        "activity": "Activity",
+        "points": "Points",
+        "order": "Order",
+        "earned": "Earned",
+        "redeemed": "Redeemed",
+        "adjusted": "Earnings adjusted",
+        "returned": "Points returned",
+        "empty": "No points activity yet.",
+        "unavailable": "Points history is temporarily unavailable. Please refresh to try again.",
+        "incomplete": "Some order activity could not be verified. Please refresh to see the latest history.",
+        "unknownDate": "Date unavailable",
+        "recordedEarnings": "Recorded earnings",
+        "legacy": "Older recorded earnings reflect any adjustments made before detailed history was available.",
+        "orderNumber": "#{number}",
+        "pagination": "Points history pages",
+        "page": "Page {page} of {pages}",
+        "previous": "Previous",
+        "next": "Next"
       }
     }
   },

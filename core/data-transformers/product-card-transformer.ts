@@ -14,6 +14,8 @@ import {
   productFilterDefinitions,
 } from '~/lib/product-metafield-filters';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
+import { hideWholesaleCardPrices } from '~/lib/wholesale-pricing-policy';
 
 import { hasZeroPrice, pricesTransformer, TaxDisplay } from './prices-transformer';
 import { isShowCrateProduct, showCrateProductTransformer } from './show-crate-product-transformer';
@@ -101,7 +103,7 @@ const productCardAttributeVariants = (
   };
 };
 
-export const singleProductCardTransformer = (
+export const singleProductCardTransformer = async (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   format: ExistingResultType<typeof getFormatter>,
   outOfStockMessage?: string,
@@ -110,71 +112,77 @@ export const singleProductCardTransformer = (
   stockDisplay?: ProductCardStockDisplay,
   attributeFilters?: ProductAttributeFilter[],
   categoryId?: number,
-): Product => {
-  return {
-    ...showCrateProductTransformer(product, categoryId),
-    ...productCardAttributeVariants(product, attributeFilters),
-    id: product.entityId.toString(),
-    isProUseOnly: isProUseProduct(product),
-    title: product.name,
-    descriptionHtml: 'description' in product ? product.description : undefined,
-    listViewDescription:
-      'listViewDescriptionMetafield' in product
-        ? removeEdgesAndNodes(product.listViewDescriptionMetafield).at(0)?.value.trim() || undefined
+): Promise<Product> => {
+  const pricingRequiresLogin = await requiresPricingLogin();
+
+  return hideWholesaleCardPrices(
+    {
+      ...showCrateProductTransformer(product, categoryId),
+      ...productCardAttributeVariants(product, attributeFilters),
+      id: product.entityId.toString(),
+      isProUseOnly: isProUseProduct(product),
+      title: product.name,
+      descriptionHtml: 'description' in product ? product.description : undefined,
+      listViewDescription:
+        'listViewDescriptionMetafield' in product
+          ? removeEdgesAndNodes(product.listViewDescriptionMetafield).at(0)?.value.trim() ||
+            undefined
+          : undefined,
+      href: product.path,
+      hasOptions:
+        'productOptions' in product
+          ? removeEdgesAndNodes(product.productOptions).length > 0
+          : undefined,
+      canAddToCart:
+        product.showCartAction &&
+        product.availabilityV2.status !== 'Unavailable' &&
+        product.inventory.isInStock,
+      isPreorder: product.availabilityV2.status === 'Preorder',
+      minQuantity:
+        'minPurchaseQuantity' in product && product.minPurchaseQuantity != null
+          ? Math.max(1, product.minPurchaseQuantity)
+          : undefined,
+      maxQuantity:
+        'maxPurchaseQuantity' in product && product.maxPurchaseQuantity != null
+          ? product.maxPurchaseQuantity
+          : undefined,
+      image: product.defaultImage
+        ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
         : undefined,
-    href: product.path,
-    hasOptions:
-      'productOptions' in product
-        ? removeEdgesAndNodes(product.productOptions).length > 0
-        : undefined,
-    canAddToCart:
-      product.showCartAction &&
-      product.availabilityV2.status !== 'Unavailable' &&
-      product.inventory.isInStock,
-    isPreorder: product.availabilityV2.status === 'Preorder',
-    minQuantity:
-      'minPurchaseQuantity' in product && product.minPurchaseQuantity != null
-        ? Math.max(1, product.minPurchaseQuantity)
-        : undefined,
-    maxQuantity:
-      'maxPurchaseQuantity' in product && product.maxPurchaseQuantity != null
-        ? product.maxPurchaseQuantity
-        : undefined,
-    image: product.defaultImage
-      ? { src: product.defaultImage.url, alt: product.defaultImage.altText }
-      : undefined,
-    price:
-      isShowCrateProduct(product) && hasZeroPrice(product)
-        ? undefined
-        : pricesTransformer(product, format, taxDisplay),
-    subtitle: product.brand?.name ?? undefined,
-    rating: product.reviewSummary.averageRating,
-    numberOfReviews: product.reviewSummary.numberOfReviews,
-    useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
-    inventoryMessage:
-      'variants' in product
-        ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
-        : undefined,
-    isInStock: product.inventory.isInStock,
-    stockDisplayData:
-      stockDisplay && 'variants' in product
-        ? getStockDisplayData(
-            // A list card has no selected variant. Do not display a combined or arbitrary count.
-            product.inventory.hasVariantInventory
-              ? { isInStock: product.inventory.isInStock }
-              : product.inventory,
-            stockDisplay.settings,
-            stockDisplay.formatStock,
-          )
-        : undefined,
-    promotions:
-      'featuredPromotions' in product
-        ? removeEdgesAndNodes(product.featuredPromotions).map((p) => ({
-            id: p.entityId.toString(),
-            text: p.text,
-          }))
-        : undefined,
-  };
+      price:
+        isShowCrateProduct(product) && hasZeroPrice(product)
+          ? undefined
+          : pricesTransformer(product, format, taxDisplay),
+      subtitle: product.brand?.name ?? undefined,
+      rating: product.reviewSummary.averageRating,
+      numberOfReviews: product.reviewSummary.numberOfReviews,
+      useEnhancedStockDisplay: process.env.ENABLE_ENHANCED_STOCK_DISPLAY === 'true',
+      inventoryMessage:
+        'variants' in product
+          ? getInventoryMessage(product, outOfStockMessage, showBackorderMessage)
+          : undefined,
+      isInStock: product.inventory.isInStock,
+      stockDisplayData:
+        stockDisplay && 'variants' in product
+          ? getStockDisplayData(
+              // A list card has no selected variant. Do not display a combined or arbitrary count.
+              product.inventory.hasVariantInventory
+                ? { isInStock: product.inventory.isInStock }
+                : product.inventory,
+              stockDisplay.settings,
+              stockDisplay.formatStock,
+            )
+          : undefined,
+      promotions:
+        'featuredPromotions' in product
+          ? removeEdgesAndNodes(product.featuredPromotions).map((p) => ({
+              id: p.entityId.toString(),
+              text: p.text,
+            }))
+          : undefined,
+    },
+    pricingRequiresLogin,
+  );
 };
 
 export const productCardTransformer = async (
@@ -187,21 +195,37 @@ export const productCardTransformer = async (
   attributeFilters?: ProductAttributeFilter[],
   categoryId?: number,
 ): Promise<Product[]> => {
-  const visibleProducts = products.filter(
-    (product) => isShowCrateProduct(product) || !hasZeroPrice(product),
-  );
+  const visibleProducts = products.filter((product) => !hasZeroPrice(product));
   const locationProducts = await withLocationInventory(visibleProducts);
 
-  return locationProducts.map((product) =>
-    singleProductCardTransformer(
-      product,
-      format,
-      outOfStockMessage,
-      showBackorderMessage,
-      taxDisplay,
-      stockDisplay,
-      attributeFilters,
-      categoryId,
-    ),
+  // commented out after resolving merge conflict
+
+  // return locationProducts.map((product) =>
+  //   singleProductCardTransformer(
+  //     product,
+  //     format,
+  //     outOfStockMessage,
+  //     showBackorderMessage,
+  //     taxDisplay,
+  //     stockDisplay,
+  //     attributeFilters,
+  //     categoryId,
+  //   ),
+
+  return Promise.all(
+    locationProducts
+      .filter((product) => !hasZeroPrice(product))
+      .map((product) =>
+        singleProductCardTransformer(
+          product,
+          format,
+          outOfStockMessage,
+          showBackorderMessage,
+          taxDisplay,
+          stockDisplay,
+          attributeFilters,
+          categoryId,
+        ),
+      ),
   );
 };

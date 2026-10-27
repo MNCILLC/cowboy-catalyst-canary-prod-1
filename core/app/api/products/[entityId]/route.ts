@@ -4,10 +4,14 @@ import { hasLocale } from 'next-intl';
 import { getSessionCustomerAccessToken } from '~/auth';
 import { client } from '~/client';
 import { graphql, ResultOf } from '~/client/graphql';
+import { hasZeroPrice } from '~/data-transformers/prices-transformer';
+import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import { routing } from '~/i18n/routing';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { withLocationInventory } from '~/lib/location/with-location-inventory';
 import { MakeswiftProductFragment } from '~/lib/makeswift/utils/use-bc-product-to-vibes-product/fragment';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
+import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
 const GetProduct = graphql(
   `
@@ -54,6 +58,15 @@ export const GET = async (
   });
 
   const [product] = await withLocationInventory(data.site.product ? [data.site.product] : []);
+  // const product = data.site.product;
 
-  return NextResponse.json(product ?? null);
+  const hidePrices = await requiresPricingLogin();
+
+  // return NextResponse.json(product ?? null);
+  return NextResponse.json(
+    product && (isShowCrateProduct(product) || !hasZeroPrice(product))
+      ? hideWholesalePrices(product, hidePrices)
+      : null,
+    { headers: { 'Cache-Control': 'private, no-store' } },
+  );
 };

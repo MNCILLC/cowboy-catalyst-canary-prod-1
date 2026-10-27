@@ -10,6 +10,7 @@ import {
 import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { ExistingResultType } from '~/client/util';
 import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 export const facetsTransformer = async ({
   refinedFacets,
@@ -24,7 +25,10 @@ export const facetsTransformer = async ({
   const { filters } = PublicToPrivateParams.parse(searchParams);
 
   const metafieldFilters = isCustomProductFilteringEnabled ? await getMetafieldFilters() : [];
+  const hidePrices = await requiresPricingLogin();
   const nativeFilters = allFacets.map((facet) => {
+    if (hidePrices && facet.__typename === 'PriceSearchFilter') return null;
+
     const refinedFacet = refinedFacets.find((f) => f.displayName === facet.displayName);
 
     if (facet.__typename === 'CategorySearchFilter') {

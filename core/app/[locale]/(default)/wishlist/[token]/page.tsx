@@ -22,6 +22,7 @@ import { publicWishlistDetailsTransformer } from '~/data-transformers/wishlists-
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 import { pickPricesForTaxDisplay } from '~/lib/tax-pricing';
 import { isMobileUser } from '~/lib/user-agent';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { getPublicWishlist } from './page-data';
 
@@ -88,6 +89,7 @@ const getAnalyticsData = async (token: string, searchParamsPromise: Promise<Sear
   }
 
   const { wishlist, taxDisplay } = result;
+  const hidePrices = await requiresPricingLogin();
 
   return removeEdgesAndNodes(wishlist.items)
     .map(({ product }) => product)
@@ -100,7 +102,7 @@ const getAnalyticsData = async (token: string, searchParamsPromise: Promise<Sear
         name: product.name,
         sku: product.sku,
         brand: product.brand?.name ?? '',
-        price: prices?.price.value ?? 0,
+        price: hidePrices ? 0 : (prices?.price.value ?? 0),
         currency: prices?.price.currencyCode ?? '',
       };
     });

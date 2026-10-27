@@ -23,6 +23,8 @@ import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { getPreferredProductView, isProductListViewEnabled } from '~/lib/product-view';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { requiresPricingLogin } from '~/lib/wholesale-pricing';
+import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
 import { MAX_COMPARE_LIMIT } from '../../../compare/page-data';
 import { getCompareProducts } from '../../fetch-compare-products';
@@ -114,6 +116,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function Category(props: Props) {
   const { slug, locale } = await props.params;
   const customerAccessToken = await getSessionCustomerAccessToken();
+  const pricingRequiresLogin = await requiresPricingLogin();
 
   setRequestLocale(locale);
 
@@ -346,7 +349,9 @@ export default async function Category(props: Props) {
         {(search) => (
           <CategoryViewed
             category={category}
-            products={search.products.items}
+            products={search.products.items.map((product) =>
+              hideWholesalePrices(product, pricingRequiresLogin),
+            )}
             taxDisplay={taxDisplay}
           />
         )}

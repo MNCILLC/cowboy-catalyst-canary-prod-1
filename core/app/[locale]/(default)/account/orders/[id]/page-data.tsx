@@ -6,6 +6,7 @@ import { getSessionCustomerAccessToken } from '~/auth';
 import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { TAGS } from '~/client/tags';
+import { getOrderLoyaltyRedemption } from '~/lib/loyalty/server';
 
 import { OrderGiftCertificateItemFragment, OrderItemFragment } from '../fragment';
 
@@ -244,6 +245,7 @@ export const getCustomerOrderDetails = cache(async (id: number) => {
   return {
     ...order,
     fallbackPayment,
+    loyaltyRedemption: await getOrderLoyaltyRedemption(order.entityId),
     consignments: {
       pickups:
         order.consignments?.pickups &&

@@ -9,6 +9,7 @@ import { graphql, VariablesOf } from '~/client/graphql';
 import { TAGS } from '~/client/tags';
 import { getCartId } from '~/lib/cart';
 import { assertProUseCart, assertProUseLineItems } from '~/lib/pro-use/server';
+import { assertPricingAccess } from '~/lib/wholesale-pricing';
 
 import { removeItem } from './remove-item';
 
@@ -63,6 +64,7 @@ export const updateQuantity = async ({
   }
 
   // Verify the existing item too: productEntityId is supplied by the client.
+  await assertPricingAccess();
   await assertProUseCart(cartId, lineItemEntityId);
   await assertProUseLineItems([{ productEntityId, variantEntityId }]);
 

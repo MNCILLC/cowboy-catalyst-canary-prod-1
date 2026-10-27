@@ -29,7 +29,7 @@ export function ContactSection({
       <div className="grid items-start gap-10 @3xl:grid-cols-2 @3xl:gap-12 @5xl:gap-20">
         <div>
           {Boolean(eyebrow) && (
-            <p className="mb-5 text-sm font-semibold uppercase tracking-wider text-primary">
+            <p className="mb-5 text-sm font-semibold uppercase tracking-wider text-foreground">
               {eyebrow}
             </p>
           )}
@@ -39,7 +39,7 @@ export function ContactSection({
           <div className="mt-8 space-y-7 @3xl:mt-12">
             {Boolean(contact?.email) && (
               <div className="flex items-start gap-4">
-                <Mail aria-hidden="true" className="mt-1 shrink-0 text-primary" size={26} />
+                <Mail aria-hidden="true" className="mt-1 shrink-0 text-foreground" size={26} />
                 <div className="min-w-0">
                   <a
                     className="break-words text-lg font-medium underline-offset-4 hover:underline"
@@ -55,7 +55,7 @@ export function ContactSection({
             )}
             {Boolean(contact?.phone) && (
               <div className="flex items-start gap-4">
-                <Phone aria-hidden="true" className="mt-1 shrink-0 text-primary" size={26} />
+                <Phone aria-hidden="true" className="mt-1 shrink-0 text-foreground" size={26} />
                 <div>
                   <a
                     className="text-lg font-medium underline-offset-4 hover:underline"
@@ -71,7 +71,7 @@ export function ContactSection({
             )}
             {Boolean(contact?.address) && (
               <div className="flex items-start gap-4">
-                <MapPin aria-hidden="true" className="mt-1 shrink-0 text-primary" size={26} />
+                <MapPin aria-hidden="true" className="mt-1 shrink-0 text-foreground" size={26} />
                 <div>
                   <a
                     className="text-lg font-medium underline-offset-4 hover:underline"
