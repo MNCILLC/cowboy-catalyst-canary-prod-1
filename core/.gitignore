@@ -57,3 +57,6 @@ build-config.json
 
 # Catalyst CLI config
 .bigcommerce
+
+# Generated PDF.js assets
+/public/pdfjs/
