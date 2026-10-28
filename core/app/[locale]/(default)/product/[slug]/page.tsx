@@ -470,6 +470,7 @@ export default async function Product({ params, searchParams }: Props) {
         name: label,
         value: values.map(({ label: valueLabel }) => valueLabel).join(', '),
         ...(key === 'colors' ? { colors: values } : {}),
+        ...(key === 'spreads' ? { spreads: values } : {}),
       })),
     ].filter(({ name, value }) => name.trim() && value.trim());
   });
