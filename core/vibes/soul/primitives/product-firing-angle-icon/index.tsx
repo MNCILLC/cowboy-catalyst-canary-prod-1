@@ -22,7 +22,7 @@ export function ProductFiringAngleIcon({ value, label, decorative = false }: Pro
   return (
     <Image
       alt={decorative ? '' : label}
-      className="h-8 w-10 shrink-0 rounded-sm bg-white object-contain p-0.5"
+      className="h-8 w-10 shrink-0 rounded-sm object-contain p-0.5"
       height={32}
       onError={() => setFailedValue(value)}
       src={`/images/${encodeURIComponent(value)}.svg`}
