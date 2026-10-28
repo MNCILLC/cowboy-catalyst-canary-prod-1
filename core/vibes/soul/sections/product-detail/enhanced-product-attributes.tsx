@@ -29,8 +29,17 @@ export function EnhancedProductAttributes({ title, attributes }: Props) {
               <dd className="min-w-0 break-words bg-background px-4 py-4 @xl:px-6 @xl:py-5">
                 {!!spreads?.length && (
                   <span className="flex flex-wrap items-center gap-2">
-                    {spreads.map(({ value: spreadValue, label }) => (
-                      <ProductFiringAngleIcon key={spreadValue} label={label} value={spreadValue} />
+                    {spreads.map(({ value: spreadValue, label }, spreadIndex) => (
+                      <span
+                        className="inline-flex max-w-full items-center gap-1.5"
+                        key={spreadValue}
+                      >
+                        <ProductFiringAngleIcon decorative label={label} value={spreadValue} />
+                        <span className="min-w-0">
+                          {label}
+                          {spreadIndex < spreads.length - 1 ? ',' : ''}
+                        </span>
+                      </span>
                     ))}
                   </span>
                 )}
