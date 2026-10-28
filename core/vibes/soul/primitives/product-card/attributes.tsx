@@ -1,6 +1,7 @@
 import { clsx } from 'clsx';
 
 import { ProductColorSwatch } from '@/vibes/soul/primitives/product-color-swatch';
+import { ProductFiringAngleIcon } from '@/vibes/soul/primitives/product-firing-angle-icon';
 
 import type { Product, ProductCardProps } from './index';
 
@@ -70,10 +71,14 @@ export function ProductCardAttributes({
                   {!!swatchColor && (
                     <ProductColorSwatch borderClassName="border-white/30" color={swatchColor} />
                   )}
-                  <span className="min-w-0">
-                    {valueLabel}
-                    {!stacked && index < values.length - 1 ? ',' : ''}
-                  </span>
+                  {key === 'spreads' ? (
+                    <ProductFiringAngleIcon label={valueLabel} value={value} />
+                  ) : (
+                    <span className="min-w-0">
+                      {valueLabel}
+                      {!stacked && index < values.length - 1 ? ',' : ''}
+                    </span>
+                  )}
                 </span>
               ))}
             </dd>

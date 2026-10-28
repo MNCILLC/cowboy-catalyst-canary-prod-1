@@ -167,6 +167,7 @@
         "colors": "Colors",
         "effects": "Effects",
         "firing_patterns": "Firing patterns",
+        "spreads": "Firing Angles",
         "caliber": "Caliber",
         "performance_height": "Height",
         "duration": "Duration",

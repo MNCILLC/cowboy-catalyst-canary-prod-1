@@ -15,6 +15,7 @@ import { Stream, Streamable, useStreamable } from '@/vibes/soul/lib/streamable';
 import { Accordion, AccordionItem } from '@/vibes/soul/primitives/accordion';
 import { Button } from '@/vibes/soul/primitives/button';
 import { CursorPaginationInfo } from '@/vibes/soul/primitives/cursor-pagination';
+import { ProductFiringAngleIcon } from '@/vibes/soul/primitives/product-firing-angle-icon';
 import { Rating } from '@/vibes/soul/primitives/rating';
 import { Link } from '~/components/link';
 
@@ -238,6 +239,13 @@ export function FiltersPanelInner({
                                 aria-hidden="true"
                                 className="h-4 w-4 shrink-0 rounded-sm border border-contrast-300"
                                 style={{ backgroundColor: option.swatchColor }}
+                              />
+                            )}
+                            {filter.paramName === 'mf_spreads' && (
+                              <ProductFiringAngleIcon
+                                decorative
+                                label={option.label}
+                                value={option.value}
                               />
                             )}
                             {option.label}

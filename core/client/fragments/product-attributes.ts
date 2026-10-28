@@ -8,13 +8,14 @@ export const ProductAttributesFragment = graphql(`
         "colors"
         "effects"
         "firing_patterns"
+        "spreads"
         "caliber"
         "performance_height"
         "duration"
         "shot_count"
         "ignition_types"
       ]
-      first: 8
+      first: 9
     ) {
       edges {
         node {
