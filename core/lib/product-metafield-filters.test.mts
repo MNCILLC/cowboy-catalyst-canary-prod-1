@@ -714,3 +714,85 @@ test('PDP and PLP attributes display the numeric shot count even without configu
   }
   assert.deepEqual(getProductAttributes([], shotCountFilters), []);
 });
+
+const spreadFilters = [
+  {
+    paramName: 'mf_spreads',
+    label: 'Firing Angles',
+    options: parseFilterOptions(
+      '[{"label":"W angle","value":"spread-w"},{"label":"Fan","value":"spread-fan"}]',
+    ),
+  },
+];
+
+test('firing angles support repeated and comma-separated selections with OR within and AND across groups', () => {
+  assert.ok(
+    productFilterDefinitions.some(
+      ({ siteKey, productKey }) => siteKey === 'spread_filters' && productKey === 'spreads',
+    ),
+  );
+  const selections = getMetafieldSelections({
+    mf_spreads: ['spread-v,spread-w', 'spread-w'],
+    mf_colors: 'gold',
+  });
+  assert.deepEqual(selections, [
+    { key: 'colors', values: ['gold'] },
+    { key: 'spreads', values: ['spread-v', 'spread-w'] },
+  ]);
+  const fields = [
+    { key: 'spreads', value: '["spread-w","spread-fan"]' },
+    { key: 'colors', value: '["gold"]' },
+  ];
+  assert.equal(matchesMetafieldSelections(fields, selections, spreadFilters), true);
+  assert.equal(matchesMetafieldSelections(fields.slice(0, 1), selections, spreadFilters), false);
+  assert.equal(matchesMetafieldSelections(fields.slice(1), selections, spreadFilters), false);
+  assert.equal(
+    matchesMetafieldSelections(fields, [{ key: 'spreads', values: ['spread-i'] }]),
+    false,
+  );
+});
+
+test('firing angle attributes preserve SVG filenames and configured labels, including unconfigured values', () => {
+  assert.deepEqual(
+    getProductAttributes(
+      [{ key: 'spreads', value: '["spread-w","spread-fan","spread-w","spread-i"]' }],
+      spreadFilters,
+    ),
+    [
+      {
+        key: 'spreads',
+        label: 'Firing Angles',
+        values: [
+          { value: 'spread-w', label: 'W angle' },
+          { value: 'spread-fan', label: 'Fan' },
+          { value: 'spread-i', label: 'spread-i' },
+        ],
+      },
+    ],
+  );
+  assert.deepEqual(
+    getProductAttributes(
+      [{ key: 'spreads', value: '["spread-w"]' }],
+      [{ ...spreadFilters[0], options: [] }],
+    ),
+    [
+      {
+        key: 'spreads',
+        label: 'Firing Angles',
+        values: [{ value: 'spread-w', label: 'spread-w' }],
+      },
+    ],
+  );
+});
+
+test('missing, empty, and malformed firing angles are hidden and cannot match a filter', () => {
+  for (const value of ['invalid', 'null', '{}', '"spread-w"', '[]', '[1,null]', '[" "]']) {
+    const fields = [{ key: 'spreads', value }];
+    assert.deepEqual(getProductAttributes(fields, spreadFilters), []);
+    assert.equal(
+      matchesMetafieldSelections(fields, [{ key: 'spreads', values: ['spread-w'] }]),
+      false,
+    );
+  }
+  assert.deepEqual(getProductAttributes([], spreadFilters), []);
+});

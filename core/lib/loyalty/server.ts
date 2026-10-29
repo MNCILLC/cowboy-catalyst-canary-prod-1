@@ -17,6 +17,32 @@ const CustomerQuery = graphql(`
   }
 `);
 
+const LoyaltyCartRemovalQuery = graphql(`
+  query LoyaltyCartRemovalQuery($cartId: String!) {
+    site {
+      cart(entityId: $cartId) {
+        version
+        lineItems {
+          physicalItems {
+            entityId
+            parentEntityId
+          }
+          digitalItems {
+            entityId
+            parentEntityId
+          }
+          giftCertificates {
+            entityId
+          }
+          customItems {
+            entityId
+          }
+        }
+      }
+    }
+  }
+`);
+
 export const balanceSchema = z.object({
   enabled: z.boolean(),
   currency: z.string(),
@@ -130,6 +156,91 @@ export async function changeLoyaltyPoints(action: 'redeem' | 'remove', points?: 
 
   // Customer and cart IDs always come from the server session, never form fields.
   return balanceSchema.parse(await callLoyalty({ action, customerId: id, cartId, points }));
+}
+
+// Release the reservation while the checkout still exists. A missing cart alone
+// is never evidence that reserved points are safe to return (it may be an order).
+export async function prepareLoyaltyForItemRemoval(cartId: string, lineItemEntityId: string) {
+  if (!loyaltyConfigured()) return undefined;
+
+  const token = await getSessionCustomerAccessToken();
+
+  if (!token) return undefined;
+
+  if (cartId !== (await getCartId())) {
+    throw new LoyaltyCheckoutError('Return to your cart before removing items.');
+  }
+
+  const readCart = async () => {
+    const { data } = await client.fetch({
+      document: LoyaltyCartRemovalQuery,
+      variables: { cartId },
+      customerAccessToken: token,
+      fetchOptions: { cache: 'no-store' },
+    });
+    const snapshot = data.site.cart;
+
+    if (!snapshot)
+      throw new LoyaltyCheckoutError('Your cart could not be found. Refresh and retry.');
+
+    const version = snapshot.version;
+
+    if (typeof version !== 'number' || !Number.isInteger(version)) {
+      throw new LoyaltyCheckoutError('Your cart could not be verified. Refresh and retry.');
+    }
+
+    return { ...snapshot, version };
+  };
+  const cart = await readCart();
+  const items = [
+    ...cart.lineItems.physicalItems,
+    ...cart.lineItems.digitalItems,
+    ...cart.lineItems.giftCertificates,
+    ...cart.lineItems.customItems,
+  ];
+  const emptiesCart =
+    items.some((item) => item.entityId === lineItemEntityId) &&
+    items.every(
+      (item) =>
+        item.entityId === lineItemEntityId ||
+        ('parentEntityId' in item && item.parentEntityId === lineItemEntityId),
+    );
+
+  if (emptiesCart) {
+    try {
+      const id = await customerId();
+      const balance = balanceSchema.parse(
+        await callLoyalty({ action: 'balance', customerId: id, cartId }),
+      );
+
+      // Also clean up outstanding reservations when the program is disabled.
+      if (balance.redemption) {
+        const released = balanceSchema.parse(
+          await callLoyalty({ action: 'remove', customerId: id, cartId }),
+        );
+
+        if (released.redemption) {
+          throw new LoyaltyCheckoutError(
+            'Your loyalty points are still reserved. Please retry shortly.',
+          );
+        }
+
+        // Removing the discount changes the cart version. Read it again before
+        // the version-fenced deletion; do not retry a conflicted deletion blindly.
+        return (await readCart()).version;
+      }
+    } catch (error) {
+      if (error instanceof LoyaltyCheckoutError) throw error;
+
+      throw new LoyaltyCheckoutError(
+        'We could not return your loyalty points. Your item has not been removed. Please retry shortly.',
+      );
+    }
+  }
+
+  // Fence even non-final removals: two tabs must not both decide another item
+  // will remain and delete the cart without releasing its reservation.
+  return cart.version;
 }
 
 export async function assertLoyaltyCheckout(cartId: string) {

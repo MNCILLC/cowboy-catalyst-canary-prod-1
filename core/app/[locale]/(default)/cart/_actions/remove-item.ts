@@ -8,6 +8,7 @@ import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { TAGS } from '~/client/tags';
 import { clearCartId, getCartId } from '~/lib/cart';
+import { prepareLoyaltyForItemRemoval } from '~/lib/loyalty/server';
 
 const DeleteCartLineItemMutation = graphql(`
   mutation DeleteCartLineItemMutation($input: DeleteCartLineItemInput!) {
@@ -41,28 +42,31 @@ export async function removeItem({
     throw new Error(t('lineItemNotFound'));
   }
 
-  const response = await client.fetch({
-    document: DeleteCartLineItemMutation,
-    variables: {
-      input: {
-        cartEntityId: cartId,
-        lineItemEntityId,
+  try {
+    const version = await prepareLoyaltyForItemRemoval(cartId, lineItemEntityId);
+    const response = await client.fetch({
+      document: DeleteCartLineItemMutation,
+      variables: {
+        input: {
+          cartEntityId: cartId,
+          lineItemEntityId,
+          ...(version === undefined ? {} : { version }),
+        },
       },
-    },
-    customerAccessToken,
-    fetchOptions: { cache: 'no-store' },
-  });
+      customerAccessToken,
+      fetchOptions: { cache: 'no-store' },
+    });
+    const cart = response.data.cart.deleteCartLineItem?.cart;
 
-  const cart = response.data.cart.deleteCartLineItem?.cart;
+    // BigCommerce deletes the cart when its last item is removed. Any loyalty
+    // reservation has already been released before that checkout disappears.
+    if (!cart) await clearCartId();
 
-  // If we remove the last item in a cart the cart is deleted
-  // so we need to remove the cartId cookie
-  // TODO: We need to figure out if it actually failed.
-  if (!cart) {
-    await clearCartId();
+    return cart;
+  } finally {
+    // A confirmed points release may be followed by a failed item deletion.
+    // Refresh totals in that case too so the removed discount is not left visible.
+    revalidateTag(TAGS.cart, { expire: 0 });
+    revalidateTag(TAGS.checkout, { expire: 0 });
   }
-
-  revalidateTag(TAGS.cart, { expire: 0 });
-
-  return cart;
 }

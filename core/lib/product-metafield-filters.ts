@@ -2,6 +2,7 @@ export const productFilterDefinitions = [
   { siteKey: 'color_filters', productKey: 'colors' },
   { siteKey: 'effect_filters', productKey: 'effects' },
   { siteKey: 'firing_pattern_filters', productKey: 'firing_patterns' },
+  { siteKey: 'spread_filters', productKey: 'spreads' },
   { siteKey: 'caliber_filters', productKey: 'caliber' },
   {
     siteKey: 'performance_height_filters',

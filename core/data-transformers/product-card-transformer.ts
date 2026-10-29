@@ -80,7 +80,10 @@ export const getProductCardAttributes = (
         ({ productKey }) =>
           filters?.find(({ paramName }) => paramName === `mf_${productKey}`) ?? {
             paramName: `mf_${productKey}`,
-            label: productKey.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()),
+            label:
+              productKey === 'spreads'
+                ? 'Firing Angles'
+                : productKey.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()),
             options: [],
           },
       ),
