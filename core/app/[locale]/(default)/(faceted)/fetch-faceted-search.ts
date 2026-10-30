@@ -10,6 +10,7 @@ import { CurrencyCode } from '~/components/header/fragment';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
 import { getMetafieldSelections } from '~/lib/product-metafield-filters';
+import { parseStockFilters } from '~/lib/stock-filters';
 
 const GetProductSearchResultsQuery = graphql(
   `
@@ -331,10 +332,7 @@ export const PublicSearchParamsSchema = z.object({
   minRating: z.coerce.number().nullish(),
   maxRating: z.coerce.number().nullish(),
   sort: PublicSortParam.nullish(),
-  // In the future we should support more stock filters, e.g. out of stock, low stock, etc.
-  stock: SearchParamToArray.nullish().transform((value) =>
-    value?.filter((stock) => z.enum(['in_stock']).safeParse(stock).success),
-  ),
+  stock: SearchParamSchema.nullish().transform(parseStockFilters),
   // In the future we should support more shipping filters, e.g. 2 day shipping, same day, etc.
   shipping: SearchParamToArray.nullish().transform((value) =>
     value?.filter((stock) => z.enum(['free_shipping']).safeParse(stock).success),
@@ -386,7 +384,7 @@ export const PublicToPrivateParams = PublicSearchParamsSchema.catchall(SearchPar
         brandEntityIds: brand,
         categoryEntityId: category,
         categoryEntityIds: categoryIn,
-        hideOutOfStock: stock?.includes('in_stock'),
+        hideOutOfStock: stock.length > 0,
         isFreeShipping: shipping?.includes('free_shipping'),
         isFeatured,
         price:
@@ -420,7 +418,9 @@ export const fetchFacetedSearch = cache(
     const { after, before, limit = 9, sort, filters } = PublicToPrivateParams.parse(params);
     const selections = isCustomProductFilteringEnabled ? getMetafieldSelections(params) : [];
 
-    if (selections.length > 0) {
+    const availableToShip = parseStockFilters(params.stock).includes('available_to_ship');
+
+    if (selections.length > 0 || availableToShip) {
       const [search, products] = await Promise.all([
         // Native facets are still evaluated by BigCommerce. Never send our cursors upstream.
         getProductSearchResults({ limit: 1, sort, filters }, currencyCode, customerAccessToken),
@@ -431,6 +431,7 @@ export const fetchFacetedSearch = cache(
           { after, before, limit },
           currencyCode,
           customerAccessToken,
+          availableToShip,
         ),
       ]);
 
