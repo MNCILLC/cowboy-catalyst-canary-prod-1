@@ -14,6 +14,7 @@ import {
   paginateMetafieldMatches,
   productFilterDefinitions,
 } from '~/lib/product-metafield-filters';
+import { isAvailableToShip } from '~/lib/stock-filters';
 
 const MatchProductsQuery = graphql(`
   query MatchMetafieldProducts(
@@ -21,6 +22,8 @@ const MatchProductsQuery = graphql(`
     $sort: SearchProductsSortInput
     $after: String
     $keys: [String!]
+    $includeInventory: Boolean!
+    $includeMetafields: Boolean!
   ) {
     site {
       search {
@@ -33,7 +36,14 @@ const MatchProductsQuery = graphql(`
             edges {
               node {
                 entityId
-                metafields(namespace: "custom_product", keys: $keys, first: 50) {
+                inventory @include(if: $includeInventory) {
+                  isInStock
+                  aggregated {
+                    availableOnHand
+                  }
+                }
+                metafields(namespace: "custom_product", keys: $keys, first: 50)
+                  @include(if: $includeMetafields) {
                   edges {
                     node {
                       key
@@ -73,13 +83,16 @@ const getCandidates = cache(
   async (
     filters: SearchVariables['filters'],
     sort: SearchVariables['sort'],
+    availableToShip: boolean,
+    includeMetafields: boolean,
     customerAccessToken?: string,
   ) => {
     const products: Array<{ entityId: number; metafields: Array<{ key: string; value: string }> }> =
       [];
     let after: string | undefined;
 
-    // Scan lightweight metadata only. Cards/prices are fetched for the selected page.
+    // Filter lightweight candidates before pagination so counts and pages stay accurate.
+    // Cards/prices are fetched only for the selected page.
     // Use Storefront search so channel/customer visibility and native filters still apply.
     for (;;) {
       // Cursor pagination must run sequentially.
@@ -91,6 +104,8 @@ const getCandidates = cache(
           sort,
           after,
           keys: productFilterDefinitions.map(({ productKey }) => productKey),
+          includeInventory: availableToShip,
+          includeMetafields,
         },
         customerAccessToken,
         fetchOptions: customerAccessToken ? { cache: 'no-store' } : { next: { revalidate: 300 } },
@@ -98,10 +113,12 @@ const getCandidates = cache(
       const connection = response.data.site.search.searchProducts.products;
 
       products.push(
-        ...removeEdgesAndNodes(connection).map((product) => ({
-          entityId: product.entityId,
-          metafields: removeEdgesAndNodes(product.metafields),
-        })),
+        ...removeEdgesAndNodes(connection)
+          .filter((product) => !availableToShip || isAvailableToShip(product.inventory))
+          .map((product) => ({
+            entityId: product.entityId,
+            metafields: product.metafields ? removeEdgesAndNodes(product.metafields) : [],
+          })),
       );
       if (!connection.pageInfo.hasNextPage) break;
 
@@ -123,10 +140,11 @@ export async function getMetafieldFilteredProducts(
   pagination: { after?: string | null; before?: string | null; limit?: number | null },
   currencyCode?: CurrencyCode,
   customerAccessToken?: string,
+  availableToShip = false,
 ) {
   const [candidates, metafieldFilters] = await Promise.all([
-    getCandidates(filters, sort, customerAccessToken),
-    getMetafieldFilters(),
+    getCandidates(filters, sort, availableToShip, selections.length > 0, customerAccessToken),
+    selections.length > 0 ? getMetafieldFilters() : [],
   ]);
   const ids = candidates
     .filter((product) =>
