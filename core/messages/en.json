@@ -180,7 +180,8 @@
       "Facets": {
         "freeShippingLabel": "Free shipping",
         "isFeaturedLabel": "Is featured",
-        "inStockLabel": "In stock"
+        "inStockLabel": "In stock",
+        "availableToShipLabel": "Available to Ship"
       }
     },
     "SortBy": {

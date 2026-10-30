@@ -10,6 +10,7 @@ import {
 import { getMetafieldFilters } from '~/client/queries/get-metafield-filters';
 import { ExistingResultType } from '~/client/util';
 import { isCustomProductFilteringEnabled } from '~/lib/custom-product-filters';
+import { parseStockFilters } from '~/lib/stock-filters';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 export const facetsTransformer = async ({
@@ -205,7 +206,9 @@ export const facetsTransformer = async ({
         refinedFacet?.__typename === 'OtherSearchFilter' && refinedFacet.isInStock
           ? refinedFacet
           : null;
-      const isSelected = filters.hideOutOfStock === true;
+      const stock = parseStockFilters(searchParams.stock);
+      const isSelected = stock.includes('in_stock');
+      const availableToShipSelected = stock.includes('available_to_ship');
 
       return {
         type: 'toggle-group' as const,
@@ -217,6 +220,11 @@ export const facetsTransformer = async ({
             label: t('inStockLabel'),
             value: 'in_stock',
             disabled: refinedIsInStockSearchFilter == null && !isSelected,
+          },
+          {
+            label: t('availableToShipLabel'),
+            value: 'available_to_ship',
+            disabled: refinedIsInStockSearchFilter == null && !availableToShipSelected,
           },
         ],
       };
