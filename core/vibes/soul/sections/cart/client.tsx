@@ -54,6 +54,7 @@ export interface CartLineItem {
   image?: { alt: string; src: string };
   subtitle: string;
   quantity: number;
+  weightInPounds?: number;
   price: Price;
   href?: string;
   inventoryMessages?: CartLineIteminventoryMessages;
@@ -655,6 +656,7 @@ export function CartClient<LineItem extends CartLineItem>({
           </h1>
           <p className="text-lg text-contrast-300 contrast-more:text-[var(--cart-subtitle-text,hsl(var(--contrast-500)))]">
             {displayTotalQuantity} {displayTotalQuantity === 1 ? 'Product' : 'Products'}
+            <CartWeight lineItems={displayLineItems} />
           </p>
         </div>
         {/* Cart Items */}
@@ -705,6 +707,23 @@ export function CartClient<LineItem extends CartLineItem>({
         </ul>
       </div>
     </StickySidebarLayout>
+  );
+}
+
+function CartWeight({ lineItems }: { lineItems: CartLineItem[] }) {
+  if (lineItems.some((item) => item.weightInPounds === undefined)) {
+    return null;
+  }
+
+  const totalWeight = lineItems.reduce(
+    (total, item) => total + (item.weightInPounds ?? 0) * item.quantity,
+    0,
+  );
+
+  return (
+    <span className="ml-3">
+      {totalWeight.toLocaleString('en-US', { maximumFractionDigits: 2 })} lbs
+    </span>
   );
 }
 

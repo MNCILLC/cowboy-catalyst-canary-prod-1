@@ -36,6 +36,10 @@ export const PhysicalItemFragment = graphql(
       }
       catalogProductWithOptionSelections {
         ...PricingFragment
+        weight {
+          value
+          unit
+        }
       }
       selectedOptions {
         __typename

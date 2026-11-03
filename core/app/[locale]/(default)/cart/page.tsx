@@ -11,6 +11,7 @@ import { redirect } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 import { getFreeShippingAmountRemaining } from '~/lib/cart/free-shipping';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
+import { getWeightInPounds } from '~/lib/cart/weight';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
@@ -135,6 +136,7 @@ export default async function Cart({ params }: Props) {
         title: t('GiftCertificate.giftCertificate'),
         subtitle: `${t('GiftCertificate.to')}: ${item.recipient.name} (${item.recipient.email})${item.message ? `, ${t('GiftCertificate.message')}: ${item.message}` : ''}`,
         quantity: 1,
+        weightInPounds: 0,
         price: format.number(item.amount.value, {
           style: 'currency',
           currency: item.amount.currencyCode,
@@ -202,6 +204,10 @@ export default async function Cart({ params }: Props) {
       typename: item.__typename,
       id: item.entityId,
       quantity: item.quantity,
+      weightInPounds:
+        item.__typename === 'CartPhysicalItem'
+          ? getWeightInPounds(item.catalogProductWithOptionSelections?.weight)
+          : 0,
       price,
       subtitle: item.selectedOptions
         .map((option) => {
