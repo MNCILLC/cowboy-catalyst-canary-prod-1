@@ -13,6 +13,13 @@ import { Image } from '~/components/image';
 
 type ButtonLinkProps = ComponentPropsWithoutRef<typeof ButtonLink>;
 
+const buttonFontColors = {
+  primary: 'var(--button-primary-text, hsl(var(--foreground)))',
+  secondary: 'var(--button-secondary-text, hsl(var(--background)))',
+  tertiary: 'var(--button-tertiary-text, hsl(var(--foreground)))',
+  ghost: 'var(--button-ghost-text, hsl(var(--foreground)))',
+};
+
 interface Slide {
   title: string;
   description?: string;
@@ -28,6 +35,10 @@ interface Slide {
     variant?: ButtonLinkProps['variant'];
     size?: ButtonLinkProps['size'];
     shape?: ButtonLinkProps['shape'];
+    width?: number;
+    height?: number;
+    fontSize?: number;
+    fontColor?: ButtonLinkProps['variant'];
   };
   showCta?: boolean;
 }
@@ -264,15 +275,29 @@ export function Slideshow({
                       {showDescription && (
                         <div
                           className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
-                          dangerouslySetInnerHTML={{ __html: description ?? '' }}
+                          dangerouslySetInnerHTML={{ __html: description }}
                         />
                       )}
                       {showCta && (
                         <ButtonLink
-                          className="mt-6 @xl:mt-8"
+                          className={clsx(
+                            'mt-6 @xl:mt-8',
+                            cta?.fontColor != null && '[&>span]:mix-blend-normal',
+                          )}
                           href={cta?.href ?? '#'}
                           shape={cta?.shape ?? 'pill'}
                           size={cta?.size ?? 'large'}
+                          style={{
+                            fontSize: cta?.fontSize,
+                            color:
+                              cta?.fontColor != null ? buttonFontColors[cta.fontColor] : undefined,
+                            ...(cta?.width != null && { width: cta.width, paddingInline: 0 }),
+                            ...(cta?.height != null && {
+                              height: cta.height,
+                              minHeight: 0,
+                              paddingBlock: 0,
+                            }),
+                          }}
                           variant={cta?.variant ?? 'tertiary'}
                         >
                           {cta?.label ?? 'Learn more'}
