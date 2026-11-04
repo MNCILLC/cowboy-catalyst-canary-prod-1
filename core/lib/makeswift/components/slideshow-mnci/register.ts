@@ -60,6 +60,25 @@ runtime.registerComponent(MSSlideshow, {
           showButton: Checkbox({ label: 'Show button', defaultValue: true }),
           buttonText: TextInput({ label: 'Button text', defaultValue: 'Shop all' }),
           buttonLink: Link({ label: 'Button link' }),
+          buttonWidth: TextInput({
+            label: 'Button width (px)',
+            description: 'Leave blank to use the default width and padding.',
+          }),
+          buttonHeight: TextInput({
+            label: 'Button height (px)',
+            description: 'Leave blank to use the default height and padding.',
+          }),
+          buttonFontSize: Number({ label: 'Button font size', suffix: 'px', min: 1 }),
+          buttonFontColor: Select({
+            label: 'Button font color',
+            description: 'Use a button theme text color. Leave unset to follow Button color.',
+            options: [
+              { value: 'primary', label: 'Primary' },
+              { value: 'secondary', label: 'Secondary' },
+              { value: 'tertiary', label: 'Tertiary' },
+              { value: 'ghost', label: 'Ghost' },
+            ],
+          }),
           buttonColor: Select({
             label: 'Button color',
             options: [
