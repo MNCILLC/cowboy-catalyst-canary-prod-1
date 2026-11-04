@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  Color,
   Group,
   Image,
   Link,
@@ -69,18 +70,16 @@ runtime.registerComponent(MSSlideshow, {
             description: 'Leave blank to use the default height and padding.',
           }),
           buttonFontSize: Number({ label: 'Button font size', suffix: 'px', min: 1 }),
-          buttonFontColor: Select({
+          buttonFontColor: Color({
             label: 'Button font color',
-            description: 'Use a button theme text color. Leave unset to follow Button color.',
-            options: [
-              { value: 'primary', label: 'Primary' },
-              { value: 'secondary', label: 'Secondary' },
-              { value: 'tertiary', label: 'Tertiary' },
-              { value: 'ghost', label: 'Ghost' },
-            ],
+            description: 'Leave unset to use the button style text color.',
+          }),
+          buttonBackgroundColor: Color({
+            label: 'Button color',
+            description: 'Leave unset to use the button style background and border colors.',
           }),
           buttonColor: Select({
-            label: 'Button color',
+            label: 'Button style',
             options: [
               { value: 'primary', label: 'Primary' },
               { value: 'secondary', label: 'Secondary' },

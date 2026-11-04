@@ -15,7 +15,8 @@ interface Slide {
   buttonWidth?: string | number;
   buttonHeight?: string | number;
   buttonFontSize?: number;
-  buttonFontColor?: 'primary' | 'secondary' | 'tertiary' | 'ghost';
+  buttonFontColor?: string;
+  buttonBackgroundColor?: string;
   buttonColor: 'primary' | 'secondary' | 'tertiary' | 'ghost';
 }
 
@@ -69,6 +70,7 @@ export function MSSlideshow({
           buttonHeight,
           buttonFontSize,
           buttonFontColor,
+          buttonBackgroundColor,
           buttonColor,
         }) => {
           return {
@@ -88,6 +90,7 @@ export function MSSlideshow({
               height: parseButtonDimension(buttonHeight),
               fontSize: buttonFontSize,
               fontColor: buttonFontColor,
+              backgroundColor: buttonBackgroundColor,
             },
           };
         },
