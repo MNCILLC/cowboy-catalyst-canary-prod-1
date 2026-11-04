@@ -13,13 +13,6 @@ import { Image } from '~/components/image';
 
 type ButtonLinkProps = ComponentPropsWithoutRef<typeof ButtonLink>;
 
-const buttonFontColors = {
-  primary: 'var(--button-primary-text, hsl(var(--foreground)))',
-  secondary: 'var(--button-secondary-text, hsl(var(--background)))',
-  tertiary: 'var(--button-tertiary-text, hsl(var(--foreground)))',
-  ghost: 'var(--button-ghost-text, hsl(var(--foreground)))',
-};
-
 interface Slide {
   title: string;
   description?: string;
@@ -38,7 +31,8 @@ interface Slide {
     width?: number;
     height?: number;
     fontSize?: number;
-    fontColor?: ButtonLinkProps['variant'];
+    fontColor?: string;
+    backgroundColor?: string;
   };
   showCta?: boolean;
 }
@@ -232,6 +226,8 @@ export function Slideshow({
               },
               idx,
             ) => {
+              const buttonVariant = cta?.variant ?? 'tertiary';
+
               return (
                 <div
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
@@ -289,8 +285,12 @@ export function Slideshow({
                           size={cta?.size ?? 'large'}
                           style={{
                             fontSize: cta?.fontSize,
-                            color:
-                              cta?.fontColor != null ? buttonFontColors[cta.fontColor] : undefined,
+                            color: cta?.fontColor,
+                            ...(cta?.backgroundColor != null && {
+                              [`--button-${buttonVariant}-background`]: cta.backgroundColor,
+                              [`--button-${buttonVariant}-border`]: cta.backgroundColor,
+                              [`--button-${buttonVariant}-background-hover`]: `color-mix(in srgb, ${cta.backgroundColor}, white 25%)`,
+                            }),
                             ...(cta?.width != null && { width: cta.width, paddingInline: 0 }),
                             ...(cta?.height != null && {
                               height: cta.height,
@@ -298,7 +298,7 @@ export function Slideshow({
                               paddingBlock: 0,
                             }),
                           }}
-                          variant={cta?.variant ?? 'tertiary'}
+                          variant={buttonVariant}
                         >
                           {cta?.label ?? 'Learn more'}
                         </ButtonLink>
