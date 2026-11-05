@@ -7,6 +7,7 @@ import './components/customer-group-slot/register';
 import './components/contact-section/register';
 import './components/digital-catalog/register';
 import './components/hero-video/register';
+import './components/html-block/register';
 import './components/map-section/register';
 import './components/product-card/register';
 import './components/product-detail/register';
