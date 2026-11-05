@@ -13,6 +13,7 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { assertCartShipping, CartShippingError } from '~/lib/freight-cart/server';
 import { assertLoyaltyCheckout, LoyaltyCheckoutError } from '~/lib/loyalty/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
@@ -72,8 +73,12 @@ const CheckoutRedirectMutation = graphql(`
 
 function isCheckoutPolicyError(
   error: unknown,
-): error is ProUseRequiredError | LoyaltyCheckoutError {
-  return error instanceof ProUseRequiredError || error instanceof LoyaltyCheckoutError;
+): error is ProUseRequiredError | LoyaltyCheckoutError | CartShippingError {
+  return (
+    error instanceof ProUseRequiredError ||
+    error instanceof LoyaltyCheckoutError ||
+    error instanceof CartShippingError
+  );
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
@@ -102,6 +107,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   try {
     await assertProUseCart(cartId);
     await assertLoyaltyCheckout(cartId);
+    await assertCartShipping(cartId);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
