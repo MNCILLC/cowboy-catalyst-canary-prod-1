@@ -33,6 +33,7 @@ import { Link } from '~/components/link';
 
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
 import { FreeShippingAlert } from './free-shipping-alert';
+import { Fulfillment, type FulfillmentProps, type FulfillmentStatus } from './fulfillment';
 import { ShippingForm, ShippingFormState } from './shipping-form';
 
 import { CartEmptyState } from '.';
@@ -184,6 +185,7 @@ export interface CartProps<LineItem extends CartLineItem> {
   couponCode?: CouponCode;
   giftCertificate?: GiftCertificate;
   shipping?: Shipping;
+  fulfillment?: FulfillmentProps;
   lineItemActionPendingLabel?: string;
   minimumOrderSubtotal: number;
   isAuthenticated: boolean;
@@ -198,7 +200,6 @@ const defaultEmptyState = {
 
 type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 'delete' };
 
-// eslint-disable-next-line valid-jsdoc
 /**
  * This component supports various CSS variables for theming. Here's a comprehensive list, along
  * with their default values:
@@ -223,6 +224,8 @@ type PendingLineItemIntent = { intent: 'update'; quantity: number } | { intent: 
  * }
  * ```
  */
+// Cart coordinates existing item, authentication, discount and fulfillment controls.
+// eslint-disable-next-line complexity
 export function CartClient<LineItem extends CartLineItem>({
   title,
   freeShippingMessage,
@@ -248,8 +251,15 @@ export function CartClient<LineItem extends CartLineItem>({
   summaryTitle,
   loyalty,
   shipping,
+  fulfillment,
 }: CartProps<LineItem>) {
   const events = useEvents();
+  const [fulfillmentStatus, setFulfillmentStatus] = useState<FulfillmentStatus>({
+    selected: Boolean(fulfillment?.initial.preferences),
+    ready: fulfillment?.initial.confirmed ?? true,
+    pending: false,
+  });
+  const fulfillmentBlocked = Boolean(fulfillment) && !fulfillmentStatus.ready;
 
   const amountRemaining = Math.max(minimumOrderSubtotal - cart.subtotal, 0);
   const minimumOrderMet = cart.subtotal >= minimumOrderSubtotal;
@@ -527,7 +537,11 @@ export function CartClient<LineItem extends CartLineItem>({
                 </div>
               ))}
 
-              {shipping && <ShippingForm {...shipping} />}
+              {fulfillment ? (
+                <Fulfillment {...fulfillment} onStatus={setFulfillmentStatus} />
+              ) : (
+                shipping && <ShippingForm {...shipping} />
+              )}
             </div>
             {couponCode && (
               <CouponCodeForm
@@ -635,11 +649,20 @@ export function CartClient<LineItem extends CartLineItem>({
             />
           )}
           {loyalty}
+          {fulfillment && !fulfillmentStatus.selected && (
+            <p aria-live="polite" className="mt-4 text-sm">
+              Select Pickup or Ship to continue
+            </p>
+          )}
           <CheckoutButton
             action={checkoutAction}
             className="mt-4 w-full"
-            disabled={!minimumOrderMet || (checkoutAuthenticationRequired && !isAuthenticated)}
-            isCartUpdatePending={isCartMutationPending}
+            disabled={
+              fulfillmentBlocked ||
+              !minimumOrderMet ||
+              (checkoutAuthenticationRequired && !isAuthenticated)
+            }
+            isCartUpdatePending={isCartMutationPending || fulfillmentStatus.pending}
           >
             {checkoutLabel}
             <ArrowRight size={20} strokeWidth={1} />
