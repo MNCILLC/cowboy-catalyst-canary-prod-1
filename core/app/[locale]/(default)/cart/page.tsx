@@ -14,12 +14,14 @@ import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { getWeightInPounds } from '~/lib/cart/weight';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getPreferredCurrencyCode } from '~/lib/currency';
+import { freightCartEnabled, getCartShippingState } from '~/lib/freight-cart/server';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { exists } from '~/lib/utils';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { updateCouponCode } from './_actions/update-coupon-code';
+import { updateFulfillment } from './_actions/update-fulfillment';
 import { updateGiftCertificate } from './_actions/update-gift-certificate';
 import { updateLineItem } from './_actions/update-line-item';
 import { updateShippingInfo } from './_actions/update-shipping-info';
@@ -121,6 +123,8 @@ export default async function Cart({ params }: Props) {
   }
 
   const taxIncluded = cart.isTaxIncluded;
+  const useFreightCart = (await freightCartEnabled()) && cart.lineItems.physicalItems.length > 0;
+  const freightState = useFreightCart ? await getCartShippingState(cartId) : undefined;
 
   const lineItems = [
     ...cart.lineItems.giftCertificates,
@@ -265,7 +269,7 @@ export default async function Cart({ params }: Props) {
     checkout?.shippingConsignments?.find((consignment) => consignment.selectedShippingOption) ||
     checkout?.shippingConsignments?.[0];
 
-  const shippingCountries = await getShippingCountries();
+  const shippingCountries = useFreightCart ? [] : await getShippingCountries();
 
   const countries = shippingCountries.map((country) => ({
     value: country.code,
@@ -296,6 +300,15 @@ export default async function Cart({ params }: Props) {
 
   const checkoutUrl = data.site.settings?.url.checkoutUrl;
   const freeShippingAmountRemaining = getFreeShippingAmountRemaining(checkout?.subtotal?.value);
+  const taxSubtitle =
+    taxIncluded && checkout?.taxTotal
+      ? t('CheckoutSummary.totalIncludesTax', {
+          tax: format.number(checkout.taxTotal.value, {
+            style: 'currency',
+            currency: cart.currencyCode,
+          }),
+        })
+      : undefined;
 
   return (
     <>
@@ -309,20 +322,23 @@ export default async function Cart({ params }: Props) {
             lineItems: formattedLineItems,
             subtotal: checkout?.subtotal?.value ?? 0,
             currencyCode: cart.currencyCode,
-            total: format.number(checkout?.grandTotal?.value || 0, {
-              style: 'currency',
-              currency: cart.currencyCode,
-            }),
-            totalLabel: t('CheckoutSummary.total'),
-            totalSubtitle:
-              taxIncluded && checkout?.taxTotal
-                ? t('CheckoutSummary.totalIncludesTax', {
-                    tax: format.number(checkout.taxTotal.value, {
-                      style: 'currency',
-                      currency: cart.currencyCode,
-                    }),
-                  })
-                : undefined,
+            // A previous hosted-checkout visit may have left a selected rate.
+            // The cart now estimates before shipping, regardless of that stale rate.
+            total: format.number(
+              Math.max(
+                0,
+                (checkout?.grandTotal?.value ?? 0) -
+                  (useFreightCart ? (checkout?.shippingCostTotal?.value ?? 0) : 0),
+              ),
+              {
+                style: 'currency',
+                currency: cart.currencyCode,
+              },
+            ),
+            totalLabel: useFreightCart ? 'Estimated total' : t('CheckoutSummary.total'),
+            totalSubtitle: useFreightCart
+              ? 'Shipping and applicable taxes are confirmed at checkout.'
+              : taxSubtitle,
             summaryItems: [
               {
                 label: t('CheckoutSummary.subTotal'),
@@ -358,7 +374,7 @@ export default async function Cart({ params }: Props) {
               })),
               !taxIncluded && checkout?.taxTotal
                 ? {
-                    label: t('CheckoutSummary.tax'),
+                    label: useFreightCart ? 'Estimated tax' : t('CheckoutSummary.tax'),
                     value: format.number(checkout.taxTotal.value, {
                       style: 'currency',
                       currency: cart.currencyCode,
@@ -400,6 +416,11 @@ export default async function Cart({ params }: Props) {
               : undefined
           }
           freeShippingTextClass={process.env.FREE_SHIPPING_TEXT_CLASS?.trim() || undefined}
+          fulfillment={
+            freightState
+              ? { initial: freightState, saveAction: updateFulfillment.bind(null, cartId) }
+              : undefined
+          }
           giftCertificate={
             giftCertificatesEnabled
               ? {

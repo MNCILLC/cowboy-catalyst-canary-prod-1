@@ -1,5 +1,6 @@
 import {
   Checkbox,
+  Color,
   Group,
   Image,
   Link,
@@ -60,8 +61,25 @@ runtime.registerComponent(MSSlideshow, {
           showButton: Checkbox({ label: 'Show button', defaultValue: true }),
           buttonText: TextInput({ label: 'Button text', defaultValue: 'Shop all' }),
           buttonLink: Link({ label: 'Button link' }),
-          buttonColor: Select({
+          buttonWidth: TextInput({
+            label: 'Button width (px)',
+            description: 'Leave blank to use the default width and padding.',
+          }),
+          buttonHeight: TextInput({
+            label: 'Button height (px)',
+            description: 'Leave blank to use the default height and padding.',
+          }),
+          buttonFontSize: Number({ label: 'Button font size', suffix: 'px', min: 1 }),
+          buttonFontColor: Color({
+            label: 'Button font color',
+            description: 'Leave unset to use the button style text color.',
+          }),
+          buttonBackgroundColor: Color({
             label: 'Button color',
+            description: 'Leave unset to use the button style background and border colors.',
+          }),
+          buttonColor: Select({
+            label: 'Button style',
             options: [
               { value: 'primary', label: 'Primary' },
               { value: 'secondary', label: 'Secondary' },

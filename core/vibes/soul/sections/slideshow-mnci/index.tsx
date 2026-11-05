@@ -28,6 +28,11 @@ interface Slide {
     variant?: ButtonLinkProps['variant'];
     size?: ButtonLinkProps['size'];
     shape?: ButtonLinkProps['shape'];
+    width?: number;
+    height?: number;
+    fontSize?: number;
+    fontColor?: string;
+    backgroundColor?: string;
   };
   showCta?: boolean;
 }
@@ -221,6 +226,8 @@ export function Slideshow({
               },
               idx,
             ) => {
+              const buttonVariant = cta?.variant ?? 'tertiary';
+
               return (
                 <div
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
@@ -264,16 +271,34 @@ export function Slideshow({
                       {showDescription && (
                         <div
                           className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
-                          dangerouslySetInnerHTML={{ __html: description ?? '' }}
+                          dangerouslySetInnerHTML={{ __html: description }}
                         />
                       )}
                       {showCta && (
                         <ButtonLink
-                          className="mt-6 @xl:mt-8"
+                          className={clsx(
+                            'mt-6 @xl:mt-8',
+                            cta?.fontColor != null && '[&>span]:mix-blend-normal',
+                          )}
                           href={cta?.href ?? '#'}
                           shape={cta?.shape ?? 'pill'}
                           size={cta?.size ?? 'large'}
-                          variant={cta?.variant ?? 'tertiary'}
+                          style={{
+                            fontSize: cta?.fontSize,
+                            color: cta?.fontColor,
+                            ...(cta?.backgroundColor != null && {
+                              [`--button-${buttonVariant}-background`]: cta.backgroundColor,
+                              [`--button-${buttonVariant}-border`]: cta.backgroundColor,
+                              [`--button-${buttonVariant}-background-hover`]: `color-mix(in srgb, ${cta.backgroundColor}, white 25%)`,
+                            }),
+                            ...(cta?.width != null && { width: cta.width, paddingInline: 0 }),
+                            ...(cta?.height != null && {
+                              height: cta.height,
+                              minHeight: 0,
+                              paddingBlock: 0,
+                            }),
+                          }}
+                          variant={buttonVariant}
                         >
                           {cta?.label ?? 'Learn more'}
                         </ButtonLink>

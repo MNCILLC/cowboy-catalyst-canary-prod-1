@@ -12,6 +12,11 @@ interface Slide {
   showButton: boolean;
   buttonLink?: { href?: string; target?: string };
   buttonText: string;
+  buttonWidth?: string | number;
+  buttonHeight?: string | number;
+  buttonFontSize?: number;
+  buttonFontColor?: string;
+  buttonBackgroundColor?: string;
   buttonColor: 'primary' | 'secondary' | 'tertiary' | 'ghost';
 }
 
@@ -23,6 +28,12 @@ interface MSAccordionsProps {
   height?: string;
   minHeight?: string;
   aspectRatio?: string;
+}
+
+function parseButtonDimension(value: string | number | undefined): number | undefined {
+  const dimension = Number(value);
+
+  return Number.isFinite(dimension) && dimension > 0 ? dimension : undefined;
 }
 
 export function MSSlideshow({
@@ -55,6 +66,11 @@ export function MSSlideshow({
           showButton,
           buttonLink,
           buttonText,
+          buttonWidth,
+          buttonHeight,
+          buttonFontSize,
+          buttonFontColor,
+          buttonBackgroundColor,
           buttonColor,
         }) => {
           return {
@@ -66,7 +82,16 @@ export function MSSlideshow({
             contentVerticalAlign,
             shadingVerticalAlign,
             showCta: showButton,
-            cta: { label: buttonText, href: buttonLink?.href ?? '#', variant: buttonColor },
+            cta: {
+              label: buttonText,
+              href: buttonLink?.href ?? '#',
+              variant: buttonColor,
+              width: parseButtonDimension(buttonWidth),
+              height: parseButtonDimension(buttonHeight),
+              fontSize: buttonFontSize,
+              fontColor: buttonFontColor,
+              backgroundColor: buttonBackgroundColor,
+            },
           };
         },
       )}
