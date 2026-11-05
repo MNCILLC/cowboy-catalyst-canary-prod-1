@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { getSessionCustomerAccessToken } from '~/auth';
+import { auth, getSessionCustomerAccessToken } from '~/auth';
 import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { getCartId } from '~/lib/cart';
@@ -68,8 +68,21 @@ const UpdateCartShipping = graphql(`
 
 export class CartShippingError extends Error {}
 
-export function freightCartEnabled() {
-  return Boolean(process.env.FREIGHT_APP_URL?.trim());
+export async function freightCartEnabled() {
+  if (process.env.FREIGHT_CART_ENABLED === 'true') return true;
+
+  const enabledUsers = (process.env.FREIGHT_CART_ENABLED_USERS ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (!enabledUsers.length) return false;
+
+  // Resolve identity on the server for every render, save, and checkout check.
+  const session = await auth();
+  const email = session?.user?.email?.trim().toLowerCase();
+
+  return Boolean(session?.user?.customerAccessToken && email && enabledUsers.includes(email));
 }
 
 function connection() {
@@ -117,7 +130,7 @@ export async function getCartShippingState(cartId: string): Promise<ShippingStat
 export async function saveCartShipping(cartId: string, raw: unknown) {
   // A client-supplied ID cannot select another shopper's cart or follow an old
   // tab after login/cart replacement. Resolve authority from the signed session.
-  if (!freightCartEnabled() || cartId !== (await getCartId()))
+  if (!(await freightCartEnabled()) || cartId !== (await getCartId()))
     throw new CartShippingError('Your cart has changed. Reload the cart and try again.');
 
   const selection = shippingSelectionSchema.parse(raw);
@@ -174,7 +187,7 @@ export async function saveCartShipping(cartId: string, raw: unknown) {
 }
 
 export async function assertCartShipping(cartId: string) {
-  if (!freightCartEnabled()) return;
+  if (!(await freightCartEnabled())) return;
 
   const { cart } = await readCart(cartId);
 

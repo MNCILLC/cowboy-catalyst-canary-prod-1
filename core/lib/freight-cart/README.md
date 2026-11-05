@@ -1,5 +1,16 @@
 # Cart fulfillment
 
+Set server-only `FREIGHT_CART_ENABLED=true` to enable the new cart options.
+It defaults to false; missing, blank, false, or any value other than lowercase
+`true` leaves the original cart in place unless the customer is allowlisted.
+
+Optionally set `FREIGHT_CART_ENABLED_USERS=tester@example.com,other@example.com`
+to enable the feature for those logged-in customers while the global flag is off.
+Emails are matched exactly after trimming whitespace and ignoring case. Missing or
+blank lists enable nobody; guests do not qualify. The global flag set to `true`
+enables everyone, including guests. Identity comes from the authenticated server
+session; the list is never sent to the browser.
+
 Set server-only `FREIGHT_APP_URL` to the deployed Freight App origin (for example
 `https://bc-freight-app.vercel.app`) and `FREIGHT_APP_CHECKOUT_TOKEN` to the same
 store-specific checkout token used in the BigCommerce carrier connection's
@@ -7,9 +18,11 @@ store-specific checkout token used in the BigCommerce carrier connection's
 variables with `NEXT_PUBLIC_` or substitute the management API access token.
 Redeploy/restart after configuring them.
 
-A nonblank URL replaces the cart shipping estimator for physical carts with
-Pickup at Warehouse and Ship. Without a URL, the original cart remains available.
-A URL with missing/invalid credentials blocks saving and checkout until corrected.
+When enabled, Pickup at Warehouse and Ship replace the shipping estimator for
+physical carts. A configured URL alone does not enable the feature. For customers
+without feature access, the fulfillment save action is rejected and checkout skips
+this feature’s preference check. For customers with feature access, missing/invalid
+connection settings block saving and checkout until corrected.
 No method is selected on a new cart. Previous choices are restored for the same
 cart. Digital-only carts are exempt.
 
@@ -18,7 +31,10 @@ The Freight App needs migration `0013_cart_shipping_preferences.sql` and its
 Catalyst deployment, enable `FREIGHT_CART_PREFERENCES_REQUIRED_STORES=cujyjwkq5o`
 in Freight App to deny rates when this store's request has no cart ID or saved
 choice. This requirement also affects other channels in the same store, so those
-must adopt this cart flow or will not receive freight rates.
+must adopt this cart flow or will not receive freight rates. When disabling the
+Catalyst feature (or testing with only allowlisted customers), remove the store
+from that Freight App required-stores list to allow carts without a saved selection. Existing saved preferences are retained
+and still honored by Freight App; this storefront flag does not purge app data.
 
 The action uses the signed session's cart ID, saves selections in Freight App,
 and uses the existing Storefront GraphQL client to write

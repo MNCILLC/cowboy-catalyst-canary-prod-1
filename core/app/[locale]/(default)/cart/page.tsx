@@ -123,7 +123,7 @@ export default async function Cart({ params }: Props) {
   }
 
   const taxIncluded = cart.isTaxIncluded;
-  const useFreightCart = freightCartEnabled() && cart.lineItems.physicalItems.length > 0;
+  const useFreightCart = (await freightCartEnabled()) && cart.lineItems.physicalItems.length > 0;
   const freightState = useFreightCart ? await getCartShippingState(cartId) : undefined;
 
   const lineItems = [
