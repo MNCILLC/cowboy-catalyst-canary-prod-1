@@ -17,6 +17,7 @@ import { getPreferredCurrencyCode } from '~/lib/currency';
 import { freightCartEnabled, getCartShippingState } from '~/lib/freight-cart/server';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
+import { loadShippingOriginDetails } from '~/lib/map-section/actions';
 import { exists } from '~/lib/utils';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
@@ -124,7 +125,10 @@ export default async function Cart({ params }: Props) {
 
   const taxIncluded = cart.isTaxIncluded;
   const useFreightCart = (await freightCartEnabled()) && cart.lineItems.physicalItems.length > 0;
-  const freightState = useFreightCart ? await getCartShippingState(cartId) : undefined;
+  const [freightState, shippingOrigin] = await Promise.all([
+    useFreightCart ? getCartShippingState(cartId) : undefined,
+    useFreightCart ? loadShippingOriginDetails().catch(() => null) : null,
+  ]);
 
   const lineItems = [
     ...cart.lineItems.giftCertificates,
@@ -418,7 +422,11 @@ export default async function Cart({ params }: Props) {
           freeShippingTextClass={process.env.FREE_SHIPPING_TEXT_CLASS?.trim() || undefined}
           fulfillment={
             freightState
-              ? { initial: freightState, saveAction: updateFulfillment.bind(null, cartId) }
+              ? {
+                  initial: freightState,
+                  saveAction: updateFulfillment.bind(null, cartId),
+                  shippingOrigin,
+                }
               : undefined
           }
           giftCertificate={

@@ -27,11 +27,24 @@ const ShippingOriginQuery = graphql(`
   }
 `);
 
-export async function loadMapShippingOrigin() {
+export async function loadShippingOriginDetails() {
   const { data } = await client.fetch({
     document: ShippingOriginQuery,
     fetchOptions: { next: { revalidate: 60 } },
   });
 
-  return formatOriginAddress(data.inventory.locations.edges?.[0]?.node.address);
+  const address = data.inventory.locations.edges?.[0]?.node.address;
+  const formattedAddress = formatOriginAddress(address);
+
+  if (!address || !formattedAddress) return null;
+
+  return {
+    city: address.city.trim(),
+    state: address.stateOrProvince.trim(),
+    address: formattedAddress,
+  };
+}
+
+export async function loadMapShippingOrigin() {
+  return (await loadShippingOriginDetails())?.address ?? null;
 }

@@ -1,14 +1,41 @@
 'use client';
 
+import { Info, MapPin, TriangleAlert } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
+import { Tooltip } from '@/vibes/soul/primitives/tooltip';
 import {
   deliveryServices,
   type ShippingSaveResult,
   type ShippingSelection,
   type ShippingState,
 } from '~/lib/freight-cart/policy';
+
+function DeliveryServiceHelp({ label, description }: { label: string; description: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip
+      className="max-w-64 whitespace-normal text-sm"
+      open={open}
+      setOpen={setOpen}
+      trigger={
+        <button
+          aria-label={`About ${label}`}
+          className="shrink-0 rounded p-1 focus-visible:outline focus-visible:outline-2"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <Info aria-hidden="true" size={16} />
+        </button>
+      }
+    >
+      {description}
+    </Tooltip>
+  );
+}
 
 export interface FulfillmentStatus {
   selected: boolean;
@@ -17,6 +44,7 @@ export interface FulfillmentStatus {
 }
 export interface FulfillmentProps {
   initial: ShippingState;
+  shippingOrigin?: { city: string; state: string; address: string } | null;
   saveAction: (selection: ShippingSelection) => Promise<ShippingSaveResult>;
 }
 
@@ -32,6 +60,7 @@ function editableSelection(value: ShippingSelection): ShippingSelection {
 export function Fulfillment({
   initial,
   saveAction,
+  shippingOrigin,
   onStatus,
 }: FulfillmentProps & { onStatus: (status: FulfillmentStatus) => void }) {
   const [selection, setSelection] = useState<ShippingSelection | null>(() =>
@@ -78,22 +107,51 @@ export function Fulfillment({
 
   return (
     <div className="py-4">
-      <dt className="sr-only">Shipping</dt>
+      <dt className="mb-2 flex items-center gap-2">
+        <span>Shipping</span>
+        {selection === null && (
+          <Badge
+            className="inline-flex items-center gap-1.5 !normal-case"
+            shape="pill"
+            variant="warning"
+          >
+            <TriangleAlert aria-hidden="true" className="shrink-0" size={14} />
+            <span>Select Pickup or Ship to continue</span>
+          </Badge>
+        )}
+      </dt>
       <dd>
         <fieldset aria-describedby="fulfillment-status" className="space-y-4" disabled={pending}>
           <legend className="sr-only">Fulfillment method</legend>
-          <label className="flex cursor-pointer items-center gap-3">
-            <input
-              checked={selection?.fulfillmentMethod === 'pickup'}
-              className="h-4 w-4 accent-current"
-              name="fulfillment-method"
-              onChange={() => save({ fulfillmentMethod: 'pickup', accessorials: [] })}
-              type="radio"
-              value="pickup"
-            />
-            <span className="flex-1">Pickup at Warehouse</span>
-            {selection?.fulfillmentMethod === 'pickup' && <span>$0.00</span>}
-          </label>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                checked={selection?.fulfillmentMethod === 'pickup'}
+                className="h-4 w-4 shrink-0 accent-current"
+                name="fulfillment-method"
+                onChange={() => save({ fulfillmentMethod: 'pickup', accessorials: [] })}
+                type="radio"
+                value="pickup"
+              />
+              <span>Pickup at Warehouse</span>
+            </label>
+            {shippingOrigin && (
+              <a
+                aria-label={`View warehouse in ${[shippingOrigin.city, shippingOrigin.state].filter(Boolean).join(', ')} on Google Maps (opens in a new window)`}
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-contrast-100 px-2 py-1 text-xs hover:bg-contrast-200 focus-visible:outline focus-visible:outline-2"
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shippingOrigin.address)}`}
+                rel="noopener noreferrer"
+                target="_blank"
+                title={shippingOrigin.address}
+              >
+                <MapPin aria-hidden="true" className="shrink-0" size={16} />
+                <span>
+                  {[shippingOrigin.city, shippingOrigin.state].filter(Boolean).join(', ')}
+                </span>
+              </a>
+            )}
+            {selection?.fulfillmentMethod === 'pickup' && <span className="ml-auto">$0.00</span>}
+          </div>
           <label className="flex cursor-pointer items-center gap-3">
             <input
               checked={selection?.fulfillmentMethod === 'ship'}
@@ -109,29 +167,43 @@ export function Fulfillment({
             )}
           </label>
           {selection?.fulfillmentMethod === 'ship' && (
-            <fieldset className="space-y-3 pl-7">
-              <legend className="mb-3 text-sm font-semibold">Delivery services</legend>
-              {deliveryServices.map((service) => (
-                <label
-                  className="flex cursor-pointer items-center gap-3 text-sm"
-                  key={service.code}
-                >
-                  <input
-                    checked={selection.accessorials.includes(service.code)}
-                    className="h-4 w-4 accent-current"
-                    onChange={(event) =>
-                      save({
-                        ...selection,
-                        accessorials: event.target.checked
-                          ? [...selection.accessorials, service.code]
-                          : selection.accessorials.filter((code) => code !== service.code),
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  {service.label}
-                </label>
-              ))}
+            <fieldset className="min-w-0 pl-7 @container">
+              <legend className="mb-3 w-full text-sm font-semibold">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span>Delivery services</span>
+                  <Badge
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !normal-case"
+                    shape="pill"
+                    variant="warning"
+                  >
+                    <TriangleAlert aria-hidden="true" className="shrink-0" size={14} />
+                    <span>Select services to ensure proper delivery</span>
+                  </Badge>
+                </span>
+              </legend>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 @[24rem]:grid-cols-2">
+                {deliveryServices.map((service) => (
+                  <div className="flex items-center gap-1" key={service.code}>
+                    <label className="flex cursor-pointer items-center gap-3 whitespace-nowrap text-xs">
+                      <input
+                        checked={selection.accessorials.includes(service.code)}
+                        className="h-4 w-4 shrink-0 accent-current"
+                        onChange={(event) =>
+                          save({
+                            ...selection,
+                            accessorials: event.target.checked
+                              ? [...selection.accessorials, service.code]
+                              : selection.accessorials.filter((code) => code !== service.code),
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      {service.label}
+                    </label>
+                    <DeliveryServiceHelp description={service.description} label={service.label} />
+                  </div>
+                ))}
+              </div>
             </fieldset>
           )}
         </fieldset>
