@@ -137,7 +137,7 @@ export function Fulfillment({
           {selection?.fulfillmentMethod === 'ship' && (
             <fieldset className="min-w-0 pl-7 @container">
               <legend className="mb-3 text-sm font-semibold">Delivery services</legend>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3 @[28rem]:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 @[24rem]:grid-cols-2">
                 {deliveryServices.map((service) => (
                   <div className="flex items-center gap-1" key={service.code}>
                     <label className="flex cursor-pointer items-center gap-3 whitespace-nowrap text-xs">
