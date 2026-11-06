@@ -1,8 +1,9 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import { Info, TriangleAlert } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
 import { Tooltip } from '@/vibes/soul/primitives/tooltip';
 import {
@@ -104,7 +105,19 @@ export function Fulfillment({
 
   return (
     <div className="py-4">
-      <dt className="mb-2">Shipping</dt>
+      <dt className="mb-2 flex items-center gap-2">
+        <span>Shipping</span>
+        {selection === null && (
+          <Badge
+            className="inline-flex items-center gap-1.5 !normal-case"
+            shape="pill"
+            variant="warning"
+          >
+            <TriangleAlert aria-hidden="true" className="shrink-0" size={14} />
+            <span>Select Pickup or Ship to continue</span>
+          </Badge>
+        )}
+      </dt>
       <dd>
         <fieldset aria-describedby="fulfillment-status" className="space-y-4" disabled={pending}>
           <legend className="sr-only">Fulfillment method</legend>
@@ -136,7 +149,19 @@ export function Fulfillment({
           </label>
           {selection?.fulfillmentMethod === 'ship' && (
             <fieldset className="min-w-0 pl-7 @container">
-              <legend className="mb-3 text-sm font-semibold">Delivery services</legend>
+              <legend className="mb-3 w-full text-sm font-semibold">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span>Delivery services</span>
+                  <Badge
+                    className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap !normal-case"
+                    shape="pill"
+                    variant="warning"
+                  >
+                    <TriangleAlert aria-hidden="true" className="shrink-0" size={14} />
+                    <span>Select services to ensure proper delivery</span>
+                  </Badge>
+                </span>
+              </legend>
               <div className="grid grid-cols-1 gap-x-4 gap-y-3 @[24rem]:grid-cols-2">
                 {deliveryServices.map((service) => (
                   <div className="flex items-center gap-1" key={service.code}>

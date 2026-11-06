@@ -1,7 +1,8 @@
 import { clsx } from 'clsx';
+import { ReactNode } from 'react';
 
 export interface BadgeProps {
-  children: string;
+  children: ReactNode;
   shape?: 'pill' | 'rounded';
   variant?: 'primary' | 'warning' | 'error' | 'success' | 'info';
   className?: string;
