@@ -109,29 +109,31 @@ export function Fulfillment({
             )}
           </label>
           {selection?.fulfillmentMethod === 'ship' && (
-            <fieldset className="space-y-3 pl-7">
+            <fieldset className="pl-7">
               <legend className="mb-3 text-sm font-semibold">Delivery services</legend>
-              {deliveryServices.map((service) => (
-                <label
-                  className="flex cursor-pointer items-center gap-3 text-sm"
-                  key={service.code}
-                >
-                  <input
-                    checked={selection.accessorials.includes(service.code)}
-                    className="h-4 w-4 accent-current"
-                    onChange={(event) =>
-                      save({
-                        ...selection,
-                        accessorials: event.target.checked
-                          ? [...selection.accessorials, service.code]
-                          : selection.accessorials.filter((code) => code !== service.code),
-                      })
-                    }
-                    type="checkbox"
-                  />
-                  {service.label}
-                </label>
-              ))}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                {deliveryServices.map((service) => (
+                  <label
+                    className="flex cursor-pointer items-center gap-3 text-sm"
+                    key={service.code}
+                  >
+                    <input
+                      checked={selection.accessorials.includes(service.code)}
+                      className="h-4 w-4 shrink-0 accent-current"
+                      onChange={(event) =>
+                        save({
+                          ...selection,
+                          accessorials: event.target.checked
+                            ? [...selection.accessorials, service.code]
+                            : selection.accessorials.filter((code) => code !== service.code),
+                        })
+                      }
+                      type="checkbox"
+                    />
+                    {service.label}
+                  </label>
+                ))}
+              </div>
             </fieldset>
           )}
         </fieldset>
