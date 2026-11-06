@@ -650,9 +650,16 @@ export function CartClient<LineItem extends CartLineItem>({
           )}
           {loyalty}
           {fulfillment && !fulfillmentStatus.selected && (
-            <p aria-live="polite" className="mt-4 text-sm">
-              Select Pickup or Ship to continue
-            </p>
+            <Alert
+              className="mt-4 w-full !min-w-0 !max-w-none"
+              message={
+                <span className="flex items-center gap-2">
+                  <TriangleAlert aria-hidden="true" className="shrink-0" size={18} />
+                  <span>Select Pickup or Ship to continue</span>
+                </span>
+              }
+              variant="warning"
+            />
           )}
           <CheckoutButton
             action={checkoutAction}
