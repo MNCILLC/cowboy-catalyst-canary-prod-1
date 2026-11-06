@@ -1,14 +1,40 @@
 'use client';
 
+import { Info } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { Button } from '@/vibes/soul/primitives/button';
+import { Tooltip } from '@/vibes/soul/primitives/tooltip';
 import {
   deliveryServices,
   type ShippingSaveResult,
   type ShippingSelection,
   type ShippingState,
 } from '~/lib/freight-cart/policy';
+
+function DeliveryServiceHelp({ label, description }: { label: string; description: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Tooltip
+      className="max-w-64 whitespace-normal text-sm"
+      open={open}
+      setOpen={setOpen}
+      trigger={
+        <button
+          aria-label={`About ${label}`}
+          className="shrink-0 rounded p-1 focus-visible:outline focus-visible:outline-2"
+          onClick={() => setOpen(true)}
+          type="button"
+        >
+          <Info aria-hidden="true" size={16} />
+        </button>
+      }
+    >
+      {description}
+    </Tooltip>
+  );
+}
 
 export interface FulfillmentStatus {
   selected: boolean;
@@ -109,29 +135,29 @@ export function Fulfillment({
             )}
           </label>
           {selection?.fulfillmentMethod === 'ship' && (
-            <fieldset className="pl-7">
+            <fieldset className="min-w-0 pl-7 @container">
               <legend className="mb-3 text-sm font-semibold">Delivery services</legend>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 @[28rem]:grid-cols-2">
                 {deliveryServices.map((service) => (
-                  <label
-                    className="flex cursor-pointer items-center gap-3 text-sm"
-                    key={service.code}
-                  >
-                    <input
-                      checked={selection.accessorials.includes(service.code)}
-                      className="h-4 w-4 shrink-0 accent-current"
-                      onChange={(event) =>
-                        save({
-                          ...selection,
-                          accessorials: event.target.checked
-                            ? [...selection.accessorials, service.code]
-                            : selection.accessorials.filter((code) => code !== service.code),
-                        })
-                      }
-                      type="checkbox"
-                    />
-                    {service.label}
-                  </label>
+                  <div className="flex items-center gap-1" key={service.code}>
+                    <label className="flex cursor-pointer items-center gap-3 whitespace-nowrap text-xs">
+                      <input
+                        checked={selection.accessorials.includes(service.code)}
+                        className="h-4 w-4 shrink-0 accent-current"
+                        onChange={(event) =>
+                          save({
+                            ...selection,
+                            accessorials: event.target.checked
+                              ? [...selection.accessorials, service.code]
+                              : selection.accessorials.filter((code) => code !== service.code),
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      {service.label}
+                    </label>
+                    <DeliveryServiceHelp description={service.description} label={service.label} />
+                  </div>
                 ))}
               </div>
             </fieldset>
