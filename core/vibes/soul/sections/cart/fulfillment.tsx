@@ -78,7 +78,7 @@ export function Fulfillment({
 
   return (
     <div className="py-4">
-      <dt className="sr-only">Shipping</dt>
+      <dt className="mb-2">Shipping</dt>
       <dd>
         <fieldset aria-describedby="fulfillment-status" className="space-y-4" disabled={pending}>
           <legend className="sr-only">Fulfillment method</legend>
