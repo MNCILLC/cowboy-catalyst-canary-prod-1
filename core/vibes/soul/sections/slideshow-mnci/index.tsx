@@ -6,14 +6,16 @@ import Autoplay from 'embla-carousel-autoplay';
 import Fade from 'embla-carousel-fade';
 import useEmblaCarousel from 'embla-carousel-react';
 import { Pause, Play } from 'lucide-react';
-import { ComponentPropsWithoutRef, useCallback, useEffect, useState } from 'react';
+import { ComponentPropsWithoutRef, useCallback, useEffect, useId, useState } from 'react';
 
 import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { Image } from '~/components/image';
+import { Link } from '~/components/link';
 
 type ButtonLinkProps = ComponentPropsWithoutRef<typeof ButtonLink>;
 
 interface Slide {
+  slideLink?: { href?: string; target?: string };
   title: string;
   description?: string;
   showDescription?: boolean;
@@ -97,6 +99,33 @@ const useProgressButton = (
   };
 };
 
+function SlideLink({
+  slideLink,
+  title,
+  titleId,
+  image,
+  isActive,
+  index,
+}: Pick<Slide, 'slideLink' | 'title' | 'image'> & {
+  titleId: string;
+  isActive: boolean;
+  index: number;
+}) {
+  if (!slideLink?.href) return null;
+
+  return (
+    <Link
+      aria-label={title.trim() ? undefined : image?.alt || `Open slide ${index + 1}`}
+      aria-labelledby={title.trim() ? titleId : undefined}
+      className="absolute inset-0 z-[2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--slideshow-focus,hsl(var(--primary)))]"
+      href={slideLink.href}
+      rel={slideLink.target === '_blank' ? 'noopener noreferrer' : undefined}
+      tabIndex={isActive ? 0 : -1}
+      target={slideLink.target}
+    />
+  );
+}
+
 // eslint-disable-next-line valid-jsdoc
 /**
  * This component supports various CSS variables for theming. Here's a comprehensive list, along
@@ -129,6 +158,7 @@ export function Slideshow({
   minHeight,
   aspectRatio,
 }: Props) {
+  const slideshowId = useId();
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 20 }, [
     Autoplay({ delay: interval }),
     Fade(),
@@ -214,6 +244,7 @@ export function Slideshow({
           {slides.map(
             (
               {
+                slideLink,
                 title = '',
                 description = '',
                 showDescription = true,
@@ -227,12 +258,21 @@ export function Slideshow({
               idx,
             ) => {
               const buttonVariant = cta?.variant ?? 'tertiary';
+              const titleId = `${slideshowId}-slide-${idx}-title`;
 
               return (
                 <div
                   className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
                   key={idx}
                 >
+                  <SlideLink
+                    image={image}
+                    index={idx}
+                    isActive={idx === selectedIndex}
+                    slideLink={slideLink}
+                    title={title}
+                    titleId={titleId}
+                  />
                   {shadingVerticalAlign !== 'off' && (
                     <div
                       aria-hidden="true"
@@ -251,6 +291,8 @@ export function Slideshow({
                   )}
                   <div
                     className={clsx('absolute inset-x-0 z-10', {
+                      'pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto':
+                        Boolean(slideLink?.href),
                       'top-0': contentVerticalAlign === 'top',
                       'top-1/2 -translate-y-1/2': contentVerticalAlign === 'center',
                       'bottom-0': contentVerticalAlign === 'bottom',
@@ -267,6 +309,7 @@ export function Slideshow({
                       <h1
                         className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl"
                         dangerouslySetInnerHTML={{ __html: title }}
+                        id={titleId}
                       />
                       {showDescription && (
                         <div
