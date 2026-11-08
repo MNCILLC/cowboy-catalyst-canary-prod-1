@@ -12,6 +12,8 @@ import { ButtonLink } from '@/vibes/soul/primitives/button-link';
 import { Image } from '~/components/image';
 import { Link } from '~/components/link';
 
+import { useDesktopFit } from './use-desktop-fit';
+
 type ButtonLinkProps = ComponentPropsWithoutRef<typeof ButtonLink>;
 
 interface Slide {
@@ -113,10 +115,12 @@ function SlideLink({
 }) {
   if (!slideLink?.href) return null;
 
+  const hasTitle = typeof title === 'string' && title.trim() !== '';
+
   return (
     <Link
-      aria-label={title.trim() ? undefined : image?.alt || `Open slide ${index + 1}`}
-      aria-labelledby={title.trim() ? titleId : undefined}
+      aria-label={hasTitle ? undefined : image?.alt || `Open slide ${index + 1}`}
+      aria-labelledby={hasTitle ? titleId : undefined}
       className="absolute inset-0 z-[2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--slideshow-focus,hsl(var(--primary)))]"
       href={slideLink.href}
       rel={slideLink.target === '_blank' ? 'noopener noreferrer' : undefined}
@@ -159,6 +163,10 @@ export function Slideshow({
   aspectRatio,
 }: Props) {
   const slideshowId = useId();
+  const { containerRef, desktopSize, onImageLoad } = useDesktopFit(
+    slides[0]?.image?.src,
+    aspectRatio,
+  );
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, duration: 20 }, [
     Autoplay({ delay: interval }),
     Fade(),
@@ -237,200 +245,221 @@ export function Slideshow({
         `relative bg-[var(--slideshow-background,color-mix(in_oklab,hsl(var(--primary)),black_75%))] @container`,
         className,
       )}
-      style={style}
+      ref={containerRef}
+      style={
+        desktopSize
+          ? {
+              ...style,
+              height: desktopSize.height,
+              minHeight: 0,
+              aspectRatio: 'auto',
+              background: '#fff',
+            }
+          : style
+      }
     >
-      <div className="h-full overflow-hidden" ref={emblaRef}>
-        <div className="flex h-full">
-          {slides.map(
-            (
-              {
-                slideLink,
-                title = '',
-                description = '',
-                showDescription = true,
-                image,
-                imageAlign = 'center',
-                contentVerticalAlign = 'bottom',
-                shadingVerticalAlign = 'bottom',
-                cta,
-                showCta = true,
-              },
-              idx,
-            ) => {
-              const buttonVariant = cta?.variant ?? 'tertiary';
-              const titleId = `${slideshowId}-slide-${idx}-title`;
+      <div
+        className="relative mx-auto h-full @container"
+        style={desktopSize ? { width: desktopSize.width } : undefined}
+      >
+        <div className="h-full overflow-hidden" ref={emblaRef}>
+          <div className="flex h-full">
+            {slides.map(
+              (
+                {
+                  slideLink,
+                  title = '',
+                  description = '',
+                  showDescription = true,
+                  image,
+                  imageAlign = 'center',
+                  contentVerticalAlign = 'bottom',
+                  shadingVerticalAlign = 'bottom',
+                  cta,
+                  showCta = true,
+                },
+                idx,
+              ) => {
+                const buttonVariant = cta?.variant ?? 'tertiary';
+                const titleId = `${slideshowId}-slide-${idx}-title`;
 
-              return (
-                <div
-                  className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
-                  key={idx}
-                >
-                  <SlideLink
-                    image={image}
-                    index={idx}
-                    isActive={idx === selectedIndex}
-                    slideLink={slideLink}
-                    title={title}
-                    titleId={titleId}
-                  />
-                  {shadingVerticalAlign !== 'off' && (
-                    <div
-                      aria-hidden="true"
-                      className={clsx(
-                        'pointer-events-none absolute inset-x-0 z-[1] h-2/3 to-transparent',
-                        {
-                          'top-0 bg-gradient-to-b from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
-                            shadingVerticalAlign === 'top',
-                          'top-1/2 -translate-y-1/2 bg-gradient-to-b from-transparent via-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
-                            shadingVerticalAlign === 'center',
-                          'bottom-0 bg-gradient-to-t from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
-                            shadingVerticalAlign === 'bottom',
-                        },
-                      )}
-                    />
-                  )}
+                return (
                   <div
-                    className={clsx('absolute inset-x-0 z-10', {
-                      'pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto':
-                        Boolean(slideLink?.href),
-                      'top-0': contentVerticalAlign === 'top',
-                      'top-1/2 -translate-y-1/2': contentVerticalAlign === 'center',
-                      'bottom-0': contentVerticalAlign === 'bottom',
-                    })}
+                    className="relative h-full w-full min-w-0 shrink-0 grow-0 basis-full"
+                    key={idx}
                   >
-                    <div
-                      className={clsx(
-                        'mx-auto w-full max-w-screen-2xl text-balance px-4 pt-12 @xl:px-6 @xl:pt-16 @4xl:px-8 @4xl:pt-20',
-                        contentVerticalAlign === 'center'
-                          ? 'pb-12 @xl:pb-16 @4xl:pb-20'
-                          : 'pb-16 @xl:pb-20',
-                      )}
-                    >
-                      <h1
-                        className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl"
-                        dangerouslySetInnerHTML={{ __html: title }}
-                        id={titleId}
-                      />
-                      {showDescription && (
-                        <div
-                          className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
-                          dangerouslySetInnerHTML={{ __html: description }}
-                        />
-                      )}
-                      {showCta && (
-                        <ButtonLink
-                          className={clsx(
-                            'mt-6 @xl:mt-8',
-                            cta?.fontColor != null && '[&>span]:mix-blend-normal',
-                          )}
-                          href={cta?.href ?? '#'}
-                          shape={cta?.shape ?? 'pill'}
-                          size={cta?.size ?? 'large'}
-                          style={{
-                            fontSize: cta?.fontSize,
-                            color: cta?.fontColor,
-                            ...(cta?.backgroundColor != null && {
-                              [`--button-${buttonVariant}-background`]: cta.backgroundColor,
-                              [`--button-${buttonVariant}-border`]: cta.backgroundColor,
-                              [`--button-${buttonVariant}-background-hover`]: `color-mix(in srgb, ${cta.backgroundColor}, white 25%)`,
-                            }),
-                            ...(cta?.width != null && { width: cta.width, paddingInline: 0 }),
-                            ...(cta?.height != null && {
-                              height: cta.height,
-                              minHeight: 0,
-                              paddingBlock: 0,
-                            }),
-                          }}
-                          variant={buttonVariant}
-                        >
-                          {cta?.label ?? 'Learn more'}
-                        </ButtonLink>
-                      )}
-                    </div>
-                  </div>
-
-                  {image?.src != null && image.src !== '' && (
-                    <Image
-                      alt={image.alt}
-                      blurDataURL={image.blurDataUrl}
-                      // className="block h-20 w-full object-cover"
-                      className={`block h-20 w-full object-cover object-${imageAlign}`}
-                      fill
-                      placeholder={
-                        image.blurDataUrl != null && image.blurDataUrl !== '' ? 'blur' : 'empty'
-                      }
-                      preload={idx === 0}
-                      sizes="100vw"
-                      src={image.src}
+                    <SlideLink
+                      image={image}
+                      index={idx}
+                      isActive={idx === selectedIndex}
+                      slideLink={slideLink}
+                      title={title}
+                      titleId={titleId}
                     />
-                  )}
-                </div>
-              );
-            },
-          )}
+                    {shadingVerticalAlign !== 'off' && (
+                      <div
+                        aria-hidden="true"
+                        className={clsx(
+                          'pointer-events-none absolute inset-x-0 z-[1] h-2/3 to-transparent',
+                          {
+                            'top-0 bg-gradient-to-b from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                              shadingVerticalAlign === 'top',
+                            'top-1/2 -translate-y-1/2 bg-gradient-to-b from-transparent via-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                              shadingVerticalAlign === 'center',
+                            'bottom-0 bg-gradient-to-t from-[var(--slideshow-mask,hsl(var(--foreground)/80%))]':
+                              shadingVerticalAlign === 'bottom',
+                          },
+                        )}
+                      />
+                    )}
+                    <div
+                      className={clsx('absolute inset-x-0 z-10', {
+                        'pointer-events-none [&_a]:pointer-events-auto [&_button]:pointer-events-auto':
+                          Boolean(slideLink?.href),
+                        'top-0': contentVerticalAlign === 'top',
+                        'top-1/2 -translate-y-1/2': contentVerticalAlign === 'center',
+                        'bottom-0': contentVerticalAlign === 'bottom',
+                      })}
+                    >
+                      <div
+                        className={clsx(
+                          'mx-auto w-full max-w-screen-2xl text-balance px-4 pt-12 @xl:px-6 @xl:pt-16 @4xl:px-8 @4xl:pt-20',
+                          contentVerticalAlign === 'center'
+                            ? 'pb-12 @xl:pb-16 @4xl:pb-20'
+                            : 'pb-16 @xl:pb-20',
+                        )}
+                      >
+                        <h1
+                          className="m-0 max-w-xl font-[family-name:var(--slideshow-title-font-family,var(--font-family-heading))] text-4xl font-medium leading-none text-[var(--slideshow-title,hsl(var(--background)))] @2xl:text-5xl @2xl:leading-[.9] @4xl:text-6xl"
+                          dangerouslySetInnerHTML={{ __html: title }}
+                          id={titleId}
+                        />
+                        {showDescription && (
+                          <div
+                            className="mt-2 max-w-xl font-[family-name:var(--slideshow-description-font-family,var(--font-family-body))] text-base leading-normal text-[var(--slideshow-description,hsl(var(--background)/80%))] @xl:mt-3 @xl:text-lg"
+                            dangerouslySetInnerHTML={{ __html: description }}
+                          />
+                        )}
+                        {showCta && (
+                          <ButtonLink
+                            className={clsx(
+                              'mt-6 @xl:mt-8',
+                              cta?.fontColor != null && '[&>span]:mix-blend-normal',
+                            )}
+                            href={cta?.href ?? '#'}
+                            shape={cta?.shape ?? 'pill'}
+                            size={cta?.size ?? 'large'}
+                            style={{
+                              fontSize: cta?.fontSize,
+                              color: cta?.fontColor,
+                              ...(cta?.backgroundColor != null && {
+                                [`--button-${buttonVariant}-background`]: cta.backgroundColor,
+                                [`--button-${buttonVariant}-border`]: cta.backgroundColor,
+                                [`--button-${buttonVariant}-background-hover`]: `color-mix(in srgb, ${cta.backgroundColor}, white 25%)`,
+                              }),
+                              ...(cta?.width != null && { width: cta.width, paddingInline: 0 }),
+                              ...(cta?.height != null && {
+                                height: cta.height,
+                                minHeight: 0,
+                                paddingBlock: 0,
+                              }),
+                            }}
+                            variant={buttonVariant}
+                          >
+                            {cta?.label ?? 'Learn more'}
+                          </ButtonLink>
+                        )}
+                      </div>
+                    </div>
+
+                    {image?.src != null && image.src !== '' && (
+                      <Image
+                        alt={image.alt}
+                        blurDataURL={image.blurDataUrl}
+                        className={clsx(
+                          'block h-20 w-full',
+                          desktopSize
+                            ? 'object-contain object-center'
+                            : `object-cover object-${imageAlign}`,
+                        )}
+                        fill
+                        onLoad={idx === 0 ? onImageLoad : undefined}
+                        placeholder={
+                          image.blurDataUrl != null && image.blurDataUrl !== '' ? 'blur' : 'empty'
+                        }
+                        preload={idx === 0}
+                        sizes="100vw"
+                        src={image.src}
+                      />
+                    )}
+                  </div>
+                );
+              },
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Controls */}
-      <div className="absolute bottom-4 left-1/2 z-20 flex w-full max-w-screen-2xl -translate-x-1/2 flex-wrap items-center px-4 @xl:bottom-6 @xl:px-6 @4xl:px-8">
-        {/* Progress Buttons */}
-        {scrollSnaps.map((_: number, index: number) => {
-          return (
-            <button
-              aria-label={`View image number ${index + 1}`}
-              className="rounded-lg px-1.5 py-2 focus-visible:outline-0 focus-visible:ring-2 focus-visible:ring-[var(--slideshow-focus,hsl(var(--primary)))]"
-              key={index}
-              onClick={() => {
-                onProgressButtonClick(index);
-                resetAutoplay();
-              }}
-            >
-              <div className="relative overflow-hidden">
-                {/* White Bar - Current Index Indicator / Progress Bar */}
-                <div
-                  className={clsx(
-                    'absolute h-0.5 bg-[var(--slideshow-pagination,hsl(var(--background)))]',
-                    'opacity-0 fill-mode-forwards',
-                    isPlaying ? 'running' : 'paused',
-                    index === selectedIndex
-                      ? 'opacity-100 ease-linear animate-in slide-in-from-left'
-                      : 'ease-out animate-out fade-out',
-                  )}
-                  key={`progress-${playCount}`} // Force the animation to restart when pressing "Play", to match animation with embla's autoplay timer
-                  style={{
-                    animationDuration: index === selectedIndex ? `${interval}ms` : '200ms',
-                    width: `${150 / slides.length}px`,
-                  }}
-                />
-                {/* Grey Bar BG */}
-                <div
-                  className="h-0.5 bg-[var(--slideshow-pagination,hsl(var(--background)))] opacity-30"
-                  style={{ width: `${150 / slides.length}px` }}
-                />
-              </div>
-            </button>
-          );
-        })}
+        {/* Controls */}
+        <div className="absolute bottom-4 left-1/2 z-20 flex w-full max-w-screen-2xl -translate-x-1/2 flex-wrap items-center px-4 @xl:bottom-6 @xl:px-6 @4xl:px-8">
+          {/* Progress Buttons */}
+          {scrollSnaps.map((_: number, index: number) => {
+            return (
+              <button
+                aria-label={`View image number ${index + 1}`}
+                className="rounded-lg px-1.5 py-2 focus-visible:outline-0 focus-visible:ring-2 focus-visible:ring-[var(--slideshow-focus,hsl(var(--primary)))]"
+                key={index}
+                onClick={() => {
+                  onProgressButtonClick(index);
+                  resetAutoplay();
+                }}
+              >
+                <div className="relative overflow-hidden">
+                  {/* White Bar - Current Index Indicator / Progress Bar */}
+                  <div
+                    className={clsx(
+                      'absolute h-0.5 bg-[var(--slideshow-pagination,hsl(var(--background)))]',
+                      'opacity-0 fill-mode-forwards',
+                      isPlaying ? 'running' : 'paused',
+                      index === selectedIndex
+                        ? 'opacity-100 ease-linear animate-in slide-in-from-left'
+                        : 'ease-out animate-out fade-out',
+                    )}
+                    key={`progress-${playCount}`} // Force the animation to restart when pressing "Play", to match animation with embla's autoplay timer
+                    style={{
+                      animationDuration: index === selectedIndex ? `${interval}ms` : '200ms',
+                      width: `${150 / slides.length}px`,
+                    }}
+                  />
+                  {/* Grey Bar BG */}
+                  <div
+                    className="h-0.5 bg-[var(--slideshow-pagination,hsl(var(--background)))] opacity-30"
+                    style={{ width: `${150 / slides.length}px` }}
+                  />
+                </div>
+              </button>
+            );
+          })}
 
-        {/* Carousel Count - "01/03" */}
-        <span className="ml-auto mr-3 mt-px font-[family-name:var(--slideshow-number-font-family,var(--font-family-mono))] text-sm text-[var(--slideshow-number,hsl(var(--background)))]">
-          {selectedIndex + 1 < 10 ? `0${selectedIndex + 1}` : selectedIndex + 1}/
-          {slides.length < 10 ? `0${slides.length}` : slides.length}
-        </span>
+          {/* Carousel Count - "01/03" */}
+          <span className="ml-auto mr-3 mt-px font-[family-name:var(--slideshow-number-font-family,var(--font-family-mono))] text-sm text-[var(--slideshow-number,hsl(var(--background)))]">
+            {selectedIndex + 1 < 10 ? `0${selectedIndex + 1}` : selectedIndex + 1}/
+            {slides.length < 10 ? `0${slides.length}` : slides.length}
+          </span>
 
-        {/* Stop / Start Button */}
-        <button
-          aria-label={isPlaying ? 'Pause' : 'Play'}
-          className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--slideshow-play-border,hsl(var(--contrast-300)/50%))] text-[var(--slideshow-play-text,hsl(var(--background)))] ring-[var(--slideshow-focus)] transition-opacity duration-300 hover:border-[var(--slideshow-play-border-hover,hsl(var(--contrast-300)/80%))] focus-visible:outline-0 focus-visible:ring-2"
-          onClick={toggleAutoplay}
-          type="button"
-        >
-          {isPlaying ? (
-            <Pause className="pointer-events-none" size={16} strokeWidth={1.5} />
-          ) : (
-            <Play className="pointer-events-none" size={16} strokeWidth={1.5} />
-          )}
-        </button>
+          {/* Stop / Start Button */}
+          <button
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--slideshow-play-border,hsl(var(--contrast-300)/50%))] text-[var(--slideshow-play-text,hsl(var(--background)))] ring-[var(--slideshow-focus)] transition-opacity duration-300 hover:border-[var(--slideshow-play-border-hover,hsl(var(--contrast-300)/80%))] focus-visible:outline-0 focus-visible:ring-2"
+            onClick={toggleAutoplay}
+            type="button"
+          >
+            {isPlaying ? (
+              <Pause className="pointer-events-none" size={16} strokeWidth={1.5} />
+            ) : (
+              <Play className="pointer-events-none" size={16} strokeWidth={1.5} />
+            )}
+          </button>
+        </div>
       </div>
     </section>
   );
