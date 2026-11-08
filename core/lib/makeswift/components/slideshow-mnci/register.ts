@@ -26,6 +26,11 @@ runtime.registerComponent(MSSlideshow, {
       label: 'Slides',
       type: Group({
         props: {
+          slideName: TextInput({
+            label: 'Slide name',
+            description: 'Shown only in the editor slide list. Leave blank to use the slide title.',
+          }),
+          slideLink: Link({ label: 'Slide link' }),
           title: TextArea({ label: 'Title (HTML)', defaultValue: 'Slide title' }),
           showDescription: Checkbox({ label: 'Show description', defaultValue: true }),
           description: TextArea({ label: 'Description (HTML)', defaultValue: 'Slide description' }),
@@ -91,7 +96,7 @@ runtime.registerComponent(MSSlideshow, {
         },
       }),
       getItemLabel(slide) {
-        return slide?.title || 'Slide title';
+        return slide?.slideName?.trim() || slide?.title || 'Slide title';
       },
     }),
     autoplay: Checkbox({ label: 'Autoplay', defaultValue: true }),

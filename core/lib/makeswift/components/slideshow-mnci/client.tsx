@@ -1,6 +1,7 @@
 import { Slideshow } from '@/vibes/soul/sections/slideshow-mnci';
 
 interface Slide {
+  slideLink?: { href?: string; target?: string };
   title: string;
   description: string;
   showDescription: boolean;
@@ -55,6 +56,7 @@ export function MSSlideshow({
       playOnInit={autoplay}
       slides={slides.map(
         ({
+          slideLink,
           title,
           description,
           showDescription,
@@ -74,6 +76,7 @@ export function MSSlideshow({
           buttonColor,
         }) => {
           return {
+            slideLink,
             title,
             description,
             showDescription,
