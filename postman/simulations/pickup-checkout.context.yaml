@@ -1,0 +1,80 @@
+purpose:
+  stands_in_for: BigCommerce Storefront GraphQL cart assignment, checkout addresses, shipping consignments and cart metafields.
+  unblocks: >-
+    Runs the actual Catalyst pickup server, gateway and policy modules over HTTP without live-store writes.
+    Start with postman simulation run postman/simulations/pickup-checkout.sim.yaml --port 4017 --no-history,
+    then node tests/pickup-checkout-simulation.mts from the repository root.
+    Next session and the centralized GraphQL client transport boundary are adapted; checkout logic is not duplicated.
+assumptions:
+  - id: address-contract
+    status: supported
+    claim: The gateway operations and version inputs are accepted by the sandbox Storefront GraphQL API.
+    reason: The checked-in generated schema type-checks the requests and the sandbox browser flow completed them.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: assigned a disposable signed-in cart, saved separate billing,
+      added the default shipping-origin address, and selected the current zero-dollar pickup option.
+      No customer address-book writes, store setting changes, payment submissions or orders were made.
+    source: core/bigcommerce.graphql; core/lib/pickup-checkout/gateway.ts; sandbox browser checkout test
+    updated_at: "2026-11-13"
+  - id: assignment-can-clear-addresses
+    status: supported
+    claim: Cart assignment must precede warehouse prefill because assignment can clear checkout shipping data.
+    reason: Earlier disposable-cart testing observed address removal when assigning a guest cart to a customer.
+    verification: >-
+      Prior manual test observed shipping reset. The current simulation deliberately clears both addresses on assignment;
+      the real orchestrator snapshots the original destination, restores valid billing as needed, and assigns only once
+      after a successful association marker. The simulation's billing reset is a conservative modeled failure, not an
+      independently established provider guarantee.
+    source: core/lib/pickup-checkout/engine.ts; postman/mocks/pickup-checkout/default.js; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
+  - id: billing-checkbox
+    status: supported
+    claim: In the tested sandbox checkout, distinct persisted billing and warehouse shipping addresses initialize Same as shipping address unchecked.
+    reason: Observed in the standard hosted sandbox checkout after the Catalyst redirect, without manually changing the checkbox.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: the Shipping step was complete with Pick up at warehouse at $0.00;
+      Payment rendered with the existing customer billing address and an unchecked Same as shipping address box.
+      The test payment provider's card fields loaded. No card data, terms acceptance, payment or order was submitted.
+      This is evidence for the tested checkout configuration, not every possible customized checkout.
+    source: sandboxcatalystcheckout.mncillc.com/checkout; local browser screenshot sandbox-pickup-checkout.png
+    updated_at: "2026-11-13"
+  - id: failure-recovery
+    status: supported
+    claim: Under the modeled HTTP failures, the caller blocks invalid redirects and can retry interrupted preparation without duplicate consignments.
+    reason: Twenty-five local HTTP scenarios exercise the real implementation against a stateful stand-in.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: all 25 scenarios passed, covering separate billing, fresh free quotes,
+      Ship no-op, restore/delete recovery, shopper edits, unavailable/paid/ambiguous rates, request failures,
+      shipping committed before response failure, changed items/preferences/session, multiple consignments,
+      flag-off recovery, digital-only carts and version conflicts. This establishes caller behavior under the model;
+      real provider failure timing and multi-process concurrency are not exhaustively reproduced.
+    source: tests/pickup-checkout-simulation.mts; postman/mocks/pickup-checkout/default.js
+    updated_at: "2026-11-13"
+  - id: shipping-unaffected
+    status: supported
+    claim: Switching the tested sandbox cart to Ship removes the feature-created warehouse consignment and permits normal shipping rates.
+    reason: The hosted checkout requested the customer's destination again, then offered its configured rates.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: after switching Pickup to Ship, the shipping address form was blank.
+      Selecting an existing customer address returned the sandbox's Flat rate at $400.00. No warehouse destination
+      remained and no global shipping configuration changed. This does not independently validate the Freight carrier's
+      rate calculation or every destination.
+    source: core/lib/pickup-checkout/engine.ts; sandbox browser checkout test
+    updated_at: "2026-11-13"
+  - id: address-update-keeps-selected-option
+    status: supported
+    claim: Updating a shipping consignment address can retain the previously selected Pickup method.
+    reason: A sandbox round trip restored the original address but retained Pickup; the recovery guard stopped checkout.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: the initial simulation incorrectly cleared the selected option on address
+      updates. Live testing contradicted that model. Updated the stand-in to retain the option, and changed recovery to
+      delete then recreate the consignment while keeping its recovery marker until verified. The corrected browser test
+      restored the customer's original shipping address and returned a selected Flat rate at $400.00, with Pickup unselected.
+      Added regression scenarios for a stale option on an interrupted restore and a failure between deletion and recreation.
+    source: core/lib/pickup-checkout/engine.ts; postman/mocks/pickup-checkout/default.js; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
+fingerprints:
+  - id: sandbox-pickup-1
+    date: "2026-11-13"
+    commit: "1571a58a7862b4c8494603754d997361f1aea1c7 (dirty tree: Pickup implementation)"
+    cli: Postman 1.82.0

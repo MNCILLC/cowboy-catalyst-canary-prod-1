@@ -256,7 +256,11 @@ export function CartClient<LineItem extends CartLineItem>({
   const events = useEvents();
   const [fulfillmentStatus, setFulfillmentStatus] = useState<FulfillmentStatus>({
     selected: Boolean(fulfillment?.initial.preferences),
-    ready: fulfillment?.initial.confirmed ?? true,
+    ready:
+      (fulfillment?.initial.confirmed ?? true) &&
+      (fulfillment?.initial.preferences?.fulfillmentMethod !== 'pickup' ||
+        !fulfillment.pickup ||
+        fulfillment.pickup.initial.ready),
     pending: false,
   });
   const fulfillmentBlocked = Boolean(fulfillment) && !fulfillmentStatus.ready;

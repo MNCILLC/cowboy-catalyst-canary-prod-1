@@ -18,6 +18,7 @@ import { freightCartEnabled, getCartShippingState } from '~/lib/freight-cart/ser
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
 import { loadShippingOriginDetails } from '~/lib/map-section/actions';
+import { getPickupBillingState, pickupCheckoutEnabled } from '~/lib/pickup-checkout/server';
 import { exists } from '~/lib/utils';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
@@ -25,6 +26,7 @@ import { updateCouponCode } from './_actions/update-coupon-code';
 import { updateFulfillment } from './_actions/update-fulfillment';
 import { updateGiftCertificate } from './_actions/update-gift-certificate';
 import { updateLineItem } from './_actions/update-line-item';
+import { updatePickupBilling } from './_actions/update-pickup-billing';
 import { updateShippingInfo } from './_actions/update-shipping-info';
 import { CartViewed } from './_components/cart-viewed';
 import { CheckoutPreconnect } from './_components/checkout-preconnect';
@@ -125,9 +127,11 @@ export default async function Cart({ params }: Props) {
 
   const taxIncluded = cart.isTaxIncluded;
   const useFreightCart = (await freightCartEnabled()) && cart.lineItems.physicalItems.length > 0;
-  const [freightState, shippingOrigin] = await Promise.all([
+  const usePickup = useFreightCart && (await pickupCheckoutEnabled());
+  const [freightState, shippingOrigin, pickupBilling] = await Promise.all([
     useFreightCart ? getCartShippingState(cartId) : undefined,
     useFreightCart ? loadShippingOriginDetails().catch(() => null) : null,
+    usePickup ? getPickupBillingState(cartId) : undefined,
   ]);
 
   const lineItems = [
@@ -426,6 +430,9 @@ export default async function Cart({ params }: Props) {
                   initial: freightState,
                   saveAction: updateFulfillment.bind(null, cartId),
                   shippingOrigin,
+                  pickup: pickupBilling
+                    ? { initial: pickupBilling, saveAction: updatePickupBilling.bind(null, cartId) }
+                    : undefined,
                 }
               : undefined
           }

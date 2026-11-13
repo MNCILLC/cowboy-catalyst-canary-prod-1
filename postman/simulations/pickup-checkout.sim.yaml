@@ -1,0 +1,7 @@
+simulation: pickup-checkout
+routing: path
+mocks:
+  - name: BigCommerce pickup checkout
+    routeKey: checkout
+    origin: pickup-simulation.example.test
+    path: postman/mocks/pickup-checkout
