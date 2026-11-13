@@ -40,21 +40,23 @@ export function PickupBilling({
 }) {
   const [address, setAddress] = useState(() => initial.address ?? normalizeAddress({}));
   const [saved, setSaved] = useState(initial.ready);
-  const [editing, setEditing] = useState(!initial.ready);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(initial.error);
   const [choice, setChoice] = useState('');
 
   // Reconcile readiness when the editor remounts after switching fulfillment.
   useEffect(() => {
-    onStatus(saved && !editing && !pending, pending);
-  }, [saved, editing, pending, onStatus]);
+    onStatus(saved && !pending, pending);
+  }, [saved, pending, onStatus]);
 
   function edit(next: PickupAddress) {
     setAddress(next);
     setSaved(false);
     onStatus(false, false);
   }
+
+  // Keep reporting readiness even when automatic billing needs no cart UI.
+  if (saved) return null;
 
   return (
     <section
@@ -63,139 +65,106 @@ export function PickupBilling({
     >
       <h3 className="font-semibold">Billing address</h3>
       <p className="mt-1 text-sm">
-        {saved && !editing
-          ? 'We’ll use this address for billing. Your pickup location is separate.'
-          : 'Choose a saved address or enter the address associated with your payment method.'}
+        Choose a saved address or enter the address associated with your payment method.
       </p>
-      {saved && !editing ? (
-        <div className="mt-3 text-sm">
-          <p>
-            {address.firstName} {address.lastName}
-          </p>
-          <p>
-            {address.address1}
-            {Boolean(address.address2) && `, ${address.address2}`}
-          </p>
-          <p>
-            {address.city}, {address.stateOrProvince || address.stateOrProvinceCode}{' '}
-            {address.postalCode}
-          </p>
-          <p>{address.countryCode}</p>
-          <Button
-            className="mt-2"
-            disabled={disabled}
-            onClick={() => {
-              setEditing(true);
-              onStatus(false, false);
-            }}
-            size="small"
-            type="button"
-            variant="tertiary"
-          >
-            Change billing address
-          </Button>
-        </div>
-      ) : (
-        <form
-          className="mt-3 space-y-3"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            if (pending || disabled || version === null) return;
-            setPending(true);
-            setError(undefined);
-            onStatus(false, true);
+      <form
+        className="mt-3 space-y-3"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (pending || disabled || version === null) return;
+          setPending(true);
+          setError(undefined);
+          onStatus(false, true);
 
-            try {
-              const result = await saveAction(address, version);
+          try {
+            const result = await saveAction(address, version);
 
-              if ('error' in result) throw new Error(result.error);
-              setAddress(result.address);
-              setSaved(true);
-              setEditing(false);
-              onStatus(true, false);
-            } catch (cause) {
-              setError(
-                cause instanceof Error
-                  ? cause.message
-                  : 'Unable to save billing address. Please retry.',
-              );
-              onStatus(false, false);
-            } finally {
-              setPending(false);
-            }
-          }}
-        >
-          <fieldset className="space-y-3" disabled={disabled || pending || version === null}>
-            <legend className="sr-only">Your billing details</legend>
-            {initial.addresses.length > 0 && (
-              <label className="block text-sm">
-                Saved address
-                <select
-                  className="mt-1 block w-full rounded border border-contrast-300 bg-background p-2"
-                  onChange={(event) => {
-                    const next = initial.addresses.find((a) => String(a.id) === event.target.value);
-
-                    setChoice(event.target.value);
-                    edit(next?.address ?? normalizeAddress({ email: address.email }));
-                  }}
-                  value={choice}
-                >
-                  <option value="">Enter an address</option>
-                  {initial.addresses.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.address.address1}, {a.address.city}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {fields.map(([key, label, autoComplete, required]) => (
-              <label className="block text-sm" key={key}>
-                {label}
-                <input
-                  autoComplete={autoComplete}
-                  className="mt-1 block w-full rounded border border-contrast-300 bg-background p-2"
-                  maxLength={key === 'phone' || key === 'postalCode' ? 30 : 250}
-                  name={key}
-                  onChange={(event) => {
-                    edit({
-                      ...address,
-                      [key]: event.target.value,
-                      ...(key === 'stateOrProvince' ? { stateOrProvinceCode: '' } : {}),
-                    });
-                  }}
-                  required={required}
-                  type={key === 'phone' ? 'tel' : 'text'}
-                  value={address[key]}
-                />
-              </label>
-            ))}
+            if ('error' in result) throw new Error(result.error);
+            setAddress(result.address);
+            setSaved(true);
+            onStatus(true, false);
+          } catch (cause) {
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : 'Unable to save billing address. Please retry.',
+            );
+            onStatus(false, false);
+          } finally {
+            setPending(false);
+          }
+        }}
+      >
+        <fieldset className="space-y-3" disabled={disabled || pending || version === null}>
+          <legend className="sr-only">Your billing details</legend>
+          {initial.addresses.length > 0 && (
             <label className="block text-sm">
-              Country
+              Saved address
               <select
-                autoComplete="billing country"
                 className="mt-1 block w-full rounded border border-contrast-300 bg-background p-2"
-                name="countryCode"
-                onChange={(event) =>
-                  edit({ ...address, countryCode: event.target.value, stateOrProvinceCode: '' })
-                }
-                required
-                value={address.countryCode}
+                onChange={(event) => {
+                  const next = initial.addresses.find((a) => String(a.id) === event.target.value);
+
+                  setChoice(event.target.value);
+                  edit(next?.address ?? normalizeAddress({ email: address.email }));
+                }}
+                value={choice}
               >
-                <option value="">Select country</option>
-                {initial.countries.map((country) => (
-                  <option key={country.code} value={country.code}>
-                    {country.name}
+                <option value="">Enter an address</option>
+                {initial.addresses.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.address.address1}, {a.address.city}
                   </option>
                 ))}
               </select>
             </label>
-            <Button loading={pending} size="small" type="submit" variant="secondary">
-              Save billing address
-            </Button>
-          </fieldset>
-        </form>
-      )}
+          )}
+          {fields.map(([key, label, autoComplete, required]) => (
+            <label className="block text-sm" key={key}>
+              {label}
+              <input
+                autoComplete={autoComplete}
+                className="mt-1 block w-full rounded border border-contrast-300 bg-background p-2"
+                maxLength={key === 'phone' || key === 'postalCode' ? 30 : 250}
+                name={key}
+                onChange={(event) => {
+                  edit({
+                    ...address,
+                    [key]: event.target.value,
+                    ...(key === 'stateOrProvince' ? { stateOrProvinceCode: '' } : {}),
+                  });
+                }}
+                required={required}
+                type={key === 'phone' ? 'tel' : 'text'}
+                value={address[key]}
+              />
+            </label>
+          ))}
+          <label className="block text-sm">
+            Country
+            <select
+              autoComplete="billing country"
+              className="mt-1 block w-full rounded border border-contrast-300 bg-background p-2"
+              name="countryCode"
+              onChange={(event) =>
+                edit({ ...address, countryCode: event.target.value, stateOrProvinceCode: '' })
+              }
+              required
+              value={address.countryCode}
+            >
+              <option value="">Select country</option>
+              {initial.countries.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button loading={pending} size="small" type="submit" variant="secondary">
+            Save billing address
+          </Button>
+        </fieldset>
+      </form>
       <div aria-live="polite" className="mt-2 text-sm">
         {pending && <p>Saving billing address…</p>}
         {Boolean(error) && <p role="alert">{error}</p>}
