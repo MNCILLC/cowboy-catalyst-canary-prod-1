@@ -83,7 +83,9 @@ http
             lastName: "Customer",
             phone: "",
             addresses: {
-              edges: [],
+              edges: (state.config.savedAddresses ?? []).map((node, index) => ({
+                node: { entityId: index + 10, ...node },
+              })),
               pageInfo: { hasNextPage: false, endCursor: null },
             },
           },

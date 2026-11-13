@@ -116,8 +116,19 @@ export function pickupFlow(
     return after.billing;
   }
 
-  async function prepare(methodName: string) {
+  async function prepare(methodName: string, automaticBilling?: PickupAddress) {
     let s = await associate();
+
+    // Re-read after association: preserve any valid billing choice saved by the
+    // shopper, including one changed since the cart summary was rendered.
+    if (
+      !validSeparateBilling(s.billing, warehouse) &&
+      automaticBilling &&
+      validSeparateBilling(automaticBilling, warehouse)
+    ) {
+      await gateway.bill(billingSchema.parse(automaticBilling), s);
+      s = await read();
+    }
 
     if (!s.billing || !validSeparateBilling(s.billing, warehouse))
       fail('Confirm your billing address on the cart before continuing with Pickup.');

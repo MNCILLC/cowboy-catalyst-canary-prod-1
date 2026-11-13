@@ -38,9 +38,7 @@ export function PickupBilling({
   disabled: boolean;
   onStatus: (ready: boolean, pending: boolean) => void;
 }) {
-  const [address, setAddress] = useState(
-    () => initial.address ?? initial.addresses[0]?.address ?? normalizeAddress({}),
-  );
+  const [address, setAddress] = useState(() => initial.address ?? normalizeAddress({}));
   const [saved, setSaved] = useState(initial.ready);
   const [editing, setEditing] = useState(!initial.ready);
   const [pending, setPending] = useState(false);
@@ -65,8 +63,9 @@ export function PickupBilling({
     >
       <h3 className="font-semibold">Billing address</h3>
       <p className="mt-1 text-sm">
-        Use the address associated with your payment method. Your pickup location will be filled in
-        at checkout.
+        {saved && !editing
+          ? 'We’ll use this address for billing. Your pickup location is separate.'
+          : 'Choose a saved address or enter the address associated with your payment method.'}
       </p>
       {saved && !editing ? (
         <div className="mt-3 text-sm">

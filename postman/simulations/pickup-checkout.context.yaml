@@ -73,8 +73,25 @@ assumptions:
       Added regression scenarios for a stale option on an interrupted restore and a failure between deletion and recreation.
     source: core/lib/pickup-checkout/engine.ts; postman/mocks/pickup-checkout/default.js; tests/pickup-checkout-simulation.mts
     updated_at: "2026-11-13"
+  - id: automatic-billing-selection
+    status: supported
+    claim: The caller previews existing checkout billing or exactly one usable saved address, then persists the fallback only while preparing Pickup checkout.
+    reason: Seven added HTTP scenarios exercise the actual server and engine; the local browser shows a summary with optional Change instead of requiring the billing form.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-2: all 32 scenarios passed. New cases cover single-address automatic preparation,
+      existing checkout billing precedence, multiple-address choice, incomplete/warehouse addresses, saved-address removal,
+      a newer checkout billing choice and Ship bypass. Cart preview produced zero mutations. Browser verification confirmed
+      the collapsed summary and optional Change editor. The current user's five-item cart was left intact; no checkout
+      submission or address-book edit was made in this follow-up. Persistence is verified through the HTTP stand-in;
+      the previous hosted-checkout evidence remains applicable to the unchanged address mutations.
+    source: core/lib/pickup-checkout/server.ts; core/lib/pickup-checkout/engine.ts; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
 fingerprints:
   - id: sandbox-pickup-1
     date: "2026-11-13"
     commit: "1571a58a7862b4c8494603754d997361f1aea1c7 (dirty tree: Pickup implementation)"
+    cli: Postman 1.82.0
+  - id: sandbox-pickup-2
+    date: "2026-11-13"
+    commit: "958cc0dd (dirty tree: automatic billing selection)"
     cli: Postman 1.82.0

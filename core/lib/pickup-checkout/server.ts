@@ -129,9 +129,18 @@ export async function getPickupBillingState(cartId: string): Promise<PickupBilli
         : undefined;
     } while (after);
 
+    // Reading the cart only proposes an address. Persist it when preparing checkout.
+    // A shopper's existing valid billing choice takes priority over saved addresses.
+    const usable = addresses.filter((entry) => validSeparateBilling(entry.address, warehouse));
+    let address = snapshot.billing;
+
+    if (!validSeparateBilling(address, warehouse)) {
+      address = usable.length === 1 ? (usable[0]?.address ?? null) : null;
+    }
+
     return {
-      ready: validSeparateBilling(snapshot.billing, warehouse),
-      address: snapshot.billing,
+      ready: address !== null,
+      address,
       addresses,
       countries,
     };
@@ -242,9 +251,13 @@ export async function preparePickupCheckout(cartId: string) {
   }
 
   const version = state.preferences.version;
+  const billing = await getPickupBillingState(cartId);
+
+  if (billing.error) throw new PickupCheckoutError(billing.error);
 
   await pickupFlow(await pickupGateway(cartId), await warehouseAddress(), version).prepare(
     process.env.PICKUP_SHIPPING_METHOD_NAME?.trim() || 'Pick up at warehouse',
+    billing.address ?? undefined,
   );
   await confirmedPickup(cartId, version);
 }
