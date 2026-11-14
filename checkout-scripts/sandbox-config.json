@@ -1,0 +1,10 @@
+{
+  "storeHash": "3olkgrdpfq",
+  "channelId": 1912525,
+  "name": "Sandbox - Pickup billing checkbox visibility",
+  "allowedHosts": [
+    "sandboxcatalystcheckout.mncillc.com",
+    "store-3olkgrdpfq.mybigcommerce.com"
+  ],
+  "pickupMethod": "Pick up at warehouse"
+}
