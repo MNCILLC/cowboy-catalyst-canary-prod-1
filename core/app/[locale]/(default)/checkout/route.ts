@@ -13,6 +13,7 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { type ShippingState } from '~/lib/freight-cart/policy';
 import { assertCartShipping, CartShippingError } from '~/lib/freight-cart/server';
 import { assertLoyaltyCheckout, LoyaltyCheckoutError } from '~/lib/loyalty/server';
 import { PickupCheckoutError } from '~/lib/pickup-checkout/policy';
@@ -84,9 +85,9 @@ function isCheckoutPolicyError(
   );
 }
 
-async function prepareCheckout(cartId: string) {
+async function prepareCheckout(cartId: string, shippingState: ShippingState | undefined) {
   try {
-    await preparePickupCheckout(cartId);
+    await preparePickupCheckout(cartId, shippingState);
   } catch (error) {
     rethrow(error);
     if (error instanceof BigCommerceAuthError || error instanceof PickupCheckoutError) throw error;
@@ -122,9 +123,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   try {
     await assertProUseCart(cartId);
     await assertLoyaltyCheckout(cartId);
-    await assertCartShipping(cartId);
 
-    await prepareCheckout(cartId);
+    const shippingState = await assertCartShipping(cartId);
+
+    await prepareCheckout(cartId, shippingState);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({

@@ -4,6 +4,7 @@ import { getSessionCustomerAccessToken } from '~/auth';
 import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { getCartId } from '~/lib/cart';
+import { type ShippingState } from '~/lib/freight-cart/policy';
 import { freightCartEnabled, getCartShippingState } from '~/lib/freight-cart/server';
 import { loadShippingOriginDetails } from '~/lib/map-section/actions';
 
@@ -93,41 +94,47 @@ async function confirmedPickup(cartId: string, expectedVersion?: number) {
   return state.preferences;
 }
 
+async function billingChoices() {
+  const customerAccessToken = await getSessionCustomerAccessToken();
+  const addresses: PickupBillingState['addresses'] = [];
+  let countries: PickupBillingState['countries'] = [];
+  let after: string | undefined;
+
+  do {
+    // Each page depends on the cursor returned by the preceding page.
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await client.fetch({
+      document: Addresses,
+      variables: { after },
+      customerAccessToken,
+      fetchOptions: { cache: 'no-store' },
+    });
+
+    countries = data.geography.countries ?? [];
+    if (!data.customer)
+      throw new PickupCheckoutError('Sign in to select your pickup billing address.');
+
+    const email = data.customer.email;
+
+    addresses.push(
+      ...(data.customer.addresses.edges ?? []).map((e) => ({
+        id: e.node.entityId,
+        address: normalizeAddress({ ...e.node, email }),
+      })),
+    );
+    after = data.customer.addresses.pageInfo.hasNextPage
+      ? (data.customer.addresses.pageInfo.endCursor ?? undefined)
+      : undefined;
+  } while (after);
+
+  return { addresses, countries };
+}
+
 export async function getPickupBillingState(cartId: string): Promise<PickupBillingState> {
   try {
     const gateway = await pickupGateway(cartId);
     const [snapshot, warehouse] = await Promise.all([gateway.read(), warehouseAddress()]);
-    const customerAccessToken = await getSessionCustomerAccessToken();
-    const addresses: PickupBillingState['addresses'] = [];
-    let countries: PickupBillingState['countries'] = [];
-    let after: string | undefined;
-
-    do {
-      // Each page depends on the cursor returned by the preceding page.
-      // eslint-disable-next-line no-await-in-loop
-      const { data } = await client.fetch({
-        document: Addresses,
-        variables: { after },
-        customerAccessToken,
-        fetchOptions: { cache: 'no-store' },
-      });
-
-      countries = data.geography.countries ?? [];
-      if (!data.customer)
-        throw new PickupCheckoutError('Sign in to select your pickup billing address.');
-
-      const email = data.customer.email;
-
-      addresses.push(
-        ...(data.customer.addresses.edges ?? []).map((e) => ({
-          id: e.node.entityId,
-          address: normalizeAddress({ ...e.node, email }),
-        })),
-      );
-      after = data.customer.addresses.pageInfo.hasNextPage
-        ? (data.customer.addresses.pageInfo.endCursor ?? undefined)
-        : undefined;
-    } while (after);
+    const { addresses, countries } = await billingChoices();
 
     // Reading the cart only proposes an address. Persist it when preparing checkout.
     // A shopper's existing valid billing choice takes priority over saved addresses.
@@ -229,7 +236,7 @@ async function recoveryState(cartId: string) {
   return data.site.cart;
 }
 
-export async function preparePickupCheckout(cartId: string) {
+export async function preparePickupCheckout(cartId: string, confirmedShipping?: ShippingState) {
   const cart = await recoveryState(cartId);
   const hasMarker = Boolean(cart.metafields.edges?.length);
 
@@ -239,7 +246,10 @@ export async function preparePickupCheckout(cartId: string) {
     return;
   }
 
-  const state = await getCartShippingState(cartId);
+  // Supplied only by the checkout route after assertCartShipping in this request.
+  // The engine still checks the live metafield, and confirmedPickup checks the
+  // authoritative Freight preferences again after preparation.
+  const state = confirmedShipping ?? (await getCartShippingState(cartId));
 
   if (!state.confirmed || !state.preferences)
     throw new PickupCheckoutError('Confirm your shipping preferences on the cart.');
@@ -251,13 +261,16 @@ export async function preparePickupCheckout(cartId: string) {
   }
 
   const version = state.preferences.version;
-  const billing = await getPickupBillingState(cartId);
+  const [gateway, warehouse] = await Promise.all([pickupGateway(cartId), warehouseAddress()]);
 
-  if (billing.error) throw new PickupCheckoutError(billing.error);
-
-  await pickupFlow(await pickupGateway(cartId), await warehouseAddress(), version).prepare(
+  await pickupFlow(gateway, warehouse, version).prepare(
     process.env.PICKUP_SHIPPING_METHOD_NAME?.trim() || 'Pick up at warehouse',
-    billing.address ?? undefined,
+    async () => {
+      const { addresses } = await billingChoices();
+      const usable = addresses.filter((entry) => validSeparateBilling(entry.address, warehouse));
+
+      return usable.length === 1 ? usable[0]?.address : undefined;
+    },
   );
   await confirmedPickup(cartId, version);
 }

@@ -292,6 +292,7 @@ export async function pickupGateway(cartId: string): Promise<PickupGateway> {
       method: preference.fulfillmentMethod ?? null,
       preferenceVersion: preference.version ?? null,
       marker,
+      markerId: fields.find((f) => f.key === 'pickup_checkout')?.entityId ?? null,
       billing: checkout.billingAddress ? normalizeAddress(checkout.billingAddress) : null,
       billingId: checkout.billingAddress?.entityId ?? null,
       items: cart.lineItems.physicalItems.map((i) => ({
@@ -312,16 +313,21 @@ export async function pickupGateway(cartId: string): Promise<PickupGateway> {
 
   return {
     read,
-    async mark(marker) {
-      const { cart } = await raw();
-      const field = cart.metafields.edges?.find((e) => e.node.key === 'pickup_checkout')?.node;
+    async mark(marker, state) {
+      // The engine just read this snapshot; do not repeat the entire checkout
+      // query merely to retrieve the same metafield ID. Writes are followed by
+      // a fresh read, and no snapshot is shared across checkout requests.
+      if (cartId !== (await getCartId()))
+        throw new PickupCheckoutError('Your cart changed. Reload the cart.');
+
+      const markerId = state.markerId;
 
       if (!marker) {
-        if (!field) return;
+        if (markerId === null) return;
 
         const { data } = await client.fetch({
           document: DeleteMarker,
-          variables: { input: { cartEntityId: cartId, metafieldEntityId: field.entityId } },
+          variables: { input: { cartEntityId: cartId, metafieldEntityId: markerId } },
           ...options,
         });
 
@@ -335,23 +341,24 @@ export async function pickupGateway(cartId: string): Promise<PickupGateway> {
 
       const value = JSON.stringify(markerSchema.parse(marker));
       const payload = { key: 'pickup_checkout', value };
-      const result = field
-        ? (
-            await client.fetch({
-              document: UpdateMarker,
-              variables: {
-                input: { cartEntityId: cartId, metafieldEntityId: field.entityId, data: payload },
-              },
-              ...options,
-            })
-          ).data.cart.updateCartMetafield
-        : (
-            await client.fetch({
-              document: CreateMarker,
-              variables: { input: { cartEntityId: cartId, data: payload } },
-              ...options,
-            })
-          ).data.cart.createCartMetafield;
+      const result =
+        markerId !== null
+          ? (
+              await client.fetch({
+                document: UpdateMarker,
+                variables: {
+                  input: { cartEntityId: cartId, metafieldEntityId: markerId, data: payload },
+                },
+                ...options,
+              })
+            ).data.cart.updateCartMetafield
+          : (
+              await client.fetch({
+                document: CreateMarker,
+                variables: { input: { cartEntityId: cartId, data: payload } },
+                ...options,
+              })
+            ).data.cart.createCartMetafield;
 
       if (result.errors.length || result.metafield?.value !== value)
         throw new PickupCheckoutError('Pickup recovery details could not be saved. Please retry.');

@@ -43,6 +43,15 @@ export const markerSchema = z.object({
   warehouse: addressSchema,
   originalAddress: addressSchema.nullable(),
   prepared: z.boolean(),
+  // Older markers take the full preparation path once before they can be reused.
+  preparedItems: z
+    .array(
+      z.object({
+        lineItemEntityId: z.string(),
+        quantity: z.number().int().positive(),
+      }),
+    )
+    .optional(),
 });
 export type PickupMarker = z.infer<typeof markerSchema>;
 export class PickupCheckoutError extends Error {}

@@ -186,7 +186,7 @@ export async function saveCartShipping(cartId: string, raw: unknown) {
   return preferences;
 }
 
-export async function assertCartShipping(cartId: string) {
+export async function assertCartShipping(cartId: string): Promise<ShippingState | undefined> {
   if (!(await freightCartEnabled())) return;
 
   const { cart } = await readCart(cartId);
@@ -206,4 +206,6 @@ export async function assertCartShipping(cartId: string) {
   if (!cartShippingMatches(cart.metafields.edges?.[0]?.node.value, preferences)) {
     throw new CartShippingError('Select Pickup or Ship to continue');
   }
+
+  return { confirmed: true, preferences };
 }

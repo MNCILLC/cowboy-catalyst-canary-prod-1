@@ -86,6 +86,27 @@ assumptions:
       the previous hosted-checkout evidence remains applicable to the unchanged address mutations.
     source: core/lib/pickup-checkout/server.ts; core/lib/pickup-checkout/engine.ts; tests/pickup-checkout-simulation.mts
     updated_at: "2026-11-13"
+  - id: optimized-preparation
+    status: supported
+    claim: The optimized caller skips writes only for a freshly validated prepared Pickup checkout and avoids duplicate request-local reads.
+    reason: The expanded HTTP suite passed and real sandbox route logs show fewer requests for both initial and repeat preparation.
+    verification: >-
+      2026-11-14, fingerprint sandbox-pickup-3: all 51 scenarios passed against the existing local Postman HTTP stand-in.
+      New cases cover no-write repeat preparation, lazy address-book loading, quantities and item allocation,
+      contact/province/destination changes, missing or paid selection, legacy markers, warehouse changes,
+      unavailable or ambiguous rates, changed customer, warehouse billing, a billing choice changed during lookup,
+      and stale request-level Freight preferences. Simulation request logs confirm the GraphQL path ran over HTTP.
+      In the real sandbox, repeat checkout preparation used 9 GraphQL calls and took 3.948/3.447 seconds versus
+      the earlier 20 calls and 7.427/7.443 seconds. A fresh preparation used 21 calls and took 7.829 seconds versus
+      28 calls and 8.736/12.001 seconds previously. Shipping used 6 calls and took 2.598 seconds, with the customer
+      destination restored and Flat rate selected at $400. The warehouse and $0 Pickup method remained correct;
+      the server's separate-billing checks passed. Timings span local route resolution through redirect creation,
+      excluding hosted checkout/payment loading; they are observational development samples, not a production SLA.
+      No orders, payment submissions, address-book edits or production changes were made. The payment iframe
+      loader was still pending during browser automation; this work does not claim to resolve or retest that provider.
+      Provider concurrency beyond the modeled cases is not exhaustively established.
+    source: core/lib/pickup-checkout/engine.ts; core/lib/pickup-checkout/gateway.ts; tests/pickup-checkout-simulation.mts; local Next development logs; sandbox browser test
+    updated_at: "2026-11-14"
 fingerprints:
   - id: sandbox-pickup-1
     date: "2026-11-13"
@@ -94,4 +115,8 @@ fingerprints:
   - id: sandbox-pickup-2
     date: "2026-11-13"
     commit: "958cc0dd (dirty tree: automatic billing selection)"
+    cli: Postman 1.82.0
+  - id: sandbox-pickup-3
+    date: "2026-11-14"
+    commit: "0d0a6d64 (dirty tree: Pickup preparation optimization)"
     cli: Postman 1.82.0

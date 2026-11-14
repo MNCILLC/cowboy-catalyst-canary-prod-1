@@ -12,6 +12,7 @@ const base = process.env.PICKUP_SIM_URL ?? "http://127.0.0.1:4017/checkout";
 let sessionCart = "test-cart";
 let signedIn = true;
 let enabled = true;
+let operations: string[] = [];
 const deps: Record<string, unknown> = {
   "server-only": {},
   zod: require("zod"),
@@ -44,6 +45,9 @@ deps["~/client"] = {
     }: any) => {
       assert.equal(fetchOptions.cache, "no-store");
       assert.equal(customerAccessToken, "synthetic-customer");
+      operations.push(
+        document.match(/(?:query|mutation)\s+(\w+)/)?.[1] ?? "unknown",
+      );
       const data = await request("/graphql", { query: document, variables });
       if (data.errors) throw Error("GraphQL failure");
       return data;
@@ -115,6 +119,7 @@ const { pickupGateway } = deps["./gateway"] as any;
 const { pickupFlow, clearPickup } = deps["./engine"] as any;
 const server = deps["./server"] as any;
 const reset = async (config = {}) => {
+  operations = [];
   sessionCart = "test-cart";
   signedIn = true;
   enabled = true;
@@ -501,6 +506,157 @@ await test("Ship does not automatically save a customer address", async () => {
     ],
   });
   await server.preparePickupCheckout("test-cart");
+  assert.deepEqual((await request("/__state")).events, []);
+});
+await test("Prepared Pickup re-entry uses fresh reads and no checkout mutations or address-book query", async () => {
+  await reset({ savedAddresses: [billing] });
+  await server.preparePickupCheckout("test-cart");
+  const before = await request("/__state");
+  operations = [];
+  await server.preparePickupCheckout("test-cart");
+  const after = await request("/__state");
+  assert.deepEqual(after.events, before.events);
+  assert.deepEqual(operations, ["PickupRecovery", "PickupCheckoutQuery"]);
+});
+await test("Existing billing bypasses the address book and full snapshot reads are not repeated just for marker IDs", async () => {
+  await reset({
+    state: { billing: { ...billing, entityId: "bill-1", customFields: [] } },
+  });
+  await server.preparePickupCheckout("test-cart");
+  assert.ok(!operations.includes("PickupBillingChoices"));
+  assert.equal(operations.filter((x) => x === "PickupCheckoutQuery").length, 8);
+});
+for (const change of [
+  "quantity",
+  "item",
+  "allocation",
+  "contact",
+  "province",
+  "destination",
+  "missing-selection",
+  "paid-selection",
+  "old-marker",
+  "marker-warehouse",
+]) {
+  await test("Prepared Pickup refreshes after " + change, async () => {
+    await reset({ savedAddresses: [billing] });
+    await server.preparePickupCheckout("test-cart");
+    const before = await request("/__state");
+    const n = before.events.length;
+    if (change === "quantity") before.items[0].quantity++;
+    if (change === "item")
+      before.items.push({ entityId: "item-3", quantity: 1 });
+    if (change === "allocation") before.shipping[0].lineItemIds = ["item-1"];
+    if (change === "contact") before.billing.phone = "5550999999";
+    if (change === "province")
+      before.shipping[0].address.stateOrProvinceCode = "TX";
+    if (change === "destination")
+      before.shipping[0].address.address1 = "Changed destination";
+    if (change === "missing-selection")
+      before.shipping[0].selectedShippingOption = null;
+    if (change === "paid-selection")
+      before.shipping[0].selectedShippingOption.cost.value = 10;
+    if (change === "old-marker" || change === "marker-warehouse") {
+      const field = before.fields.find((f: any) => f.key === "pickup_checkout");
+      const marker = JSON.parse(field.value);
+      if (change === "old-marker") delete marker.preparedItems;
+      else marker.warehouse.address1 = "Previous warehouse";
+      field.value = JSON.stringify(marker);
+    }
+    await request("/__patch", before);
+    await server.preparePickupCheckout("test-cart");
+    const after = await request("/__state");
+    assert.ok(after.events.slice(n).includes("UpdatePickupShipping"));
+    assert.ok(after.events.slice(n).includes("SelectPickupShipping"));
+    assert.equal(after.shipping[0].selectedShippingOption.cost.value, 0);
+    assert.equal(after.shipping[0].address.phone, after.billing.phone);
+    assert.equal(
+      after.shipping[0].address.stateOrProvinceCode,
+      warehouse.stateOrProvinceCode,
+    );
+    assert.equal(after.shipping[0].lineItemIds.length, after.items.length);
+  });
+}
+for (const setting of ["noOption", "paidOption", "ambiguousOption"]) {
+  await test(
+    "Prepared Pickup rejects a newly " + setting + " rate",
+    async () => {
+      await reset({ savedAddresses: [billing] });
+      await server.preparePickupCheckout("test-cart");
+      const s = await request("/__state");
+      s.shipping[0].availableShippingOptions = [];
+      await request("/__patch", {
+        shipping: s.shipping,
+        config: { [setting]: true },
+      });
+      await assert.rejects(
+        () => server.preparePickupCheckout("test-cart"),
+        /unavailable/,
+      );
+    },
+  );
+}
+await test("Prepared Pickup does not reuse a different customer's marker", async () => {
+  await reset({ savedAddresses: [billing] });
+  await server.preparePickupCheckout("test-cart");
+  const before = await request("/__state");
+  await request("/__patch", { customerId: 8 });
+  await assert.rejects(
+    () => server.preparePickupCheckout("test-cart"),
+    /account changed/,
+  );
+  assert.deepEqual((await request("/__state")).events, before.events);
+});
+await test("Prepared Pickup with warehouse billing is blocked", async () => {
+  await reset({ savedAddresses: [billing] });
+  await server.preparePickupCheckout("test-cart");
+  await request("/__patch", {
+    billing: { ...billing, ...warehouse, entityId: "bill-1", customFields: [] },
+    config: { savedAddresses: [] },
+  });
+  await assert.rejects(
+    () => server.preparePickupCheckout("test-cart"),
+    /billing/,
+  );
+});
+await test("Lazy saved billing cannot replace a choice made while its lookup is pending", async () => {
+  await (
+    await flow()
+  ).prepare("Pick up at warehouse", async () => {
+    await request("/__patch", {
+      billing: {
+        ...billing,
+        address1: "Concurrent choice",
+        entityId: "bill-1",
+        customFields: [],
+      },
+    });
+    return billing;
+  });
+  assert.equal(
+    (await request("/__state")).billing.address1,
+    "Concurrent choice",
+  );
+});
+await test("Request-level preferences reuse still rejects a newer cart preference", async () => {
+  await reset({ savedAddresses: [billing] });
+  await request("/__patch", {
+    fields: [
+      {
+        entityId: 1,
+        key: "freight_fulfillment",
+        value: JSON.stringify({ fulfillmentMethod: "ship", version: 2 }),
+      },
+    ],
+  });
+  await assert.rejects(
+    () =>
+      server.preparePickupCheckout("test-cart", {
+        confirmed: true,
+        preferences: { fulfillmentMethod: "pickup", version: 1 },
+      }),
+    /preferences changed/,
+  );
   assert.deepEqual((await request("/__state")).events, []);
 });
 console.log(`${count} Pickup HTTP simulation scenarios passed.`);

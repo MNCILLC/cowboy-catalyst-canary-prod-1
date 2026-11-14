@@ -22,6 +22,7 @@ export interface PickupSnapshot {
   billing: PickupAddress | null;
   billingId: string | null;
   marker: PickupMarker | null;
+  markerId: number | null;
   items: Array<{ lineItemEntityId: string; quantity: number }>;
   shipping: Array<{
     id: string;
@@ -33,7 +34,7 @@ export interface PickupSnapshot {
 }
 export interface PickupGateway {
   read(): Promise<PickupSnapshot>;
-  mark(marker: PickupMarker | null): Promise<void>;
+  mark(marker: PickupMarker | null, state: PickupSnapshot): Promise<void>;
   assign(version: number): Promise<void>;
   bill(address: PickupAddress, state: PickupSnapshot): Promise<void>;
   ship(address: PickupAddress, state: PickupSnapshot): Promise<void>;
@@ -70,17 +71,20 @@ export function pickupFlow(
     const billing = s.billing;
 
     if (!s.marker) {
-      await gateway.mark({
-        schemaVersion: 1,
-        customerId: s.customerId,
-        associated: false,
-        warehouse,
-        originalAddress:
-          s.shipping[0] && !sameDestination(s.shipping[0].address, warehouse)
-            ? s.shipping[0].address
-            : null,
-        prepared: false,
-      });
+      await gateway.mark(
+        {
+          schemaVersion: 1,
+          customerId: s.customerId,
+          associated: false,
+          warehouse,
+          originalAddress:
+            s.shipping[0] && !sameDestination(s.shipping[0].address, warehouse)
+              ? s.shipping[0].address
+              : null,
+          prepared: false,
+        },
+        s,
+      );
       s = await read();
     }
 
@@ -88,7 +92,7 @@ export function pickupFlow(
       await gateway.assign(s.cartVersion);
       s = await read();
       if (!s.marker) fail('Pickup preparation changed. Please retry.');
-      await gateway.mark({ ...s.marker, associated: true });
+      await gateway.mark({ ...s.marker, associated: true }, s);
       s = await read();
 
       if (billing && billingSchema.safeParse(billing).success && !s.billing?.address1) {
@@ -116,26 +120,11 @@ export function pickupFlow(
     return after.billing;
   }
 
-  async function prepare(methodName: string, automaticBilling?: PickupAddress) {
-    let s = await associate();
+  const itemKey = (items: PickupSnapshot['items']) =>
+    JSON.stringify([...items].sort((a, b) => a.lineItemEntityId.localeCompare(b.lineItemEntityId)));
 
-    // Re-read after association: preserve any valid billing choice saved by the
-    // shopper, including one changed since the cart summary was rendered.
-    if (
-      !validSeparateBilling(s.billing, warehouse) &&
-      automaticBilling &&
-      validSeparateBilling(automaticBilling, warehouse)
-    ) {
-      await gateway.bill(billingSchema.parse(automaticBilling), s);
-      s = await read();
-    }
-
-    if (!s.billing || !validSeparateBilling(s.billing, warehouse))
-      fail('Confirm your billing address on the cart before continuing with Pickup.');
-
-    const billing = s.billing;
-    // Contact details are the shopper's; only the destination is the warehouse.
-    const pickupAddress = {
+  function pickupAddress(billing: PickupAddress): PickupAddress {
+    return {
       ...warehouse,
       firstName: billing.firstName,
       lastName: billing.lastName,
@@ -143,12 +132,86 @@ export function pickupFlow(
       phone: billing.phone,
       company: billing.company,
     };
-    const items = JSON.stringify(s.items);
+  }
 
-    await gateway.ship(pickupAddress, s);
+  function matchesPickup(s: PickupSnapshot, methodName: string, items: string) {
+    const consignment = s.shipping[0];
+
+    if (!s.billing || !validSeparateBilling(s.billing, warehouse) || !consignment) return false;
+
+    const address = pickupAddress(s.billing);
+    const clean = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
+    const options = consignment.options.filter(
+      (o) => o.type.endsWith('pickupinstore') && o.description === methodName && o.cost.value === 0,
+    );
+    const option = options[0];
+    const selected = consignment.selected;
+
+    return (
+      itemKey(s.items) === items &&
+      sameDestination(consignment.address, address) &&
+      // BigCommerce may populate the province name when given its code.
+      (address.stateOrProvinceCode
+        ? clean(consignment.address.stateOrProvinceCode) === clean(address.stateOrProvinceCode)
+        : clean(consignment.address.stateOrProvince) === clean(address.stateOrProvince)) &&
+      (['firstName', 'lastName', 'email', 'phone', 'company'] as const).every(
+        (key) => clean(consignment.address[key]) === clean(address[key]),
+      ) &&
+      consignment.lineItemIds.length === s.items.length &&
+      s.items.every((i) => consignment.lineItemIds.includes(i.lineItemEntityId)) &&
+      options.length === 1 &&
+      option !== undefined &&
+      selected?.entityId === option.entityId &&
+      selected.type.endsWith('pickupinstore') &&
+      selected.description === methodName &&
+      selected.cost.value === 0
+    );
+  }
+
+  function isPrepared(s: PickupSnapshot, methodName: string, items: string) {
+    return (
+      s.marker?.prepared &&
+      s.marker.associated &&
+      s.marker.preparedItems &&
+      JSON.stringify(s.marker.warehouse) === JSON.stringify(warehouse) &&
+      itemKey(s.marker.preparedItems) === items &&
+      matchesPickup(s, methodName, items)
+    );
+  }
+
+  async function prepare(
+    methodName: string,
+    automaticBilling?: PickupAddress | (() => Promise<PickupAddress | undefined>),
+  ) {
+    let s = await associate();
+
+    if (!validSeparateBilling(s.billing, warehouse)) {
+      // The address book is needed only when checkout has no usable billing.
+      const candidate =
+        typeof automaticBilling === 'function' ? await automaticBilling() : automaticBilling;
+
+      if (candidate && validSeparateBilling(candidate, warehouse)) {
+        // The address-book lookup may have taken time. Keep a newer shopper
+        // choice and use the latest checkout version before writing.
+        s = await read();
+
+        if (!validSeparateBilling(s.billing, warehouse)) {
+          await gateway.bill(billingSchema.parse(candidate), s);
+          s = await read();
+        }
+      }
+    }
+
+    if (!s.billing || !validSeparateBilling(s.billing, warehouse))
+      fail('Confirm your billing address on the cart before continuing with Pickup.');
+
+    const items = itemKey(s.items);
+
+    if (isPrepared(s, methodName, items)) return;
+
+    await gateway.ship(pickupAddress(s.billing), s);
     s = await read();
-    if (JSON.stringify(s.items) !== items)
-      fail('Cart items changed. Return to the cart and retry.');
+    if (itemKey(s.items) !== items) fail('Cart items changed. Return to the cart and retry.');
 
     const consignment = s.shipping[0];
 
@@ -158,32 +221,21 @@ export function pickupFlow(
     const options = consignment.options.filter(
       (o) => o.type.endsWith('pickupinstore') && o.description === methodName && o.cost.value === 0,
     );
-
     const option = options[0];
 
     if (options.length !== 1 || !option)
       fail('The $0 warehouse pickup method is unavailable. Please contact the store.');
+
     await gateway.select(consignment.id, option.entityId, s.checkoutVersion);
     s = await read();
-
-    const selected = s.shipping[0];
-
-    if (
-      JSON.stringify(s.items) !== items ||
-      !selected ||
-      selected.selected?.entityId !== option.entityId ||
-      selected.selected.cost.value !== 0 ||
-      !sameDestination(selected.address, warehouse) ||
-      !validSeparateBilling(s.billing, warehouse) ||
-      selected.lineItemIds.length !== s.items.length ||
-      s.items.some((i) => !selected.lineItemIds.includes(i.lineItemEntityId))
-    ) {
+    if (!matchesPickup(s, methodName, items))
       fail('Pickup details changed. Return to the cart and retry.');
-    }
 
     if (!s.marker) fail('Pickup preparation changed. Please retry.');
-    await gateway.mark({ ...s.marker, warehouse, prepared: true });
-    await read();
+    await gateway.mark({ ...s.marker, warehouse, prepared: true, preparedItems: s.items }, s);
+    s = await read();
+    if (!isPrepared(s, methodName, items))
+      fail('Pickup details changed. Return to the cart and retry.');
   }
 
   return { saveBilling, prepare };
@@ -238,5 +290,5 @@ export async function clearPickup(gateway: PickupGateway) {
     }
   }
 
-  await gateway.mark(null);
+  await gateway.mark(null, s);
 }
