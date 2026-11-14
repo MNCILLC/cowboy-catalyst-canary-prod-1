@@ -948,28 +948,37 @@ function CheckoutButton({
   action: Action<SubmissionResult | null, FormData> | string;
   isCartUpdatePending: boolean;
 } & ComponentPropsWithoutRef<typeof Button>) {
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  useEffect(() => {
+    const resetNavigation = () => setIsNavigating(false);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') resetNavigation();
+    };
+
+    // Returning through the back/forward cache must leave checkout usable.
+    window.addEventListener('pageshow', resetNavigation);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('pageshow', resetNavigation);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   const [lastResult, formAction] = useActionState(
     async (state: SubmissionResult | null, formData: FormData) => {
       if (typeof action === 'string') {
-        window.location.assign(action);
+        // Preparing hosted checkout can outlast a fixed timeout. Keep the
+        // navigation state separate from the action, which settles immediately.
+        setIsNavigating(true);
 
-        // The page normally unloads before this settles. If the navigation is
-        // cancelled instead (Esc, "Stay" on the beforeunload prompt, a stalled
-        // redirect) or the page is restored from bfcache, settle so the button
-        // re-enables as a retry, rather than spinning forever with subsequent
-        // clicks queued behind a never-resolving action.
-        await new Promise<void>((resolve) => {
-          let fallbackTimer: ReturnType<typeof setTimeout>;
-
-          const settle = () => {
-            clearTimeout(fallbackTimer);
-            window.removeEventListener('pageshow', settle);
-            resolve();
-          };
-
-          fallbackTimer = setTimeout(settle, 8000);
-          window.addEventListener('pageshow', settle);
-        });
+        try {
+          window.location.assign(action);
+        } catch (error) {
+          setIsNavigating(false);
+          throw error;
+        }
 
         return null;
       }
@@ -991,23 +1000,31 @@ function CheckoutButton({
 
   return (
     <form action={formAction}>
-      <SubmitButton {...props} isCartUpdatePending={isCartUpdatePending} />
+      <SubmitButton
+        {...props}
+        isCartUpdatePending={isCartUpdatePending}
+        isNavigating={isNavigating}
+      />
     </form>
   );
 }
 
 function SubmitButton({
   isCartUpdatePending,
+  isNavigating,
   disabled,
   ...props
-}: { isCartUpdatePending: boolean } & ComponentPropsWithoutRef<typeof Button>) {
+}: {
+  isCartUpdatePending: boolean;
+  isNavigating: boolean;
+} & ComponentPropsWithoutRef<typeof Button>) {
   const { pending } = useFormStatus();
 
   return (
     <Button
       {...props}
-      disabled={disabled || pending || isCartUpdatePending}
-      loading={pending || isCartUpdatePending}
+      disabled={disabled || pending || isCartUpdatePending || isNavigating}
+      loading={pending || isCartUpdatePending || isNavigating}
       type="submit"
     />
   );
