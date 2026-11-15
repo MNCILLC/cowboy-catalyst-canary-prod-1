@@ -13,8 +13,11 @@ import { getCartId } from '~/lib/cart';
 import { getMinimumOrderSubtotal } from '~/lib/cart/minimum-order';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getConsentCookie } from '~/lib/consent-manager/cookies/server';
+import { type ShippingState } from '~/lib/freight-cart/policy';
 import { assertCartShipping, CartShippingError } from '~/lib/freight-cart/server';
 import { assertLoyaltyCheckout, LoyaltyCheckoutError } from '~/lib/loyalty/server';
+import { PickupCheckoutError } from '~/lib/pickup-checkout/policy';
+import { preparePickupCheckout } from '~/lib/pickup-checkout/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
@@ -73,12 +76,25 @@ const CheckoutRedirectMutation = graphql(`
 
 function isCheckoutPolicyError(
   error: unknown,
-): error is ProUseRequiredError | LoyaltyCheckoutError | CartShippingError {
+): error is ProUseRequiredError | LoyaltyCheckoutError | CartShippingError | PickupCheckoutError {
   return (
     error instanceof ProUseRequiredError ||
     error instanceof LoyaltyCheckoutError ||
-    error instanceof CartShippingError
+    error instanceof CartShippingError ||
+    error instanceof PickupCheckoutError
   );
+}
+
+async function prepareCheckout(cartId: string, shippingState: ShippingState | undefined) {
+  try {
+    await preparePickupCheckout(cartId, shippingState);
+  } catch (error) {
+    rethrow(error);
+    if (error instanceof BigCommerceAuthError || error instanceof PickupCheckoutError) throw error;
+    throw new PickupCheckoutError(
+      'Checkout preparation is temporarily unavailable. Please retry from the cart.',
+    );
+  }
 }
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
@@ -107,7 +123,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   try {
     await assertProUseCart(cartId);
     await assertLoyaltyCheckout(cartId);
-    await assertCartShipping(cartId);
+
+    const shippingState = await assertCartShipping(cartId);
+
+    await prepareCheckout(cartId, shippingState);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({

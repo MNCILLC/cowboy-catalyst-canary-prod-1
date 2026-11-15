@@ -1,0 +1,12 @@
+{
+  "storeHash": "3olkgrdpfq",
+  "channelId": 1912525,
+  "scriptUuid": "67ee7a6c-b48f-4c8c-b725-b9cf9793c7c6",
+  "name": "Sandbox - Pickup billing checkbox visibility",
+  "enabled": true,
+  "visibility": "checkout",
+  "sourceSha256": "db1012b043003261abadb0d8afef9c39d8c498f00dfdf40a76514f4c4b54788a",
+  "installedAt": "2026-11-13T22:32:38.316Z",
+  "rollback": "Disable this script in the sandbox channel Script Manager, or PUT enabled:false to its /v3/content/scripts/{uuid} endpoint.",
+  "updatedAt": "2026-11-13T22:47:15.404Z"
+}

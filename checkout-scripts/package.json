@@ -1,0 +1,10 @@
+{
+  "name": "sandbox-checkout-script-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test pickup-billing-visibility.test.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}

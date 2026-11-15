@@ -1,0 +1,140 @@
+purpose:
+  stands_in_for: BigCommerce Storefront GraphQL cart assignment, checkout addresses, shipping consignments and cart metafields.
+  unblocks: >-
+    Runs the actual Catalyst pickup server, gateway and policy modules over HTTP without live-store writes.
+    Start with postman simulation run postman/simulations/pickup-checkout.sim.yaml --port 4017 --no-history,
+    then node tests/pickup-checkout-simulation.mts from the repository root.
+    Next session and the centralized GraphQL client transport boundary are adapted; checkout logic is not duplicated.
+assumptions:
+  - id: address-contract
+    status: supported
+    claim: The gateway operations and version inputs are accepted by the sandbox Storefront GraphQL API.
+    reason: The checked-in generated schema type-checks the requests and the sandbox browser flow completed them.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: assigned a disposable signed-in cart, saved separate billing,
+      added the default shipping-origin address, and selected the current zero-dollar pickup option.
+      No customer address-book writes, store setting changes, payment submissions or orders were made.
+    source: core/bigcommerce.graphql; core/lib/pickup-checkout/gateway.ts; sandbox browser checkout test
+    updated_at: "2026-11-13"
+  - id: assignment-can-clear-addresses
+    status: supported
+    claim: Cart assignment must precede warehouse prefill because assignment can clear checkout shipping data.
+    reason: Earlier disposable-cart testing observed address removal when assigning a guest cart to a customer.
+    verification: >-
+      Prior manual test observed shipping reset. The current simulation deliberately clears both addresses on assignment;
+      the real orchestrator snapshots the original destination, restores valid billing as needed, and assigns only once
+      after a successful association marker. The simulation's billing reset is a conservative modeled failure, not an
+      independently established provider guarantee.
+    source: core/lib/pickup-checkout/engine.ts; postman/mocks/pickup-checkout/default.js; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
+  - id: billing-checkbox
+    status: supported
+    claim: In the tested sandbox checkout, distinct persisted billing and warehouse shipping addresses initialize Same as shipping address unchecked.
+    reason: Observed in the standard hosted sandbox checkout after the Catalyst redirect, without manually changing the checkbox.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: the Shipping step was complete with Pick up at warehouse at $0.00;
+      Payment rendered with the existing customer billing address and an unchecked Same as shipping address box.
+      The test payment provider's card fields loaded. No card data, terms acceptance, payment or order was submitted.
+      This is evidence for the tested checkout configuration, not every possible customized checkout.
+    source: sandboxcatalystcheckout.mncillc.com/checkout; local browser screenshot sandbox-pickup-checkout.png
+    updated_at: "2026-11-13"
+  - id: failure-recovery
+    status: supported
+    claim: Under the modeled HTTP failures, the caller blocks invalid redirects and can retry interrupted preparation without duplicate consignments.
+    reason: Twenty-five local HTTP scenarios exercise the real implementation against a stateful stand-in.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: all 25 scenarios passed, covering separate billing, fresh free quotes,
+      Ship no-op, restore/delete recovery, shopper edits, unavailable/paid/ambiguous rates, request failures,
+      shipping committed before response failure, changed items/preferences/session, multiple consignments,
+      flag-off recovery, digital-only carts and version conflicts. This establishes caller behavior under the model;
+      real provider failure timing and multi-process concurrency are not exhaustively reproduced.
+    source: tests/pickup-checkout-simulation.mts; postman/mocks/pickup-checkout/default.js
+    updated_at: "2026-11-13"
+  - id: shipping-unaffected
+    status: supported
+    claim: Switching the tested sandbox cart to Ship removes the feature-created warehouse consignment and permits normal shipping rates.
+    reason: The hosted checkout requested the customer's destination again, then offered its configured rates.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: after switching Pickup to Ship, the shipping address form was blank.
+      Selecting an existing customer address returned the sandbox's Flat rate at $400.00. No warehouse destination
+      remained and no global shipping configuration changed. This does not independently validate the Freight carrier's
+      rate calculation or every destination.
+    source: core/lib/pickup-checkout/engine.ts; sandbox browser checkout test
+    updated_at: "2026-11-13"
+  - id: address-update-keeps-selected-option
+    status: supported
+    claim: Updating a shipping consignment address can retain the previously selected Pickup method.
+    reason: A sandbox round trip restored the original address but retained Pickup; the recovery guard stopped checkout.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-1: the initial simulation incorrectly cleared the selected option on address
+      updates. Live testing contradicted that model. Updated the stand-in to retain the option, and changed recovery to
+      delete then recreate the consignment while keeping its recovery marker until verified. The corrected browser test
+      restored the customer's original shipping address and returned a selected Flat rate at $400.00, with Pickup unselected.
+      Added regression scenarios for a stale option on an interrupted restore and a failure between deletion and recreation.
+    source: core/lib/pickup-checkout/engine.ts; postman/mocks/pickup-checkout/default.js; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
+  - id: automatic-billing-selection
+    status: supported
+    claim: Before the highest-ID fallback, the caller previewed existing checkout billing or exactly one usable saved address, persisting the fallback only while preparing Pickup checkout.
+    reason: Seven added HTTP scenarios exercise the actual server and engine; the local browser shows a summary with optional Change instead of requiring the billing form.
+    verification: >-
+      2026-11-13, fingerprint sandbox-pickup-2: all 32 scenarios passed. New cases cover single-address automatic preparation,
+      existing checkout billing precedence, multiple-address choice, incomplete/warehouse addresses, saved-address removal,
+      a newer checkout billing choice and Ship bypass. Cart preview produced zero mutations. Browser verification confirmed
+      the collapsed summary and optional Change editor. The current user's five-item cart was left intact; no checkout
+      submission or address-book edit was made in this follow-up. Persistence is verified through the HTTP stand-in;
+      the previous hosted-checkout evidence remains applicable to the unchanged address mutations.
+    source: core/lib/pickup-checkout/server.ts; core/lib/pickup-checkout/engine.ts; tests/pickup-checkout-simulation.mts
+    updated_at: "2026-11-13"
+  - id: optimized-preparation
+    status: supported
+    claim: The optimized caller skips writes only for a freshly validated prepared Pickup checkout and avoids duplicate request-local reads.
+    reason: The expanded HTTP suite passed and real sandbox route logs show fewer requests for both initial and repeat preparation.
+    verification: >-
+      2026-11-14, fingerprint sandbox-pickup-3: all 51 scenarios passed against the existing local Postman HTTP stand-in.
+      New cases cover no-write repeat preparation, lazy address-book loading, quantities and item allocation,
+      contact/province/destination changes, missing or paid selection, legacy markers, warehouse changes,
+      unavailable or ambiguous rates, changed customer, warehouse billing, a billing choice changed during lookup,
+      and stale request-level Freight preferences. Simulation request logs confirm the GraphQL path ran over HTTP.
+      In the real sandbox, repeat checkout preparation used 9 GraphQL calls and took 3.948/3.447 seconds versus
+      the earlier 20 calls and 7.427/7.443 seconds. A fresh preparation used 21 calls and took 7.829 seconds versus
+      28 calls and 8.736/12.001 seconds previously. Shipping used 6 calls and took 2.598 seconds, with the customer
+      destination restored and Flat rate selected at $400. The warehouse and $0 Pickup method remained correct;
+      the server's separate-billing checks passed. Timings span local route resolution through redirect creation,
+      excluding hosted checkout/payment loading; they are observational development samples, not a production SLA.
+      No orders, payment submissions, address-book edits or production changes were made. The payment iframe
+      loader was still pending during browser automation; this work does not claim to resolve or retest that provider.
+      Provider concurrency beyond the modeled cases is not exhaustively established.
+    source: core/lib/pickup-checkout/engine.ts; core/lib/pickup-checkout/gateway.ts; tests/pickup-checkout-simulation.mts; local Next development logs; sandbox browser test
+    updated_at: "2026-11-14"
+  - id: highest-id-billing-fallback
+    status: supported
+    claim: The caller preserves valid existing checkout billing and otherwise selects the highest numeric ID among usable saved addresses for Pickup.
+    reason: The real server and engine passed the expanded local HTTP suite; the same selection helper is used for cart preview and checkout preparation.
+    verification: >-
+      2026-11-15, fingerprint pickup-address-fallback-1: all 54 HTTP scenarios passed, including unordered address IDs,
+      an explicitly selected lower-ID address, higher-ID incomplete/warehouse addresses, removal of the highest-ID address
+      after preview, existing billing outside the saved address book, concurrent billing selection, and Shipping bypass/recovery.
+      Preview made no writes. Request logs confirmed the actual modules called the local stand-in over HTTP.
+      The earlier read-only production customer-address inspection returned numeric IDs without created/modified timestamps;
+      the highest-ID rule is a user-approved fallback and does not establish chronological recency.
+      This change was validated locally, not deployed or exercised by mutating a live-store checkout. No orders or live settings changed.
+    source: core/lib/pickup-checkout/server.ts; tests/pickup-checkout-simulation.mts; BigCommerce customer-address API read-only inspection
+    updated_at: "2026-11-15"
+fingerprints:
+  - id: sandbox-pickup-1
+    date: "2026-11-13"
+    commit: "1571a58a7862b4c8494603754d997361f1aea1c7 (dirty tree: Pickup implementation)"
+    cli: Postman 1.82.0
+  - id: sandbox-pickup-2
+    date: "2026-11-13"
+    commit: "958cc0dd (dirty tree: automatic billing selection)"
+    cli: Postman 1.82.0
+  - id: sandbox-pickup-3
+    date: "2026-11-14"
+    commit: "0d0a6d64 (dirty tree: Pickup preparation optimization)"
+    cli: Postman 1.82.0
+  - id: pickup-address-fallback-1
+    date: "2026-11-15"
+    commit: "3532fb55 (dirty tree: highest-ID saved billing fallback)"
+    cli: Postman 1.82.0
