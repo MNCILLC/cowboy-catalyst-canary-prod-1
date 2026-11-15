@@ -1,7 +1,7 @@
 'use client';
 
 import { Info, MapPin, TriangleAlert } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/vibes/soul/primitives/badge';
 import { Button } from '@/vibes/soul/primitives/button';
@@ -12,6 +12,8 @@ import {
   type ShippingSelection,
   type ShippingState,
 } from '~/lib/freight-cart/policy';
+
+import { PickupBilling, type PickupBillingProps } from './pickup-billing';
 
 function DeliveryServiceHelp({ label, description }: { label: string; description: string }) {
   const [open, setOpen] = useState(false);
@@ -44,6 +46,7 @@ export interface FulfillmentStatus {
 }
 export interface FulfillmentProps {
   initial: ShippingState;
+  pickup?: PickupBillingProps;
   shippingOrigin?: { city: string; state: string; address: string } | null;
   saveAction: (selection: ShippingSelection) => Promise<ShippingSaveResult>;
 }
@@ -59,6 +62,7 @@ function editableSelection(value: ShippingSelection): ShippingSelection {
 
 export function Fulfillment({
   initial,
+  pickup,
   saveAction,
   shippingOrigin,
   onStatus,
@@ -66,6 +70,10 @@ export function Fulfillment({
   const [selection, setSelection] = useState<ShippingSelection | null>(() =>
     initial.preferences ? editableSelection(initial.preferences) : null,
   );
+  const [confirmed, setConfirmed] = useState(initial.confirmed);
+  const [version, setVersion] = useState(initial.preferences?.version ?? null);
+  const [billingReady, setBillingReady] = useState(pickup?.initial.ready ?? true);
+  const [billingPending, setBillingPending] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(
     initial.error ??
@@ -74,6 +82,22 @@ export function Fulfillment({
         : undefined),
   );
   const saving = useRef(false);
+  const onBillingStatus = useCallback((ready: boolean, busy: boolean) => {
+    setBillingReady(ready);
+    setBillingPending(busy);
+  }, []);
+
+  useEffect(() => {
+    onStatus({
+      selected: selection !== null,
+      ready:
+        confirmed &&
+        !pending &&
+        !billingPending &&
+        (selection?.fulfillmentMethod !== 'pickup' || !pickup || billingReady),
+      pending: pending || billingPending,
+    });
+  }, [selection, confirmed, pending, billingPending, billingReady, pickup, onStatus]);
 
   async function save(next: ShippingSelection) {
     if (saving.current) return;
@@ -83,6 +107,7 @@ export function Fulfillment({
 
     setSelection(editable);
     setPending(true);
+    setConfirmed(false);
     setError(undefined);
     onStatus({ selected: true, ready: false, pending: true });
 
@@ -91,7 +116,8 @@ export function Fulfillment({
 
       if ('error' in result) throw new Error(result.error);
       setSelection(editableSelection(result.preferences));
-      onStatus({ selected: true, ready: true, pending: false });
+      setVersion(result.preferences.version);
+      setConfirmed(true);
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -121,7 +147,11 @@ export function Fulfillment({
         )}
       </dt>
       <dd>
-        <fieldset aria-describedby="fulfillment-status" className="space-y-4" disabled={pending}>
+        <fieldset
+          aria-describedby="fulfillment-status"
+          className="space-y-4"
+          disabled={pending || billingPending}
+        >
           <legend className="sr-only">Fulfillment method</legend>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <label className="flex cursor-pointer items-center gap-3">
@@ -207,6 +237,14 @@ export function Fulfillment({
             </fieldset>
           )}
         </fieldset>
+        {pickup && selection?.fulfillmentMethod === 'pickup' && (
+          <PickupBilling
+            {...pickup}
+            disabled={pending || !confirmed}
+            onStatus={onBillingStatus}
+            version={version}
+          />
+        )}
         <div aria-live="polite" className="mt-2 text-sm" id="fulfillment-status">
           {pending && <p>Saving shipping preferences…</p>}
           {error !== undefined && <p role="alert">{error}</p>}

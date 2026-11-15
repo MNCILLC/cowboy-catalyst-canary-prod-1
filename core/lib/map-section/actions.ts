@@ -42,6 +42,7 @@ export async function loadShippingOriginDetails() {
     city: address.city.trim(),
     state: address.stateOrProvince.trim(),
     address: formattedAddress,
+    fields: address,
   };
 }
 

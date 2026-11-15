@@ -1,0 +1,10 @@
+version: 1
+slug: pickup-checkout
+protocol: http
+interceptRequests: true
+name: BigCommerce pickup checkout
+origin: https://pickup-simulation.example.test
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true
