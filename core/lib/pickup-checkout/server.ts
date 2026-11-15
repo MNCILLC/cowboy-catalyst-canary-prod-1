@@ -13,6 +13,7 @@ import { pickupGateway } from './gateway';
 import {
   billingSchema,
   normalizeAddress,
+  type PickupAddress,
   type PickupBillingState,
   PickupCheckoutError,
   validSeparateBilling,
@@ -130,6 +131,26 @@ async function billingChoices() {
   return { addresses, countries };
 }
 
+function savedBillingFallback(
+  addresses: PickupBillingState['addresses'],
+  warehouse: PickupAddress,
+) {
+  // IDs are a deterministic fallback, not a guarantee of address recency.
+  // Only consider complete billing addresses separate from the warehouse.
+  const selected = addresses.reduce<PickupBillingState['addresses'][number] | undefined>(
+    (current, entry) => {
+      if (validSeparateBilling(entry.address, warehouse) && (!current || entry.id > current.id)) {
+        return entry;
+      }
+
+      return current;
+    },
+    undefined,
+  );
+
+  return selected?.address ?? null;
+}
+
 export async function getPickupBillingState(cartId: string): Promise<PickupBillingState> {
   try {
     const gateway = await pickupGateway(cartId);
@@ -138,11 +159,10 @@ export async function getPickupBillingState(cartId: string): Promise<PickupBilli
 
     // Reading the cart only proposes an address. Persist it when preparing checkout.
     // A shopper's existing valid billing choice takes priority over saved addresses.
-    const usable = addresses.filter((entry) => validSeparateBilling(entry.address, warehouse));
     let address = snapshot.billing;
 
     if (!validSeparateBilling(address, warehouse)) {
-      address = usable.length === 1 ? (usable[0]?.address ?? null) : null;
+      address = savedBillingFallback(addresses, warehouse);
     }
 
     return {
@@ -267,9 +287,8 @@ export async function preparePickupCheckout(cartId: string, confirmedShipping?: 
     process.env.PICKUP_SHIPPING_METHOD_NAME?.trim() || 'Pick up at warehouse',
     async () => {
       const { addresses } = await billingChoices();
-      const usable = addresses.filter((entry) => validSeparateBilling(entry.address, warehouse));
 
-      return usable.length === 1 ? usable[0]?.address : undefined;
+      return savedBillingFallback(addresses, warehouse) ?? undefined;
     },
   );
   await confirmedPickup(cartId, version);

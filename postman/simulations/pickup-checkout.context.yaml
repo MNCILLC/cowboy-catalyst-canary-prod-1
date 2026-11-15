@@ -75,7 +75,7 @@ assumptions:
     updated_at: "2026-11-13"
   - id: automatic-billing-selection
     status: supported
-    claim: The caller previews existing checkout billing or exactly one usable saved address, then persists the fallback only while preparing Pickup checkout.
+    claim: Before the highest-ID fallback, the caller previewed existing checkout billing or exactly one usable saved address, persisting the fallback only while preparing Pickup checkout.
     reason: Seven added HTTP scenarios exercise the actual server and engine; the local browser shows a summary with optional Change instead of requiring the billing form.
     verification: >-
       2026-11-13, fingerprint sandbox-pickup-2: all 32 scenarios passed. New cases cover single-address automatic preparation,
@@ -107,6 +107,20 @@ assumptions:
       Provider concurrency beyond the modeled cases is not exhaustively established.
     source: core/lib/pickup-checkout/engine.ts; core/lib/pickup-checkout/gateway.ts; tests/pickup-checkout-simulation.mts; local Next development logs; sandbox browser test
     updated_at: "2026-11-14"
+  - id: highest-id-billing-fallback
+    status: supported
+    claim: The caller preserves valid existing checkout billing and otherwise selects the highest numeric ID among usable saved addresses for Pickup.
+    reason: The real server and engine passed the expanded local HTTP suite; the same selection helper is used for cart preview and checkout preparation.
+    verification: >-
+      2026-11-15, fingerprint pickup-address-fallback-1: all 54 HTTP scenarios passed, including unordered address IDs,
+      an explicitly selected lower-ID address, higher-ID incomplete/warehouse addresses, removal of the highest-ID address
+      after preview, existing billing outside the saved address book, concurrent billing selection, and Shipping bypass/recovery.
+      Preview made no writes. Request logs confirmed the actual modules called the local stand-in over HTTP.
+      The earlier read-only production customer-address inspection returned numeric IDs without created/modified timestamps;
+      the highest-ID rule is a user-approved fallback and does not establish chronological recency.
+      This change was validated locally, not deployed or exercised by mutating a live-store checkout. No orders or live settings changed.
+    source: core/lib/pickup-checkout/server.ts; tests/pickup-checkout-simulation.mts; BigCommerce customer-address API read-only inspection
+    updated_at: "2026-11-15"
 fingerprints:
   - id: sandbox-pickup-1
     date: "2026-11-13"
@@ -119,4 +133,8 @@ fingerprints:
   - id: sandbox-pickup-3
     date: "2026-11-14"
     commit: "0d0a6d64 (dirty tree: Pickup preparation optimization)"
+    cli: Postman 1.82.0
+  - id: pickup-address-fallback-1
+    date: "2026-11-15"
+    commit: "3532fb55 (dirty tree: highest-ID saved billing fallback)"
     cli: Postman 1.82.0

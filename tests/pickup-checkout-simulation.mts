@@ -419,28 +419,75 @@ await test("Existing checkout billing wins over multiple saved addresses", async
     "Existing Billing Street",
   );
 });
-await test("Multiple usable saved addresses require a choice", async () => {
+await test("Highest numeric saved-address ID is the fallback, regardless of response order", async () => {
+  const older = { ...billing, entityId: 5, address1: "Older Saved Street" };
+  const highest = { ...billing, entityId: 42, address1: "Highest ID Street" };
+  const middle = { ...billing, entityId: 9, address1: "Middle ID Street" };
+  for (const savedAddresses of [
+    [older, highest, middle],
+    [middle, highest, older],
+  ]) {
+    await reset({ savedAddresses });
+    const preview = await server.getPickupBillingState("test-cart");
+    assert.equal(preview.ready, true);
+    assert.equal(preview.address.address1, highest.address1);
+    assert.deepEqual((await request("/__state")).events, []);
+    await server.preparePickupCheckout("test-cart");
+    assert.equal(
+      (await request("/__state")).billing.address1,
+      highest.address1,
+    );
+  }
+});
+await test("A customer's explicitly selected lower-ID address wins over the fallback", async () => {
+  const selected = {
+    ...billing,
+    entityId: 5,
+    address1: "Customer Selected Street",
+  };
   await reset({
-    savedAddresses: [billing, { ...billing, address1: "Second Saved Street" }],
+    savedAddresses: [
+      selected,
+      { ...billing, entityId: 42, address1: "Higher ID Street" },
+    ],
+  });
+  await server.savePickupBilling("test-cart", selected, 1);
+  const preview = await server.getPickupBillingState("test-cart");
+  assert.equal(preview.address.address1, selected.address1);
+  await server.preparePickupCheckout("test-cart");
+  assert.equal((await request("/__state")).billing.address1, selected.address1);
+});
+await test("Higher-ID incomplete and warehouse addresses are excluded from the fallback", async () => {
+  await reset({
+    savedAddresses: [
+      { ...billing, entityId: 42 },
+      { ...billing, entityId: 99, postalCode: "" },
+      {
+        ...warehouse,
+        entityId: 100,
+        firstName: "Test",
+        lastName: "Shopper",
+        email: billing.email,
+      },
+      { ...billing, entityId: 5, address1: "Older Street" },
+    ],
   });
   const preview = await server.getPickupBillingState("test-cart");
-  assert.equal(preview.ready, false);
-  assert.equal(preview.address, null);
-  await assert.rejects(
-    () => server.preparePickupCheckout("test-cart"),
-    /billing/,
-  );
-  assert.equal((await request("/__state")).shipping.length, 0);
-  await server.savePickupBilling(
-    "test-cart",
-    { ...billing, address1: "Second Saved Street" },
-    1,
-  );
+  assert.equal(preview.address.address1, billing.address1);
   await server.preparePickupCheckout("test-cart");
+  assert.equal((await request("/__state")).billing.address1, billing.address1);
+});
+await test("Checkout recomputes the fallback if the highest-ID address was removed after cart preview", async () => {
+  const older = { ...billing, entityId: 5 };
+  const highest = { ...billing, entityId: 42, address1: "Removed Street" };
+  await reset({ savedAddresses: [older, highest] });
   assert.equal(
-    (await request("/__state")).billing.address1,
-    "Second Saved Street",
+    (await server.getPickupBillingState("test-cart")).address.address1,
+    highest.address1,
   );
+  await request("/__patch", { config: { savedAddresses: [older] } });
+  await server.preparePickupCheckout("test-cart");
+  assert.equal((await request("/__state")).billing.address1, older.address1);
 });
 await test("Incomplete and warehouse addresses cannot become automatic billing", async () => {
   const warehouseBilling = {
