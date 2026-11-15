@@ -49,21 +49,27 @@ export default async function Login({ params, searchParams }: Props) {
       forgotPasswordHref="/login/forgot-password"
       forgotPasswordLabel={t('forgotPassword')}
       notice={
-        showMigrationMessage ? (
-          <aside
-            aria-labelledby="account-migration-heading"
-            className="mb-10 space-y-3 rounded-lg bg-contrast-100 p-4 text-sm leading-relaxed text-foreground"
-          >
-            <h2 className="font-semibold" id="account-migration-heading">
-              {t('AccountMigration.heading')}
-            </h2>
-            <p>
-              {t.rich('AccountMigration.existingCustomers', {
-                strong: (chunks) => <strong>{chunks}</strong>,
-              })}
-            </p>
-          </aside>
-        ) : undefined
+        <Slot
+          fallback={
+            showMigrationMessage ? (
+              <aside
+                aria-labelledby="account-migration-heading"
+                className="mb-10 space-y-3 rounded-lg bg-contrast-100 p-4 text-sm leading-relaxed text-foreground"
+              >
+                <h2 className="font-semibold" id="account-migration-heading">
+                  {t('AccountMigration.heading')}
+                </h2>
+                <p>
+                  {t.rich('AccountMigration.existingCustomers', {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
+                </p>
+              </aside>
+            ) : undefined
+          }
+          label="Login welcome banner"
+          snapshotId="login-welcome-banner"
+        />
       }
       passwordLabel={t('password')}
       submitLabel={t('cta')}
