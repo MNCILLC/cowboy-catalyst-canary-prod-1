@@ -360,11 +360,51 @@ identifies that mode. Do not substitute an ordinary/off checkout build for an
 enabled staging store. Management credentials, Redis credentials, and signing
 secrets stay on the backend; no Catalyst import is needed in checkout.
 
-This milestone adds no purchase mode, hosted activation, or production bootstrap
-transport. Delivering the signed handoff through a real HTTPS staging integration
-is the following milestone. Native-SDK submission-enforcement limits still apply.
+This adds no purchase mode or hosted activation. Runner-independent initialization
+is implemented below; verification against real hosted domains remains outstanding. Native-SDK submission-enforcement limits still apply.
 
 Isolated tests: `node --test lib/warehouse/configuration.test.cjs` plus the existing
 warehouse authorization/submission tests. The two-process atomic integration
 suite includes a production staging case and uses only synthetic carts and a
 private local Redis socket; external HTTP is prohibited by the harness.
+
+
+## First-party session initialization for standalone checkout
+
+The standalone staging checkout can now initialize without runner injection once
+it is loaded. Catalyst `/checkout/` deliberately retains its protected
+`warehouse-preview-v2` JSON handoff in both preview and staging modes: with hosted
+settings unchanged, automatically redirecting would reach standard checkout where
+our purchase blocks do not run. Wiring an ordinary cart redirect is deferred until
+a separately verified activation of the non-purchasable standalone bundle. The
+initialization endpoint does not navigate shoppers to hosted checkout.
+
+`/[locale]/warehouse-initialize/` (public locale prefix according to storefront
+routing) supplies a runner-independent, popup-based authorization bridge. It is
+available only in staging. The request must have exactly `cartId` (UUID),
+`requestId` (64 lowercase hex characters) and an HTTPS `checkoutOrigin` from
+`WAREHOUSE_CHECKOUT_ORIGINS`. The actual shopper session must own that cart; the
+route also honors checkout's sign-in requirement. Cart identifiers and origin
+allowlisting never substitute for session authorization.
+
+`authorizeWarehouseInitialization()` checks session/channel ownership, authoritative
+Redis state, location inventory and the latest revision. Unlike cart-entry
+preparation, it does not mutate consignments. The bridge issues the existing
+30-minute signed capability and posts it only to the exact requested/allowed
+checkout origin. Checkout still performs full validation before mounting. A stale
+or incompatible cart must return through cart-entry preparation; a missing Redis
+record is not silently recreated.
+
+The standalone build mapping must include this route's full HTTPS URL as
+`initializationEndpoint`. Its documented `warehouse-initialization-v1` postMessage
+contract allows another backend to implement equivalent authorization without
+coupling checkout to Catalyst. No credentials are passed in redirect URLs or
+persistent browser storage. HTML responses are no-store, no-referrer and restricted
+by nonce-based CSP and frame denial; failures contain no raw upstream exceptions.
+
+A customer clicks Continue securely in checkout, then the storefront window
+returns authorization and closes. Reload requires fresh authorization. Expired
+sessions require storefront sign-in and return from the cart; silent renewal and
+payment-return recovery are outside this non-purchasable milestone. Actual hosted
+COOP/popup/session behavior still requires deployment validation. No hosted
+checkout settings are activated by these code changes.

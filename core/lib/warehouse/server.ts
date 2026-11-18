@@ -370,7 +370,7 @@ export async function selectWarehouse(
   });
 }
 
-export async function prepareWarehousePreview(cartId: string) {
+export async function authorizeWarehouseInitialization(cartId: string) {
   const cart = await sessionCart(cartId);
 
   if (!cart?.line_items.physical_items.length)
@@ -382,6 +382,11 @@ export async function prepareWarehousePreview(cartId: string) {
   await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
   assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
 
+  return { cart, record, warehouse };
+}
+
+export async function prepareWarehousePreview(cartId: string) {
+  const { cart, record, warehouse } = await authorizeWarehouseInitialization(cartId);
   const checkout = await api<{ consignments: WarehouseConsignment[] }>(
     `checkouts/${encodeURIComponent(cartId)}`,
   );

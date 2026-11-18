@@ -546,10 +546,13 @@ test('production staging handoff, validation and stale selections work across is
     WAREHOUSE_VALIDATION_BASE_URL: 'https://storefront.invalid',
     WAREHOUSE_CHECKOUT_ORIGINS: '["https://checkout.invalid"]',
   };
+
   await Promise.all([call(a, 'env', staging), call(b, 'env', staging)]);
+
   try {
     const { cartId, record } = await setup();
     const handoff = await call(a, 'handoff');
+
     assert.equal(handoff.access.endpoint, 'https://storefront.invalid/api/warehouse/validate');
     assert.equal((await call(b, 'validate', { access: handoff.access })).status, 200);
     assert.equal(
@@ -566,12 +569,16 @@ test('production staging handoff, validation and stale selections work across is
       (await call(a, 'select', selection(cartId, record.revision))).code,
       'STALE_WAREHOUSE',
     );
+
     const head = await call(a, 'context');
+
     await Promise.all([
       call(a, 'arm', { ...selection(cartId, head.revision, 'forney'), boundary: 'cas' }),
       call(b, 'arm', { ...selection(cartId, head.revision, 'powell'), boundary: 'cas' }),
     ]);
+
     const raced = await Promise.all([call(a, 'release'), call(b, 'release')]);
+
     assert.equal(raced.filter((result) => !result.error).length, 1);
     assert.equal(raced.find((result) => result.error).code, 'STALE_WAREHOUSE');
     metrics.pickerRaces += 1;
@@ -585,6 +592,33 @@ test('production staging handoff, validation and stale selections work across is
       WAREHOUSE_VALIDATION_BASE_URL: null,
       WAREHOUSE_CHECKOUT_ORIGINS: null,
     };
+
     await Promise.all([call(a, 'env', restore), call(b, 'env', restore)]);
   }
+});
+
+test('initialization authorizes the session and latest Redis state without mutating fulfillment', async () => {
+  const { cartId, record } = await setup();
+
+  await call(a, 'fulfillment', { mode: 'pickup', warehouseId: 'powell' });
+
+  const priorStats = await call(a, 'stats');
+  const authorized = await call(a, 'authorize');
+
+  assert.equal(authorized.record.revision, record.revision);
+  assert.equal((await call(a, 'stats')).consignmentDeletes, priorStats.consignmentDeletes);
+  await call(a, 'patch', { sessionCartId: randomUUID() });
+  assert.equal((await a.call('authorize')).ok, false);
+  await call(a, 'patch', { sessionCartId: cartId });
+  await call(b, 'arm', { boundary: 'stock', operation: 'authorize' });
+  await call(a, 'select', selection(cartId, record.revision));
+  await expectError(b, 'release', {}, 'STALE_WAREHOUSE', 409);
+
+  const newest = await call(b, 'authorize');
+
+  assert.equal(newest.warehouse.id, 'powell');
+  await call(b, 'patch', { stock: 0 });
+  assert.equal((await b.call('authorize')).ok, false);
+  assert.equal((await call(a, 'stats')).externalRequests, 0);
+  assert.equal((await call(b, 'stats')).externalRequests, 0);
 });

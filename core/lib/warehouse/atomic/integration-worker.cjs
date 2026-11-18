@@ -331,6 +331,9 @@ async function dispatch(command, payload = {}) {
     case 'items':
       return server.assertWarehouseItems([{ productEntityId: 9001, quantity: 1 }], state.cart.id);
 
+    case 'authorize':
+      return server.authorizeWarehouseInitialization(state.cart.id);
+
     case 'handoff': {
       const result = await server.prepareWarehousePreview(state.cart.id);
 
@@ -379,6 +382,8 @@ async function dispatch(command, payload = {}) {
           [{ productEntityId: 9001, quantity: 1 }],
           state.cart.id,
         );
+      else if (payload.operation === 'authorize')
+        running = server.authorizeWarehouseInitialization(state.cart.id);
       else if (payload.boundary === 'cas')
         running = action.changeWarehouse(payload.warehouseId, payload.expected);
       else if (payload.boundary === 'read') running = server.prepareWarehousePreview(state.cart.id);
