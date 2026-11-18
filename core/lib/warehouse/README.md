@@ -287,3 +287,40 @@ live BigCommerce behavior, or hosted Upstash durability/failover. Those require 
 separate controlled rehearsal. Atomic warehouse selection is not an inventory
 reservation or atomic order-submission gate: native SDK submissions still have the
 previously accepted final-validation-to-submission race limitation.
+
+## Multi-instance browser rehearsal: use one compiled artifact
+
+Do not load-balance this browser rehearsal between independent `next dev`
+compilers. A warehouse action can finish and commit correctly while its React
+transition remains pending when the response and browser runtime come from
+separate development builds. A shared Server Actions encryption key alone does
+not make those builds interchangeable.
+
+Build the isolated storefront copy once, then start both loopback backend
+processes from that exact artifact with `next start`. Share the build-time
+`NEXT_SERVER_ACTIONS_ENCRYPTION_KEY`, warehouse validation secret, Redis namespace,
+and store/channel configuration. Restarts must reuse that artifact and key.
+The standalone checkout continues to load its own independently built assets;
+it must not import Catalyst's server code or Redis credentials.
+
+`scripts/warehouse-rehearsal/artifact.cjs` supplies `readArtifact`,
+`validateLaunch`, and `startBackend` for the local rehearsal runner. It rejects
+development mode, a changed build manifest, a different action key, and a
+mismatched output directory. `startBackend` binds only to localhost and always
+uses `next start`; it never compiles or edits application source. The artifact
+fingerprint covers the build ID and build/action manifests, not every asset byte.
+Use the same immutable output directory for both processes.
+
+The normal warehouse feature remains development-only. To test a compiled
+storefront, the rehearsal's disposable source copy has a local-only preview
+override; do not apply that override to this repository or deploy its test build.
+The local runner must retain its order/payment guards and must not change hosted
+checkout settings. Keep private environment files and action keys out of Git.
+
+Regression check (from core):
+`node --test scripts/warehouse-rehearsal/artifact.test.cjs`.
+The hosted browser acceptance checks include an accepted selection across
+instances, an exact-payload retry after a lost response, stale picker rejection,
+concurrent writers with one accepted revision, fresh checkout navigation,
+backend restarts, and one backend losing its Redis connection. Successful Redis
+writes alone are insufficient: both picker rendering and navigation must settle.
