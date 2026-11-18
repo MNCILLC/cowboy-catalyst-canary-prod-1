@@ -3,6 +3,7 @@ import { PropsWithChildren } from 'react';
 
 import { Footer } from '~/components/footer';
 import { Header } from '~/components/header';
+import { WarehousePicker } from '~/components/warehouse-picker';
 
 interface Props extends PropsWithChildren {
   params: Promise<{ locale: string }>;
@@ -16,6 +17,7 @@ export default async function DefaultLayout({ params, children }: Props) {
   return (
     <>
       <Header />
+      <WarehousePicker />
 
       <main>{children}</main>
 

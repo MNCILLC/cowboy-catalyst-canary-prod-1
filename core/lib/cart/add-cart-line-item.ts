@@ -2,6 +2,7 @@ import { getSessionCustomerAccessToken } from '~/auth';
 import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { assertProUseLineItems } from '~/lib/pro-use/server';
+import { assertWarehouseItems } from '~/lib/warehouse/server';
 import { assertPricingAccess } from '~/lib/wholesale-pricing';
 
 const AddCartLineItemMutation = graphql(`
@@ -25,6 +26,7 @@ export const addCartLineItem = async (
 ) => {
   await assertPricingAccess();
   await assertProUseLineItems(data.lineItems ?? []);
+  await assertWarehouseItems(data.lineItems ?? [], cartEntityId);
 
   const customerAccessToken = await getSessionCustomerAccessToken();
 

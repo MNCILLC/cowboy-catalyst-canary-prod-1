@@ -60,3 +60,6 @@ build-config.json
 
 # Generated PDF.js assets
 /public/pdfjs/
+
+# Isolated local warehouse preview build
+.next-warehouse-preview/

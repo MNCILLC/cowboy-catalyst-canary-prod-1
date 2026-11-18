@@ -21,6 +21,9 @@ import { preparePickupCheckout } from '~/lib/pickup-checkout/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
+import { warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { WarehouseError } from '~/lib/warehouse/policy';
+import { prepareWarehousePreview } from '~/lib/warehouse/server';
 
 const CheckoutEligibilityQuery = graphql(`
   query CheckoutEligibilityQuery($cartId: String) {
@@ -76,8 +79,14 @@ const CheckoutRedirectMutation = graphql(`
 
 function isCheckoutPolicyError(
   error: unknown,
-): error is ProUseRequiredError | LoyaltyCheckoutError | CartShippingError | PickupCheckoutError {
+): error is
+  | ProUseRequiredError
+  | LoyaltyCheckoutError
+  | CartShippingError
+  | PickupCheckoutError
+  | WarehouseError {
   return (
+    error instanceof WarehouseError ||
     error instanceof ProUseRequiredError ||
     error instanceof LoyaltyCheckoutError ||
     error instanceof CartShippingError ||
@@ -97,9 +106,22 @@ async function prepareCheckout(cartId: string, shippingState: ShippingState | un
   }
 }
 
+async function prepareCheckoutFulfillment(cartId: string) {
+  if (warehousePreviewEnabled()) return;
+  await prepareCheckout(cartId, await assertCartShipping(cartId));
+}
+
+async function getWarehouseHandoff(cartId: string) {
+  return warehousePreviewEnabled() ? prepareWarehousePreview(cartId) : undefined;
+}
+
+async function checkoutCartId(req: NextRequest) {
+  return req.nextUrl.searchParams.get('cartId') ?? (await getCartId());
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const cartId = req.nextUrl.searchParams.get('cartId') ?? (await getCartId());
+  const cartId = await checkoutCartId(req);
   const customerAccessToken = await getSessionCustomerAccessToken();
   const channelId = getChannelIdFromLocale(locale);
   const t = await getTranslations('Cart.Errors');
@@ -124,9 +146,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     await assertProUseCart(cartId);
     await assertLoyaltyCheckout(cartId);
 
-    const shippingState = await assertCartShipping(cartId);
-
-    await prepareCheckout(cartId, shippingState);
+    await prepareCheckoutFulfillment(cartId);
 
     const minimumOrderSubtotal = getMinimumOrderSubtotal();
     const { data: eligibilityData } = await client.fetch({
@@ -150,6 +170,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
       return redirect({ href: '/cart', locale });
     }
+
+    const warehouseHandoff = await getWarehouseHandoff(cartId);
 
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
@@ -175,6 +197,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       await serverToast.error(t('somethingWentWrong'));
 
       return redirect({ href: '/cart', locale });
+    }
+
+    if (warehouseHandoff) {
+      return NextResponse.json(
+        {
+          ...warehouseHandoff,
+          checkoutUrl: data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl,
+        },
+        { headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
     return redirect({

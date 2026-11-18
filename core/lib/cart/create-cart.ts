@@ -3,6 +3,7 @@ import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { assertProUseLineItems } from '~/lib/pro-use/server';
+import { assertWarehouseItems } from '~/lib/warehouse/server';
 import { assertPricingAccess } from '~/lib/wholesale-pricing';
 
 const CreateCartMutation = graphql(`
@@ -23,6 +24,7 @@ export type CreateCartInput = Variables['createCartInput'];
 export const createCart = async (data: CreateCartInput) => {
   await assertPricingAccess();
   await assertProUseLineItems(data.lineItems ?? []);
+  await assertWarehouseItems(data.lineItems ?? []);
 
   const customerAccessToken = await getSessionCustomerAccessToken();
   const currencyCode = await getPreferredCurrencyCode();

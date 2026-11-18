@@ -1,0 +1,35 @@
+export interface Warehouse {
+  id: string;
+  label: string;
+  pickupLabel: string;
+  locationId: number;
+  pickupMethodId: number;
+  allowShipping: boolean;
+}
+export interface StockDemand {
+  key: string;
+  name: string;
+  quantity: number;
+}
+export class WarehouseError extends Error {}
+
+export function assertStock(demands: StockDemand[], available: Map<string, number>, label: string) {
+  const totals = new Map<string, StockDemand>();
+
+  demands.forEach((demand) => {
+    if (!Number.isSafeInteger(demand.quantity) || demand.quantity < 1)
+      throw new WarehouseError('Enter a whole quantity greater than zero.');
+
+    const previous = totals.get(demand.key);
+
+    totals.set(demand.key, { ...demand, quantity: demand.quantity + (previous?.quantity ?? 0) });
+  });
+  totals.forEach((demand) => {
+    const stock = available.get(demand.key);
+
+    if (stock === undefined || !Number.isFinite(stock) || demand.quantity > stock)
+      throw new WarehouseError(
+        `${demand.name}: ${Math.max(0, stock ?? 0)} available at ${label}; ${demand.quantity} requested. Your cart and warehouse have not been changed.`,
+      );
+  });
+}

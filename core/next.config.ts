@@ -65,6 +65,7 @@ export default async (): Promise<NextConfig> => {
 
   let nextConfig: NextConfig = {
     reactStrictMode: true,
+    distDir: process.env.WAREHOUSE_PREVIEW_ENABLED === 'true' ? '.next-warehouse-preview' : '.next',
     experimental: {
       optimizePackageImports: ['@icons-pack/react-simple-icons'],
     },

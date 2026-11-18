@@ -49,7 +49,9 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "tests/**/*"
+    "tests/**/*",
+    ".next-warehouse-preview/types/**/*.ts",
+    ".next-warehouse-preview/dev/types/**/*.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

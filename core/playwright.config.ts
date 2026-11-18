@@ -32,11 +32,9 @@ export default defineConfig({
       testIgnore: /.*\.mobile\.spec\.ts$/,
       use: {
         ...devices['Desktop Chrome'],
-        launchOptions: {
-          // When redirected to checkout, BigCommerce blocks preflight requests from a HeadlessChrome user agent.
-          // We need to disable web security to allow the preflight request to go through.
-          args: ['--disable-web-security'],
-        },
+        // Use full Chromium; the headless shell identifies itself as a crawler
+        // and BigCommerce rejects its /session-sync requests.
+        channel: 'chromium',
       },
     },
     {
@@ -44,7 +42,6 @@ export default defineConfig({
       testMatch: /.*\.mobile\.spec\.ts$/,
       use: {
         ...devices['iPhone 11'],
-        // WebKit doesn't support --disable-web-security
       },
     },
   ],

@@ -20,6 +20,7 @@ import { Slot } from '~/lib/makeswift/slot';
 import { loadShippingOriginDetails } from '~/lib/map-section/actions';
 import { getPickupBillingState, pickupCheckoutEnabled } from '~/lib/pickup-checkout/server';
 import { exists } from '~/lib/utils';
+import { warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { updateCouponCode } from './_actions/update-coupon-code';
@@ -125,12 +126,14 @@ export default async function Cart({ params }: Props) {
     return emptyState;
   }
 
+  const warehousePreview = warehousePreviewEnabled();
   const taxIncluded = cart.isTaxIncluded;
-  const useFreightCart = (await freightCartEnabled()) && cart.lineItems.physicalItems.length > 0;
-  const usePickup = useFreightCart && (await pickupCheckoutEnabled());
+  const useFreightCart =
+    (warehousePreview || (await freightCartEnabled())) && cart.lineItems.physicalItems.length > 0;
+  const usePickup = !warehousePreview && useFreightCart && (await pickupCheckoutEnabled());
   const [freightState, shippingOrigin, pickupBilling] = await Promise.all([
-    useFreightCart ? getCartShippingState(cartId) : undefined,
-    useFreightCart ? loadShippingOriginDetails().catch(() => null) : null,
+    !warehousePreview && useFreightCart ? getCartShippingState(cartId) : undefined,
+    !warehousePreview && useFreightCart ? loadShippingOriginDetails().catch(() => null) : null,
     usePickup ? getPickupBillingState(cartId) : undefined,
   ]);
 
@@ -327,7 +330,9 @@ export default async function Cart({ params }: Props) {
         <CartComponent
           authenticationRequiredMessage={t('Errors.authenticationRequired')}
           cart={{
-            lineItems: formattedLineItems,
+            lineItems: warehousePreview
+              ? formattedLineItems.map((item) => ({ ...item, inventoryMessages: undefined }))
+              : formattedLineItems,
             subtotal: checkout?.subtotal?.value ?? 0,
             currencyCode: cart.currencyCode,
             // A previous hosted-checkout visit may have left a selected rate.
@@ -393,7 +398,7 @@ export default async function Cart({ params }: Props) {
           }}
           checkoutAction={CHECKOUT_URL}
           checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
-          checkoutLabel={t('proceedToCheckout')}
+          checkoutLabel={warehousePreview ? 'Preview checkout' : t('proceedToCheckout')}
           checkoutMessage={SHOW_SHIPPING_QUOTE_MESSAGE ? SHIPPING_QUOTE_MESSAGE : undefined}
           checkoutMessageTitle={SHOW_SHIPPING_QUOTE_MESSAGE ? 'Shipping Quotes Note' : undefined}
           couponCode={{
@@ -457,66 +462,73 @@ export default async function Cart({ params }: Props) {
             <LoyaltyCart currency={cart.currencyCode} subtotal={checkout?.subtotal?.value ?? 0} />
           }
           minimumOrderSubtotal={getMinimumOrderSubtotal()}
-          shipping={{
-            action: updateShippingInfo,
-            countries,
-            states: statesOrProvinces,
-            address: shippingConsignment?.address
-              ? {
-                  country: shippingConsignment.address.countryCode,
-                  city:
-                    shippingConsignment.address.city !== ''
-                      ? (shippingConsignment.address.city ?? undefined)
-                      : undefined,
-                  state:
-                    shippingConsignment.address.stateOrProvince !== ''
-                      ? (shippingConsignment.address.stateOrProvince ?? undefined)
-                      : undefined,
-                  postalCode:
-                    shippingConsignment.address.postalCode !== ''
-                      ? (shippingConsignment.address.postalCode ?? undefined)
-                      : undefined,
+          shipping={
+            warehousePreview
+              ? undefined
+              : {
+                  action: updateShippingInfo,
+                  countries,
+                  states: statesOrProvinces,
+                  address: shippingConsignment?.address
+                    ? {
+                        country: shippingConsignment.address.countryCode,
+                        city:
+                          shippingConsignment.address.city !== ''
+                            ? (shippingConsignment.address.city ?? undefined)
+                            : undefined,
+                        state:
+                          shippingConsignment.address.stateOrProvince !== ''
+                            ? (shippingConsignment.address.stateOrProvince ?? undefined)
+                            : undefined,
+                        postalCode:
+                          shippingConsignment.address.postalCode !== ''
+                            ? (shippingConsignment.address.postalCode ?? undefined)
+                            : undefined,
+                      }
+                    : undefined,
+                  shippingOptions: shippingConsignment?.availableShippingOptions
+                    ? shippingConsignment.availableShippingOptions.map((option) => ({
+                        label: option.description,
+                        value: option.entityId,
+                        price: format.number(option.cost.value, {
+                          style: 'currency',
+                          currency: checkout?.cart?.currencyCode,
+                        }),
+                      }))
+                    : undefined,
+                  shippingOption: shippingConsignment?.selectedShippingOption
+                    ? {
+                        value: shippingConsignment.selectedShippingOption.entityId,
+                        label: shippingConsignment.selectedShippingOption.description,
+                        price: format.number(
+                          shippingConsignment.selectedShippingOption.cost.value,
+                          {
+                            style: 'currency',
+                            currency: checkout?.cart?.currencyCode,
+                          },
+                        ),
+                      }
+                    : undefined,
+                  showShippingForm,
+                  shippingLabel: taxIncluded
+                    ? t('CheckoutSummary.Shipping.shippingExcludingTax')
+                    : t('CheckoutSummary.Shipping.shipping'),
+                  addLabel: t('CheckoutSummary.Shipping.add'),
+                  changeLabel: t('CheckoutSummary.Shipping.change'),
+                  countryLabel: t('CheckoutSummary.Shipping.country'),
+                  cityLabel: t('CheckoutSummary.Shipping.city'),
+                  stateLabel: t('CheckoutSummary.Shipping.state'),
+                  postalCodeLabel: t('CheckoutSummary.Shipping.postalCode'),
+                  updateShippingOptionsLabel: t('CheckoutSummary.Shipping.updatedShippingOptions'),
+                  viewShippingOptionsLabel: t('CheckoutSummary.Shipping.viewShippingOptions'),
+                  cancelLabel: t('CheckoutSummary.Shipping.cancel'),
+                  editAddressLabel: t('CheckoutSummary.Shipping.editAddress'),
+                  shippingOptionsLabel: t('CheckoutSummary.Shipping.shippingOptions'),
+                  updateShippingLabel: t('CheckoutSummary.Shipping.updateShipping'),
+                  addShippingLabel: t('CheckoutSummary.Shipping.addShipping'),
+                  noShippingOptionsLabel: t('CheckoutSummary.Shipping.noShippingOptions'),
                 }
-              : undefined,
-            shippingOptions: shippingConsignment?.availableShippingOptions
-              ? shippingConsignment.availableShippingOptions.map((option) => ({
-                  label: option.description,
-                  value: option.entityId,
-                  price: format.number(option.cost.value, {
-                    style: 'currency',
-                    currency: checkout?.cart?.currencyCode,
-                  }),
-                }))
-              : undefined,
-            shippingOption: shippingConsignment?.selectedShippingOption
-              ? {
-                  value: shippingConsignment.selectedShippingOption.entityId,
-                  label: shippingConsignment.selectedShippingOption.description,
-                  price: format.number(shippingConsignment.selectedShippingOption.cost.value, {
-                    style: 'currency',
-                    currency: checkout?.cart?.currencyCode,
-                  }),
-                }
-              : undefined,
-            showShippingForm,
-            shippingLabel: taxIncluded
-              ? t('CheckoutSummary.Shipping.shippingExcludingTax')
-              : t('CheckoutSummary.Shipping.shipping'),
-            addLabel: t('CheckoutSummary.Shipping.add'),
-            changeLabel: t('CheckoutSummary.Shipping.change'),
-            countryLabel: t('CheckoutSummary.Shipping.country'),
-            cityLabel: t('CheckoutSummary.Shipping.city'),
-            stateLabel: t('CheckoutSummary.Shipping.state'),
-            postalCodeLabel: t('CheckoutSummary.Shipping.postalCode'),
-            updateShippingOptionsLabel: t('CheckoutSummary.Shipping.updatedShippingOptions'),
-            viewShippingOptionsLabel: t('CheckoutSummary.Shipping.viewShippingOptions'),
-            cancelLabel: t('CheckoutSummary.Shipping.cancel'),
-            editAddressLabel: t('CheckoutSummary.Shipping.editAddress'),
-            shippingOptionsLabel: t('CheckoutSummary.Shipping.shippingOptions'),
-            updateShippingLabel: t('CheckoutSummary.Shipping.updateShipping'),
-            addShippingLabel: t('CheckoutSummary.Shipping.addShipping'),
-            noShippingOptionsLabel: t('CheckoutSummary.Shipping.noShippingOptions'),
-          }}
+          }
           summaryTitle={t('CheckoutSummary.title')}
           title={t('title')}
         />

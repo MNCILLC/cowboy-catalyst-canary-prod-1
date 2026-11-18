@@ -9,6 +9,7 @@ import { graphql, VariablesOf } from '~/client/graphql';
 import { TAGS } from '~/client/tags';
 import { getCartId } from '~/lib/cart';
 import { assertProUseCart, assertProUseLineItems } from '~/lib/pro-use/server';
+import { assertWarehouseItems } from '~/lib/warehouse/server';
 import { assertPricingAccess } from '~/lib/wholesale-pricing';
 
 import { removeItem } from './remove-item';
@@ -67,6 +68,12 @@ export const updateQuantity = async ({
   await assertPricingAccess();
   await assertProUseCart(cartId, lineItemEntityId);
   await assertProUseLineItems([{ productEntityId, variantEntityId }]);
+
+  await assertWarehouseItems(
+    [{ productEntityId, variantEntityId, selectedOptions, quantity }],
+    cartId,
+    lineItemEntityId,
+  );
 
   const cartLineItemData = Object.assign(
     { quantity, productEntityId },
