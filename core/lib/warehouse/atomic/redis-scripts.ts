@@ -33,7 +33,7 @@ if not current then return {'missing'} end
 return {'ok', current}
 `;
 
-export const COMPARE_AND_SET_WAREHOUSE_SCRIPT = `${validateHead}
+const findOperation = `
 local operationField = 'operation:' .. ARGV[4]
 local previous = redis.call('HGET', KEYS[1], operationField)
 if previous then
@@ -45,6 +45,13 @@ if previous then
   if receipt.fingerprint ~= ARGV[5] then return {'operation_conflict'} end
   return {'ok', receipt.record, current, '1'}
 end
+`;
+
+export const LOOKUP_WAREHOUSE_OPERATION_SCRIPT = `${validateHead}${findOperation}
+return {'missing'}
+`;
+
+export const COMPARE_AND_SET_WAREHOUSE_SCRIPT = `${validateHead}${findOperation}
 local expected = ARGV[6]
 if (head and head.revision or '') ~= expected then return {'stale'} end
 if redis.call('HLEN', KEYS[1]) >= tonumber(ARGV[8]) + 1 then return {'limit'} end

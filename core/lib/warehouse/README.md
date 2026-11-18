@@ -160,12 +160,14 @@ explicit fake API, inventory and persistence dependencies. They do not read stor
 credentials or issue network requests. Concurrent successful validations and changes
 after client validation are documented limitations, not guarantees tested away.
 
-## Atomic persistence adapter: isolated milestone, not activated
+## Atomic persistence adapter: local opt-in integration
 
 `atomic/persistence.ts` implements a server-only, dependency-injected Redis adapter.
-It is intentionally **not wired into** the live metafield persistence module,
-storefront actions, or validator. No BigCommerce writes, existing-cart migration,
-or hosted checkout activation are part of this milestone. The standalone checkout
+It is wired through the backend persistence facade into the picker, cart inventory
+checks, handoff, and validator, behind explicit local-preview configuration. The
+existing default remains metafields; no environment file has been changed to
+activate Redis. No BigCommerce writes, existing-cart migration, or hosted checkout
+activation are part of this integration test milestone. The standalone checkout
 repository and its public validation contract are unchanged.
 
 The adapter exposes `read({storeHash, channelId, cartId})` and
@@ -228,3 +230,60 @@ an import allowlist excludes live API modules, and HTTP fetch is prohibited.
 Atomic selection is not an inventory reservation, a transaction spanning
 BigCommerce and Redis, or mandatory enforcement at native order submission.
 Redis EVAL semantics: https://redis.io/docs/latest/develop/programmability/eval-intro/
+
+### Connecting the adapter to the picker and validator
+
+The opt-in provider is `WAREHOUSE_PERSISTENCE_PROVIDER=redis`. It is accepted only
+with `NODE_ENV=development` and `WAREHOUSE_PREVIEW_ENABLED=true`. Configure these
+server-only values explicitly for a future activation rehearsal:
+
+- `WAREHOUSE_REDIS_URL`: HTTPS Upstash REST endpoint.
+- `WAREHOUSE_REDIS_TOKEN`: its server-side credential.
+- `WAREHOUSE_REDIS_NAMESPACE`: a nonempty namespace shared by the backend instances.
+
+Do not put these values in browser/checkout configuration. There is no process-local
+record cache, cookie fallback for existing Redis carts, or metafield mirror. An
+unknown provider, invalid configuration, storage error, or missing authoritative
+record blocks the affected operation. Missing records return
+`WAREHOUSE_RECOVERY_REQUIRED`; recovery/migration tooling is not implemented here.
+Do not switch providers against existing carts without a separate migration plan.
+
+Only the successful new-cart creation callback initializes a Redis record. The cart
+UUID is reserved as that initialization operation ID. Picker changes carry a new
+UUID plus the rendered cart/revision; uncertain failures offer a Retry button that
+reuses the entire original request. New choices create new operation IDs. An
+accepted operation is looked up after session/channel authorization but before
+stale/stock checks, making lost commit responses recoverable. Receipt replay returns
+the current head, so an old accepted operation cannot restore an obsolete warehouse
+or cookie. A new selection must pass stock checks and the final atomic CAS.
+
+Reads are scoped by server store configuration and the authenticated cart channel
+(or the signed capability's channel in validation). Handoff and validation retain
+their final revision checks. Checkout continues to use the existing signed HTTP
+contract and has no Redis or Catalyst imports. The standalone repository is unchanged.
+
+Synthetic integration verification (from `core`, with explicit absolute paths to
+local `redis-server` and `redis-cli`):
+
+```sh
+ATOMIC_TEST_REDIS_SERVER=/path/to/redis-server \
+ATOMIC_TEST_REDIS_CLI=/path/to/redis-cli \
+node --test --test-concurrency=1 lib/warehouse/atomic/integration.test.cjs
+```
+
+The suite starts private Redis with TCP disabled, AOF fsync always, and no eviction,
+then forks two backend workers with synthetic store/channel/cart IDs and a synthetic
+shared signing secret. It runs the actual picker action/retry helper, server stock
+logic, persistence facade, atomic scripts, handoff, and validator route handler.
+Framework session/cookie/cache calls and BigCommerce API responses are explicit
+fixtures. The Upstash factory is replaced with a Unix-socket transport into the
+actual adapter. Unexpected API calls fail; external fetch is forbidden; no env
+files or management credentials are loaded. The legacy provider regression uses
+in-memory metafields only. Workers and Redis are stopped and temporary data removed.
+
+This establishes local function/route-contract integration and cross-process Redis
+coordination. It does not establish browser rendering, Next server-action transport,
+live BigCommerce behavior, or hosted Upstash durability/failover. Those require a
+separate controlled rehearsal. Atomic warehouse selection is not an inventory
+reservation or atomic order-submission gate: native SDK submissions still have the
+previously accepted final-validation-to-submission race limitation.

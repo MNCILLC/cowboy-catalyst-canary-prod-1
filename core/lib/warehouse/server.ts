@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { getLocale } from 'next-intl/server';
+import { z } from 'zod';
 
 import { getChannelIdFromLocale } from '~/channels.config';
 import { getCartId } from '~/lib/cart';
@@ -9,7 +10,12 @@ import { getCartId } from '~/lib/cart';
 import { warehouseApi as api } from './api';
 import { assertCurrentRecord, WarehouseValidationError } from './authorization';
 import { getWarehouses, warehousePreviewEnabled } from './config';
-import { readWarehouseRecord, saveWarehouseRecord } from './persistence';
+import {
+  findWarehouseOperation,
+  readWarehouseRecord,
+  saveWarehouseRecord,
+  warehousePersistenceIsAtomic,
+} from './persistence';
 import {
   assertStock,
   StockDemand,
@@ -20,6 +26,23 @@ import {
 } from './policy';
 
 const COOKIE = 'shopping-warehouse';
+
+function requireExistingRecord(record: unknown) {
+  if (!record && warehousePersistenceIsAtomic())
+    throw new WarehouseValidationError(
+      'This cart needs warehouse recovery. Please contact support or start a new cart.',
+      409,
+      'WAREHOUSE_RECOVERY_REQUIRED',
+    );
+}
+
+const selectionContextSchema = z
+  .object({
+    cartId: z.string().uuid().nullable(),
+    revision: z.string().uuid().nullable(),
+    operationId: z.string().uuid(),
+  })
+  .strict();
 
 interface Input {
   productEntityId?: number | null;
@@ -71,7 +94,10 @@ async function cookieWarehouse() {
 export async function getWarehouseContext() {
   const cartId = await getCartId();
   const cart = await sessionCart(cartId);
-  const record = cart ? await readWarehouseRecord(cart.id) : undefined;
+  const record = cart ? await readWarehouseRecord(cart.id, cart.channel_id) : undefined;
+
+  if (cart) requireExistingRecord(record);
+
   const warehouse = record
     ? getWarehouses().find((w) => w.id === record.warehouseId)
     : await cookieWarehouse();
@@ -204,7 +230,8 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
   if (!warehousePreviewEnabled()) return;
 
   const cart = await sessionCart(cartId);
-  const warehouse = cart ? await warehouseForCart(cart) : await requireWarehouse();
+  const persisted = cart ? await warehouseForCart(cart) : undefined;
+  const warehouse = persisted?.warehouse ?? (await requireWarehouse());
 
   if (
     replaceId &&
@@ -218,11 +245,16 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
     ...items,
   ]);
 
+  if (cart && persisted)
+    assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), persisted.record);
+
   return warehouse;
 }
 
 async function warehouseForCart(cart: Cart) {
-  let record = await readWarehouseRecord(cart.id);
+  let record = await readWarehouseRecord(cart.id, cart.channel_id);
+
+  requireExistingRecord(record);
 
   if (!record) {
     const selected = await cookieWarehouse();
@@ -230,7 +262,7 @@ async function warehouseForCart(cart: Cart) {
     if (!selected)
       throw new WarehouseError('Choose your warehouse before adding items or checking out.');
     await checkWarehouseStock(selected, cart.line_items.physical_items.map(input));
-    record = await saveWarehouseRecord(cart, selected.id, null);
+    record = await saveWarehouseRecord(cart, selected.id, null, cart.id);
   }
 
   if (
@@ -244,19 +276,37 @@ async function warehouseForCart(cart: Cart) {
 
   if (!warehouse) throw new WarehouseError('Your selected warehouse is no longer available.');
 
-  return warehouse;
+  return { record, warehouse };
 }
 
+// Called only by the successful new-cart creation callback; never adopt an existing cart here.
 export async function persistNewCartWarehouse(cartId: string, warehouseId: string) {
   const cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+  const warehouse = getWarehouses().find((w) => w.id === warehouseId);
 
-  await saveWarehouseRecord(cart, warehouseId, null);
+  if (
+    !warehouse ||
+    cart.id !== cartId ||
+    cart.channel_id !== Number(getChannelIdFromLocale(await getLocale()))
+  )
+    throw new WarehouseError('Invalid new cart warehouse.');
+  // Reserve the cart UUID for initialization so a lost response can be retried safely.
+  if (await findWarehouseOperation(cart, warehouseId, null, cart.id)) return;
+  await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+  await saveWarehouseRecord(cart, warehouseId, null, cart.id);
 }
 
 export async function selectWarehouse(
   id: string,
-  expected: { cartId: string | null; revision: string | null },
+  expected: { cartId: string | null; revision: string | null; operationId: string },
 ) {
+  if (!selectionContextSchema.safeParse(expected).success)
+    throw new WarehouseValidationError(
+      'Invalid warehouse selection request.',
+      400,
+      'INVALID_SELECTION_REQUEST',
+    );
+
   const warehouse = getWarehouses().find((w) => w.id === id);
 
   if (!warehouse) throw new WarehouseError('Choose a valid warehouse.');
@@ -264,22 +314,55 @@ export async function selectWarehouse(
   const cart = await sessionCart(await getCartId());
 
   if ((cart?.id ?? null) !== expected.cartId)
-    throw new WarehouseError(
+    throw new WarehouseValidationError(
       'Your cart changed in another tab. Reload before choosing a warehouse.',
+      409,
+      'CART_CHANGED',
     );
 
-  if (cart) {
-    const current = await readWarehouseRecord(cart.id);
+  let selectedId = warehouse.id;
 
-    if ((current?.revision ?? null) !== expected.revision)
-      throw new WarehouseError(
-        'Your cart warehouse changed in another tab. Reload before choosing again.',
+  if (cart) {
+    // Authenticate first, then recover a committed request before stale/stock checks.
+    const accepted = await findWarehouseOperation(
+      cart,
+      warehouse.id,
+      expected.revision,
+      expected.operationId,
+    );
+
+    if (accepted) {
+      selectedId = accepted.warehouseId;
+    } else {
+      const current = await readWarehouseRecord(cart.id, cart.channel_id);
+
+      requireExistingRecord(current);
+      if ((current?.revision ?? null) !== expected.revision)
+        throw new WarehouseValidationError(
+          'Your cart warehouse changed in another tab. Reload before choosing again.',
+          409,
+          'STALE_WAREHOUSE',
+        );
+      await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+
+      const record = await saveWarehouseRecord(
+        cart,
+        warehouse.id,
+        expected.revision,
+        expected.operationId,
       );
-    await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
-    await saveWarehouseRecord(cart, warehouse.id, expected.revision);
+
+      selectedId = record.warehouseId;
+    }
+  } else {
+    // Validate the provider even for a pre-cart preference; never hide invalid activation.
+    warehousePersistenceIsAtomic();
   }
 
-  (await cookies()).set(COOKIE, warehouse.id, {
+  if (!getWarehouses().some((w) => w.id === selectedId))
+    throw new WarehouseError('Your selected warehouse is no longer available.');
+
+  (await cookies()).set(COOKIE, selectedId, {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
@@ -293,12 +376,11 @@ export async function prepareWarehousePreview(cartId: string) {
   if (!cart?.line_items.physical_items.length)
     throw new WarehouseError('Add a physical item first.');
 
-  const warehouse = await warehouseForCart(cart);
-  const record = await readWarehouseRecord(cart.id);
+  // Resolve both from the same read: a concurrent selection must not mix revisions and warehouses.
+  const { record, warehouse } = await warehouseForCart(cart);
 
-  if (!record) throw new WarehouseError('Choose your cart warehouse again.');
   await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
-  assertCurrentRecord(await readWarehouseRecord(cart.id), record);
+  assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
 
   const checkout = await api<{ consignments: WarehouseConsignment[] }>(
     `checkouts/${encodeURIComponent(cartId)}`,
@@ -323,7 +405,7 @@ export async function prepareWarehousePreview(cartId: string) {
     }
   }
 
-  assertCurrentRecord(await readWarehouseRecord(cart.id), record);
+  assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
 
   return { record, warehouse };
 }

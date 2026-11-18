@@ -1,95 +1,95 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
+import { WarehouseValidationError } from './authorization';
+import { warehousePreviewEnabled } from './config';
 
-import { warehouseApi } from './api';
-import {
-  assertCurrentRecord,
-  recordSchema,
-  WarehouseRecord,
-  WarehouseValidationError,
-} from './authorization';
+// This milestone is opt-in and local-preview-only. Never fall back after a Redis failure.
+export function warehousePersistenceIsAtomic() {
+  const provider = process.env.WAREHOUSE_PERSISTENCE_PROVIDER ?? 'metafield';
 
-const namespace = 'warehouse_checkout';
-const key = 'selection_v1';
-
-interface Metafield {
-  id: number | string;
-  value: string;
-  permission_set: string;
-}
-
-async function field(cartId: string) {
-  const fields = await warehouseApi<Metafield[]>(
-    `carts/${encodeURIComponent(cartId)}/metafields?namespace=${namespace}&key=${key}&limit=250`,
+  if (provider === 'metafield') return false;
+  if (provider === 'redis' && warehousePreviewEnabled()) return true;
+  throw new WarehouseValidationError(
+    'Warehouse persistence is not configured for this environment.',
+    503,
+    'WAREHOUSE_STORAGE_UNAVAILABLE',
   );
-
-  if (fields.length > 1 || fields.some((f) => f.permission_set !== 'app_only'))
-    throw new WarehouseValidationError(
-      'Cart warehouse metadata is invalid. Please contact support.',
-      409,
-      'INVALID_RECORD',
-    );
-
-  return fields[0];
 }
 
-export async function readWarehouseRecord(cartId: string): Promise<WarehouseRecord | undefined> {
-  const existing = await field(cartId);
-
-  if (!existing) return undefined;
+async function atomic() {
+  const { createUpstashWarehousePersistence } = await import('./atomic/upstash');
 
   try {
-    const record = recordSchema.parse(JSON.parse(existing.value));
-
-    if (record.cartId !== cartId || record.storeHash !== process.env.BIGCOMMERCE_STORE_HASH)
-      throw new Error('Mismatched record');
-
-    return record;
+    return createUpstashWarehousePersistence({
+      url: process.env.WAREHOUSE_REDIS_URL ?? '',
+      token: process.env.WAREHOUSE_REDIS_TOKEN ?? '',
+      namespace: process.env.WAREHOUSE_REDIS_NAMESPACE ?? '',
+    });
   } catch {
     throw new WarehouseValidationError(
-      'Cart warehouse metadata is invalid. Please contact support.',
-      409,
-      'INVALID_RECORD',
+      'Warehouse storage is not configured.',
+      503,
+      'WAREHOUSE_STORAGE_UNAVAILABLE',
     );
   }
+}
+
+function scope(cartId: string, channelId: number) {
+  return { storeHash: process.env.BIGCOMMERCE_STORE_HASH ?? '', channelId, cartId };
+}
+
+export async function readWarehouseRecord(cartId: string, channelId: number) {
+  if (warehousePersistenceIsAtomic()) return (await atomic()).read(scope(cartId, channelId));
+
+  const legacy = await import('./metafield-persistence');
+  const record = await legacy.readWarehouseRecord(cartId);
+
+  if (record && record.channelId !== channelId)
+    throw new WarehouseValidationError('Invalid cart warehouse.', 409, 'INVALID_RECORD');
+
+  return record;
+}
+
+export async function findWarehouseOperation(
+  cart: { id: string; channel_id: number },
+  warehouseId: string,
+  expectedRevision: string | null,
+  operationId: string,
+) {
+  if (!warehousePersistenceIsAtomic()) return undefined;
+
+  const receipt = await (
+    await atomic()
+  ).lookupOperation({
+    ...scope(cart.id, cart.channel_id),
+    warehouseId,
+    expectedRevision,
+    operationId,
+  });
+
+  return receipt?.currentRecord;
 }
 
 export async function saveWarehouseRecord(
   cart: { id: string; channel_id: number },
   warehouseId: string,
   expectedRevision: string | null,
+  operationId: string,
 ) {
-  const existing = await field(cart.id);
-  const current = existing ? recordSchema.parse(JSON.parse(existing.value)) : undefined;
+  if (warehousePersistenceIsAtomic()) {
+    const receipt = await (
+      await atomic()
+    ).compareAndSet({
+      ...scope(cart.id, cart.channel_id),
+      warehouseId,
+      expectedRevision,
+      operationId,
+    });
 
-  if ((current?.revision ?? null) !== expectedRevision)
-    throw new WarehouseValidationError(
-      'Your cart warehouse changed in another tab. Reload the storefront before choosing again.',
-      409,
-      'STALE_WAREHOUSE',
-    );
+    return receipt.currentRecord;
+  }
 
-  const record = recordSchema.parse({
-    version: 1,
-    storeHash: process.env.BIGCOMMERCE_STORE_HASH,
-    channelId: cart.channel_id,
-    cartId: cart.id,
-    warehouseId,
-    revision: randomUUID(),
-  });
+  const legacy = await import('./metafield-persistence');
 
-  await warehouseApi('carts/metafields', existing ? 'PUT' : 'POST', [
-    {
-      namespace,
-      key,
-      permission_set: 'app_only',
-      value: JSON.stringify(record),
-      ...(existing ? { id: Number(existing.id) } : { resource_id: cart.id }),
-    },
-  ]);
-  // Detect a competing write visible at readback. This is not an atomic compare-and-swap.
-  assertCurrentRecord(await readWarehouseRecord(cart.id), record);
-
-  return record;
+  return legacy.saveWarehouseRecord(cart, warehouseId, expectedRevision);
 }

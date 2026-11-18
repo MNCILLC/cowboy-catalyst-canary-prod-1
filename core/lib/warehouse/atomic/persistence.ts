@@ -5,7 +5,11 @@ import { z } from 'zod';
 
 import { recordSchema, WarehouseRecord, WarehouseValidationError } from '../authorization';
 
-import { COMPARE_AND_SET_WAREHOUSE_SCRIPT, READ_WAREHOUSE_SCRIPT } from './redis-scripts';
+import {
+  COMPARE_AND_SET_WAREHOUSE_SCRIPT,
+  LOOKUP_WAREHOUSE_OPERATION_SCRIPT,
+  READ_WAREHOUSE_SCRIPT,
+} from './redis-scripts';
 
 /** A direct Redis EVAL transport, without caches, replica reads, or fallback. */
 export interface WarehouseRedis {
@@ -100,6 +104,28 @@ export class AtomicWarehousePersistence {
     if (reply[0] !== 'ok' || reply.length !== 2) throw storageError();
 
     return this.decode(reply[1], scope);
+  }
+
+  async lookupOperation(input: WarehouseSelection): Promise<WarehouseSelectionReceipt | undefined> {
+    const request = parseInput(selectionSchema, input);
+    const { storeHash, channelId, cartId, warehouseId, expectedRevision, operationId } = request;
+    const scope = { storeHash, channelId, cartId };
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify([storeHash, channelId, cartId, warehouseId, expectedRevision]))
+      .digest('hex');
+    const reply = await this.execute(LOOKUP_WAREHOUSE_OPERATION_SCRIPT, scope, [
+      operationId,
+      fingerprint,
+    ]);
+
+    if (reply[0] === 'missing' && reply.length === 1) return undefined;
+    if (reply[0] !== 'ok' || reply.length !== 4 || reply[3] !== '1') throw storageError();
+
+    return {
+      record: this.decode(reply[1], scope),
+      currentRecord: this.decode(reply[2], scope),
+      replayed: true,
+    };
   }
 
   async compareAndSet(input: WarehouseSelection): Promise<WarehouseSelectionReceipt> {

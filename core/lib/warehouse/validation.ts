@@ -98,7 +98,7 @@ export async function validateWarehouseCheckout(
       'STALE_WAREHOUSE',
     );
 
-  const record = await readWarehouseRecord(cartId);
+  const record = await readWarehouseRecord(cartId, claims.channelId);
 
   assertCurrentRecord(record, claims);
 
@@ -184,7 +184,7 @@ export async function validateWarehouseCheckout(
       );
   }
 
-  assertCurrentRecord(await readWarehouseRecord(cartId), claims);
+  assertCurrentRecord(await readWarehouseRecord(cartId, claims.channelId), claims);
 
   return {
     version: 1,
