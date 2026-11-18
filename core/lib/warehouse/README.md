@@ -1,7 +1,9 @@
 # Local warehouse picker milestone
 
-This feature is intentionally enabled only with `NODE_ENV=development` and
-`WAREHOUSE_PREVIEW_ENABLED=true`. It does not activate hosted custom checkout.
+The default mode is off. `WAREHOUSE_MODE=staging` explicitly enables the
+non-purchasable warehouse flow in development or production builds. The legacy
+`WAREHOUSE_PREVIEW_ENABLED=true` flag still works only in development when
+`WAREHOUSE_MODE` is unset. Neither mode activates hosted custom checkout.
 
 Run from `core`: `node scripts/warehouse-dev.cjs`. This loads the existing local
 environment and `.env.warehouse.example`, then starts port 3011 with a separate
@@ -234,7 +236,7 @@ Redis EVAL semantics: https://redis.io/docs/latest/develop/programmability/eval-
 ### Connecting the adapter to the picker and validator
 
 The opt-in provider is `WAREHOUSE_PERSISTENCE_PROVIDER=redis`. It is accepted only
-with `NODE_ENV=development` and `WAREHOUSE_PREVIEW_ENABLED=true`. Configure these
+in validated staging mode, or with the legacy development preview flag. Configure these
 server-only values explicitly for a future activation rehearsal:
 
 - `WAREHOUSE_REDIS_URL`: HTTPS Upstash REST endpoint.
@@ -311,9 +313,9 @@ uses `next start`; it never compiles or edits application source. The artifact
 fingerprint covers the build ID and build/action manifests, not every asset byte.
 Use the same immutable output directory for both processes.
 
-The normal warehouse feature remains development-only. To test a compiled
-storefront, the rehearsal's disposable source copy has a local-only preview
-override; do not apply that override to this repository or deploy its test build.
+Compiled rehearsals now use `WAREHOUSE_MODE=staging`; temporary source overrides
+are no longer required. Staging must retain purchase blocking and must never be
+treated as a production purchase mode.
 The local runner must retain its order/payment guards and must not change hosted
 checkout settings. Keep private environment files and action keys out of Git.
 
@@ -324,3 +326,45 @@ instances, an exact-payload retry after a lost response, stale picker rejection,
 concurrent writers with one accepted revision, fresh checkout navigation,
 backend restarts, and one backend losing its Redis connection. Successful Redis
 writes alone are insufficient: both picker rendering and navigation must settle.
+
+
+## Production-mode staging configuration
+
+`WAREHOUSE_MODE` accepts only `off` or `staging`. Invalid explicit values fail
+configuration validation. Explicit `off` wins over the legacy preview flag.
+Staging validates configuration during Next build and Node server startup, and
+again at warehouse entry points. It uses `.next-warehouse-staging` as its build
+output; both instances must run the same artifact and share their action key,
+validation secret, Redis namespace, and store/channel configuration.
+
+See `.env.warehouse.staging.example`. Staging requires:
+
+- A nonempty, valid `WAREHOUSE_CONFIG` with unique warehouse/pickup-method IDs.
+- `WAREHOUSE_PERSISTENCE_PROVIDER=redis`, an HTTPS Redis origin, a nonempty token,
+  and a namespace. There is no staging metafield fallback.
+- An explicit `WAREHOUSE_VALIDATION_SECRET` of at least 32 characters.
+- `WAREHOUSE_VALIDATION_BASE_URL`: the HTTPS storefront origin (no path/trailing
+  slash, credentials, query, or fragment).
+- `WAREHOUSE_CHECKOUT_ORIGINS`: a JSON array of allowed HTTPS checkout origins.
+- A store hash and positive channel ID for this backend.
+
+Configuration errors never include credentials. The validator and handoff reject
+unlisted checkout origins; staging also checks the signed capability's channel
+against this backend's configured channel. Existing signed cart, store, expiry,
+revision, stock, and consignment checks remain in place.
+
+The handoff remains `warehouse-preview-v2` with `preview: true`. The independent
+checkout must be built in its own `WAREHOUSE_CHECKOUT_MODE=staging` mode, with a
+public checkout-origin/validator-endpoint mapping. Its `warehouse-build.json`
+identifies that mode. Do not substitute an ordinary/off checkout build for an
+enabled staging store. Management credentials, Redis credentials, and signing
+secrets stay on the backend; no Catalyst import is needed in checkout.
+
+This milestone adds no purchase mode, hosted activation, or production bootstrap
+transport. Delivering the signed handoff through a real HTTPS staging integration
+is the following milestone. Native-SDK submission-enforcement limits still apply.
+
+Isolated tests: `node --test lib/warehouse/configuration.test.cjs` plus the existing
+warehouse authorization/submission tests. The two-process atomic integration
+suite includes a production staging case and uses only synthetic carts and a
+private local Redis socket; external HTTP is prohibited by the harness.

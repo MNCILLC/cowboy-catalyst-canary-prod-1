@@ -1,36 +1,22 @@
 import 'server-only';
 
-import { z } from 'zod';
+import { readWarehouseConfiguration } from './configuration';
 
-export function warehousePreviewEnabled() {
-  // This milestone cannot redirect ordinary customers to an unfinished checkout.
-  return process.env.NODE_ENV === 'development' && process.env.WAREHOUSE_PREVIEW_ENABLED === 'true';
+export function getWarehouseConfiguration() {
+  return readWarehouseConfiguration(process.env);
 }
 
-const warehouseSchema = z
-  .object({
-    id: z.string().regex(/^[a-z0-9-]+$/),
-    label: z.string().min(1),
-    pickupLabel: z.string().min(1),
-    locationId: z.number().int().positive(),
-    pickupMethodId: z.number().int().positive(),
-    allowShipping: z.boolean(),
-  })
-  .strict();
+// Both modes remain non-purchasable and use the isolated checkout handoff.
+export function warehousePreviewEnabled() {
+  return getWarehouseConfiguration().mode !== 'off';
+}
 
 export function getWarehouses() {
-  if (!warehousePreviewEnabled()) return [];
+  return getWarehouseConfiguration().warehouses;
+}
 
-  const values = z
-    .array(warehouseSchema)
-    .min(1)
-    .parse(JSON.parse(process.env.WAREHOUSE_CONFIG ?? '[]'));
+export function warehouseCheckoutOriginAllowed(origin: string) {
+  const config = getWarehouseConfiguration();
 
-  if (
-    new Set(values.map((w) => w.id)).size !== values.length ||
-    new Set(values.map((w) => w.pickupMethodId)).size !== values.length
-  )
-    throw new Error('Warehouse IDs and pickup methods must be unique.');
-
-  return values;
+  return config.mode !== 'staging' || config.checkoutOrigins.includes(origin);
 }

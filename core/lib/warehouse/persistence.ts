@@ -3,12 +3,13 @@ import 'server-only';
 import { WarehouseValidationError } from './authorization';
 import { warehousePreviewEnabled } from './config';
 
-// This milestone is opt-in and local-preview-only. Never fall back after a Redis failure.
+// Preview and staging are opt-in; staging configuration requires Redis. Never fall back after a Redis failure.
 export function warehousePersistenceIsAtomic() {
+  const enabled = warehousePreviewEnabled();
   const provider = process.env.WAREHOUSE_PERSISTENCE_PROVIDER ?? 'metafield';
 
   if (provider === 'metafield') return false;
-  if (provider === 'redis' && warehousePreviewEnabled()) return true;
+  if (provider === 'redis' && enabled) return true;
   throw new WarehouseValidationError(
     'Warehouse persistence is not configured for this environment.',
     503,

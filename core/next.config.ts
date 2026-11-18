@@ -7,6 +7,7 @@ import { writeBuildConfig } from './build-config/writer';
 import { client } from './client';
 import { graphql } from './client/graphql';
 import { cspHeader } from './lib/content-security-policy';
+import { readWarehouseConfiguration } from './lib/warehouse/configuration';
 
 const withMakeswift = createWithMakeswift();
 const withNextIntl = createNextIntlPlugin({
@@ -61,11 +62,16 @@ async function writeSettingsToBuildConfig() {
 }
 
 export default async (): Promise<NextConfig> => {
+  const warehouse = readWarehouseConfiguration(process.env);
   const settings = await writeSettingsToBuildConfig();
 
   let nextConfig: NextConfig = {
     reactStrictMode: true,
-    distDir: process.env.WAREHOUSE_PREVIEW_ENABLED === 'true' ? '.next-warehouse-preview' : '.next',
+    distDir: {
+      off: '.next',
+      preview: '.next-warehouse-preview',
+      staging: '.next-warehouse-staging',
+    }[warehouse.mode],
     experimental: {
       optimizePackageImports: ['@icons-pack/react-simple-icons'],
     },

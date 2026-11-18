@@ -50,7 +50,13 @@ import { registerOTel } from '@vercel/otel';
  * - OPENTELEMETRY.md in this directory
  * - Official Next.js guide: https://nextjs.org/docs/app/guides/open-telemetry
  */
-export function register() {
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { readWarehouseConfiguration } = await import('./lib/warehouse/configuration');
+
+    readWarehouseConfiguration(process.env);
+  }
+
   // Service name is pulled from the OTEL_SERVICE_NAME env var.
   // If you wish to manually set it, you can remove the env var and set it here:
   // registerOTel({ serviceName: 'catalyst-storefront' });

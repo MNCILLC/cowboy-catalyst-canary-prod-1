@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
-import { warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { validateWarehouseCheckout } from '~/lib/warehouse/validation';
 
@@ -59,6 +59,9 @@ function cors(origin: string) {
 export function OPTIONS(req: NextRequest) {
   if (!warehousePreviewEnabled()) return new NextResponse(null, { status: 404 });
 
+  if (!warehouseCheckoutOriginAllowed(req.headers.get('origin') ?? ''))
+    return new NextResponse(null, { status: 403 });
+
   // A successful preflight grants no cart access: the signed credential binds the actual origin.
   return new NextResponse(null, {
     status: 204,
@@ -70,6 +73,13 @@ export async function POST(req: NextRequest) {
   if (!warehousePreviewEnabled()) return new NextResponse(null, { status: 404 });
 
   const origin = req.headers.get('origin') ?? '';
+
+  if (!warehouseCheckoutOriginAllowed(origin))
+    return NextResponse.json(
+      { code: 'UNAUTHORIZED', message: 'Checkout origin is not allowed.' },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
+    );
+
   const headers = cors(origin || 'null');
 
   try {

@@ -8,7 +8,7 @@ import {
   WarehouseRecord,
   WarehouseValidationError,
 } from './authorization';
-import { getWarehouses } from './config';
+import { getWarehouseConfiguration, getWarehouses, warehouseCheckoutOriginAllowed } from './config';
 import { readWarehouseRecord } from './persistence';
 import { WarehouseConsignment, warehouseFulfillmentCompatible } from './policy';
 import { checkWarehouseStock } from './server';
@@ -35,6 +35,9 @@ export function createValidationAccess(
   checkoutOrigin: string,
   storefrontOrigin: string,
 ) {
+  if (!warehouseCheckoutOriginAllowed(checkoutOrigin))
+    throw new WarehouseValidationError('Checkout origin is not allowed.', 401, 'UNAUTHORIZED');
+
   const endpoint = new URL(
     '/api/warehouse/validate',
     process.env.WAREHOUSE_VALIDATION_BASE_URL ?? storefrontOrigin,
@@ -75,6 +78,20 @@ interface Checkout {
   consignments: WarehouseConsignment[];
 }
 
+function allowedClaims(token: string, origin: string) {
+  const configuration = getWarehouseConfiguration();
+
+  if (!warehouseCheckoutOriginAllowed(origin))
+    throw new WarehouseValidationError('Checkout origin is not allowed.', 401, 'UNAUTHORIZED');
+
+  const claims = verifyValidationClaims(token, signingSecret(), origin);
+
+  if (configuration.mode === 'staging' && claims.channelId !== configuration.channelId)
+    throw new WarehouseValidationError('Checkout channel is not allowed.', 401, 'UNAUTHORIZED');
+
+  return claims;
+}
+
 export async function validateWarehouseCheckout(
   token: string,
   origin: string,
@@ -83,7 +100,7 @@ export async function validateWarehouseCheckout(
   requestedMode?: 'pickup' | 'shipping',
   submission?: SubmissionSnapshot,
 ) {
-  const claims = verifyValidationClaims(token, signingSecret(), origin);
+  const claims = allowedClaims(token, origin);
 
   if (claims.storeHash !== process.env.BIGCOMMERCE_STORE_HASH || claims.cartId !== cartId)
     throw new WarehouseValidationError(

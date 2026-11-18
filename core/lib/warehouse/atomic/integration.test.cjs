@@ -27,6 +27,7 @@ let b;
 let sequence = 0;
 const metrics = {
   pickerRaces: 0,
+  stagingPickerRaces: 0,
   workerPids: [],
   externalHttpRequests: 0,
 };
@@ -535,4 +536,55 @@ test('isolation audit: two distinct processes, zero external requests and no une
   }
 
   assert.equal(metrics.pickerRaces, 12);
+});
+
+test('production staging handoff, validation and stale selections work across isolated processes', async () => {
+  const staging = {
+    NODE_ENV: 'production',
+    WAREHOUSE_MODE: 'staging',
+    BIGCOMMERCE_CHANNEL_ID: '37',
+    WAREHOUSE_VALIDATION_BASE_URL: 'https://storefront.invalid',
+    WAREHOUSE_CHECKOUT_ORIGINS: '["https://checkout.invalid"]',
+  };
+  await Promise.all([call(a, 'env', staging), call(b, 'env', staging)]);
+  try {
+    const { cartId, record } = await setup();
+    const handoff = await call(a, 'handoff');
+    assert.equal(handoff.access.endpoint, 'https://storefront.invalid/api/warehouse/validate');
+    assert.equal((await call(b, 'validate', { access: handoff.access })).status, 200);
+    assert.equal(
+      (await call(b, 'validate', { access: handoff.access, origin: 'https://other.invalid' }))
+        .status,
+      403,
+    );
+    await call(b, 'env', { BIGCOMMERCE_CHANNEL_ID: '38' });
+    assert.equal((await call(b, 'validate', { access: handoff.access })).status, 401);
+    await call(b, 'env', { BIGCOMMERCE_CHANNEL_ID: '37' });
+    assert.deepEqual(await call(b, 'select', selection(cartId, record.revision)), {});
+    assert.equal((await call(a, 'validate', { access: handoff.access })).status, 409);
+    assert.equal(
+      (await call(a, 'select', selection(cartId, record.revision))).code,
+      'STALE_WAREHOUSE',
+    );
+    const head = await call(a, 'context');
+    await Promise.all([
+      call(a, 'arm', { ...selection(cartId, head.revision, 'forney'), boundary: 'cas' }),
+      call(b, 'arm', { ...selection(cartId, head.revision, 'powell'), boundary: 'cas' }),
+    ]);
+    const raced = await Promise.all([call(a, 'release'), call(b, 'release')]);
+    assert.equal(raced.filter((result) => !result.error).length, 1);
+    assert.equal(raced.find((result) => result.error).code, 'STALE_WAREHOUSE');
+    metrics.pickerRaces += 1;
+    metrics.stagingPickerRaces += 1;
+    assert.equal((await call(a, 'stats')).externalRequests, 0);
+    assert.equal((await call(b, 'stats')).externalRequests, 0);
+  } finally {
+    const restore = {
+      NODE_ENV: 'development',
+      WAREHOUSE_MODE: null,
+      WAREHOUSE_VALIDATION_BASE_URL: null,
+      WAREHOUSE_CHECKOUT_ORIGINS: null,
+    };
+    await Promise.all([call(a, 'env', restore), call(b, 'env', restore)]);
+  }
 });

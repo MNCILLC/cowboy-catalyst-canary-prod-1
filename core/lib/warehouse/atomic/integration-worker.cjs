@@ -124,6 +124,7 @@ async function api(endpoint, method = 'GET', body = undefined) {
 const files = [
   'lib/warehouse/server.ts',
   'lib/warehouse/config.ts',
+  'lib/warehouse/configuration.ts',
   'lib/warehouse/policy.ts',
   'lib/warehouse/authorization.ts',
   'lib/warehouse/persistence.ts',
@@ -247,7 +248,11 @@ async function validate(payload) {
   const req = new NextRequest('http://localhost/api/warehouse/validate', {
     method: 'POST',
     headers: {
-      origin: payload.origin ?? 'http://localhost:4010',
+      origin:
+        payload.origin ??
+        (process.env.WAREHOUSE_MODE === 'staging'
+          ? 'https://checkout.invalid'
+          : 'http://localhost:4010'),
       authorization: `Bearer ${payload.access.token}`,
     },
     body: JSON.stringify({
@@ -333,7 +338,9 @@ async function dispatch(command, payload = {}) {
         ...result,
         access: validation.createValidationAccess(
           result.record,
-          'http://localhost:4010',
+          process.env.WAREHOUSE_MODE === 'staging'
+            ? 'https://checkout.invalid'
+            : 'http://localhost:4010',
           'http://localhost:3011',
         ),
       };
