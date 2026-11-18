@@ -3,7 +3,7 @@ import { client } from '~/client';
 import { graphql, VariablesOf } from '~/client/graphql';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { assertProUseLineItems } from '~/lib/pro-use/server';
-import { assertWarehouseItems } from '~/lib/warehouse/server';
+import { assertWarehouseItems, persistNewCartWarehouse } from '~/lib/warehouse/server';
 import { assertPricingAccess } from '~/lib/wholesale-pricing';
 
 const CreateCartMutation = graphql(`
@@ -24,12 +24,13 @@ export type CreateCartInput = Variables['createCartInput'];
 export const createCart = async (data: CreateCartInput) => {
   await assertPricingAccess();
   await assertProUseLineItems(data.lineItems ?? []);
-  await assertWarehouseItems(data.lineItems ?? []);
+
+  const warehouse = await assertWarehouseItems(data.lineItems ?? []);
 
   const customerAccessToken = await getSessionCustomerAccessToken();
   const currencyCode = await getPreferredCurrencyCode();
 
-  return await client.fetch({
+  const response = await client.fetch({
     document: CreateCartMutation,
     variables: {
       createCartInput: {
@@ -40,4 +41,9 @@ export const createCart = async (data: CreateCartInput) => {
     customerAccessToken,
     fetchOptions: { cache: 'no-store' },
   });
+  const cartId = response.data.cart.createCart?.cart?.entityId;
+
+  if (warehouse && cartId) await persistNewCartWarehouse(cartId, warehouse.id);
+
+  return response;
 };

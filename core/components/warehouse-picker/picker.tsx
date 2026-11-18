@@ -6,7 +6,15 @@ import { Warehouse } from '~/lib/warehouse/policy';
 
 import { changeWarehouse } from './actions';
 
-export function Picker({ warehouses, selected }: { warehouses: Warehouse[]; selected?: string }) {
+export function Picker({
+  warehouses,
+  selected,
+  context,
+}: {
+  warehouses: Warehouse[];
+  selected?: string;
+  context: { cartId: string | null; revision: string | null };
+}) {
   const [error, setError] = useState('');
   const [hydrated, setHydrated] = useState(false);
 
@@ -36,7 +44,7 @@ export function Picker({ warehouses, selected }: { warehouses: Warehouse[]; sele
 
             setError('');
             startTransition(async () => {
-              const result = await changeWarehouse(id);
+              const result = await changeWarehouse(id, context);
 
               setError(result.error ?? '');
             });

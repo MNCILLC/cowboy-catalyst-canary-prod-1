@@ -1,5 +1,5 @@
 import { getWarehouses } from '~/lib/warehouse/config';
-import { getWarehouseSelection } from '~/lib/warehouse/server';
+import { getWarehouseContext } from '~/lib/warehouse/server';
 
 import { Picker } from './picker';
 
@@ -8,5 +8,7 @@ export async function WarehousePicker() {
 
   if (!warehouses.length) return null;
 
-  return <Picker selected={(await getWarehouseSelection())?.id} warehouses={warehouses} />;
+  const { warehouse, ...context } = await getWarehouseContext();
+
+  return <Picker context={context} selected={warehouse?.id} warehouses={warehouses} />;
 }

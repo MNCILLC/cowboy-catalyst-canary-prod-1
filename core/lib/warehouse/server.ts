@@ -1,11 +1,23 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
+import { getLocale } from 'next-intl/server';
 
+import { getChannelIdFromLocale } from '~/channels.config';
 import { getCartId } from '~/lib/cart';
 
+import { warehouseApi as api } from './api';
+import { assertCurrentRecord, WarehouseValidationError } from './authorization';
 import { getWarehouses, warehousePreviewEnabled } from './config';
-import { assertStock, StockDemand, Warehouse, WarehouseError } from './policy';
+import { readWarehouseRecord, saveWarehouseRecord } from './persistence';
+import {
+  assertStock,
+  StockDemand,
+  Warehouse,
+  WarehouseConsignment,
+  WarehouseError,
+  warehouseFulfillmentCompatible,
+} from './policy';
 
 const COOKIE = 'shopping-warehouse';
 
@@ -50,31 +62,25 @@ interface Inventory {
   available_to_sell: number;
 }
 
-async function api<T>(path: string): Promise<T> {
-  const hash = process.env.BIGCOMMERCE_STORE_HASH;
-  const token = process.env.BIGCOMMERCE_ACCESS_TOKEN;
-
-  if (!hash || !token) throw new WarehouseError('Warehouse verification is not configured.');
-
-  const result = await fetch(`https://api.bigcommerce.com/stores/${hash}/v3/${path}`, {
-    method: 'GET',
-    headers: { 'X-Auth-Token': token, 'Content-Type': 'application/json' },
-    cache: 'no-store',
-  });
-
-  if (!result.ok) throw new WarehouseError('Unable to verify warehouse inventory. Please retry.');
-
-  // The caller checks inventory identity and stock values before admitting items.
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const value: { data: T } = await result.json();
-
-  return value.data;
-}
-
-export async function getWarehouseSelection() {
+async function cookieWarehouse() {
   const selected = (await cookies()).get(COOKIE)?.value;
 
   return getWarehouses().find((w) => w.id === selected);
+}
+
+export async function getWarehouseContext() {
+  const cartId = await getCartId();
+  const cart = await sessionCart(cartId);
+  const record = cart ? await readWarehouseRecord(cart.id) : undefined;
+  const warehouse = record
+    ? getWarehouses().find((w) => w.id === record.warehouseId)
+    : await cookieWarehouse();
+
+  return { warehouse, cartId: cart?.id ?? null, revision: record?.revision ?? null };
+}
+
+export async function getWarehouseSelection() {
+  return (await getWarehouseContext()).warehouse;
 }
 
 async function requireWarehouse() {
@@ -91,10 +97,22 @@ async function sessionCart(cartId?: string): Promise<Cart | undefined> {
   if (cartId !== (await getCartId()))
     throw new WarehouseError('Your cart changed. Reload the page.');
 
-  return api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+  let cart: Cart;
+
+  try {
+    cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+  } catch (error) {
+    if (error instanceof WarehouseValidationError && error.status === 404) return undefined;
+    throw error;
+  }
+
+  if (cart.channel_id !== Number(getChannelIdFromLocale(await getLocale())))
+    throw new WarehouseError('This cart belongs to another storefront.');
+
+  return cart;
 }
 
-async function check(warehouse: Warehouse, items: Input[]) {
+export async function checkWarehouseStock(warehouse: Warehouse, items: Input[]) {
   const products = new Map<number, Product>();
 
   await Promise.all(
@@ -185,8 +203,8 @@ const input = (i: Item): Input => ({
 export async function assertWarehouseItems(items: Input[], cartId?: string, replaceId?: string) {
   if (!warehousePreviewEnabled()) return;
 
-  const warehouse = await requireWarehouse();
   const cart = await sessionCart(cartId);
+  const warehouse = cart ? await warehouseForCart(cart) : await requireWarehouse();
 
   if (
     replaceId &&
@@ -195,20 +213,72 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
     )
   )
     throw new WarehouseError('This cart item no longer exists.');
-  await check(warehouse, [
+  await checkWarehouseStock(warehouse, [
     ...(cart?.line_items.physical_items ?? []).filter((i) => i.id !== replaceId).map(input),
     ...items,
   ]);
+
+  return warehouse;
 }
 
-export async function selectWarehouse(id: string) {
+async function warehouseForCart(cart: Cart) {
+  let record = await readWarehouseRecord(cart.id);
+
+  if (!record) {
+    const selected = await cookieWarehouse();
+
+    if (!selected)
+      throw new WarehouseError('Choose your warehouse before adding items or checking out.');
+    await checkWarehouseStock(selected, cart.line_items.physical_items.map(input));
+    record = await saveWarehouseRecord(cart, selected.id, null);
+  }
+
+  if (
+    record.storeHash !== process.env.BIGCOMMERCE_STORE_HASH ||
+    record.cartId !== cart.id ||
+    record.channelId !== cart.channel_id
+  )
+    throw new WarehouseError('Invalid cart warehouse.');
+
+  const warehouse = getWarehouses().find((w) => w.id === record.warehouseId);
+
+  if (!warehouse) throw new WarehouseError('Your selected warehouse is no longer available.');
+
+  return warehouse;
+}
+
+export async function persistNewCartWarehouse(cartId: string, warehouseId: string) {
+  const cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+
+  await saveWarehouseRecord(cart, warehouseId, null);
+}
+
+export async function selectWarehouse(
+  id: string,
+  expected: { cartId: string | null; revision: string | null },
+) {
   const warehouse = getWarehouses().find((w) => w.id === id);
 
   if (!warehouse) throw new WarehouseError('Choose a valid warehouse.');
 
   const cart = await sessionCart(await getCartId());
 
-  await check(warehouse, (cart?.line_items.physical_items ?? []).map(input));
+  if ((cart?.id ?? null) !== expected.cartId)
+    throw new WarehouseError(
+      'Your cart changed in another tab. Reload before choosing a warehouse.',
+    );
+
+  if (cart) {
+    const current = await readWarehouseRecord(cart.id);
+
+    if ((current?.revision ?? null) !== expected.revision)
+      throw new WarehouseError(
+        'Your cart warehouse changed in another tab. Reload before choosing again.',
+      );
+    await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+    await saveWarehouseRecord(cart, warehouse.id, expected.revision);
+  }
+
   (await cookies()).set(COOKIE, warehouse.id, {
     httpOnly: true,
     sameSite: 'lax',
@@ -218,15 +288,42 @@ export async function selectWarehouse(id: string) {
 }
 
 export async function prepareWarehousePreview(cartId: string) {
-  const warehouse = await requireWarehouse();
   const cart = await sessionCart(cartId);
 
   if (!cart?.line_items.physical_items.length)
-    throw new WarehouseError('Add a physical test item first.');
-  await check(warehouse, cart.line_items.physical_items.map(input));
+    throw new WarehouseError('Add a physical item first.');
 
-  return {
-    protocol: 'warehouse-preview-v1',
-    warehouseCheckout: { version: 1, cartId: cart.id, warehouse, preview: true },
-  };
+  const warehouse = await warehouseForCart(cart);
+  const record = await readWarehouseRecord(cart.id);
+
+  if (!record) throw new WarehouseError('Choose your cart warehouse again.');
+  await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+  assertCurrentRecord(await readWarehouseRecord(cart.id), record);
+
+  const checkout = await api<{ consignments: WarehouseConsignment[] }>(
+    `checkouts/${encodeURIComponent(cartId)}`,
+  );
+
+  if (
+    !warehouseFulfillmentCompatible(
+      warehouse,
+      cart.line_items.physical_items.map((item) => item.id),
+      checkout.consignments,
+    )
+  ) {
+    // A new, session-authorized handoff resets fulfillment that belongs to the old warehouse.
+    // eslint-disable-next-line no-restricted-syntax
+    for (const consignment of checkout.consignments) {
+      // Native consignment mutations must be sequential.
+      // eslint-disable-next-line no-await-in-loop
+      await api(
+        `checkouts/${encodeURIComponent(cartId)}/consignments/${encodeURIComponent(consignment.id)}`,
+        'DELETE',
+      );
+    }
+  }
+
+  assertCurrentRecord(await readWarehouseRecord(cart.id), record);
+
+  return { record, warehouse };
 }

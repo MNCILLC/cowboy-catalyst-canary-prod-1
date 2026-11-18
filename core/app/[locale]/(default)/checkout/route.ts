@@ -24,6 +24,7 @@ import { serverToast } from '~/lib/server-toast';
 import { warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { prepareWarehousePreview } from '~/lib/warehouse/server';
+import { createValidationAccess } from '~/lib/warehouse/validation';
 
 const CheckoutEligibilityQuery = graphql(`
   query CheckoutEligibilityQuery($cartId: String) {
@@ -202,7 +203,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     if (warehouseHandoff) {
       return NextResponse.json(
         {
-          ...warehouseHandoff,
+          protocol: 'warehouse-preview-v2',
+          warehouseCheckout: {
+            version: 1,
+            preview: true,
+            cartId,
+            warehouse: warehouseHandoff.warehouse,
+            validation: createValidationAccess(
+              warehouseHandoff.record,
+              new URL(data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl).origin,
+              req.nextUrl.origin,
+            ),
+          },
           checkoutUrl: data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl,
         },
         { headers: { 'Cache-Control': 'no-store' } },

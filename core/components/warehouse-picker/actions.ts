@@ -4,9 +4,12 @@ import { revalidatePath } from 'next/cache';
 
 import { selectWarehouse } from '~/lib/warehouse/server';
 
-export async function changeWarehouse(id: string): Promise<{ error?: string }> {
+export async function changeWarehouse(
+  id: string,
+  expected: { cartId: string | null; revision: string | null },
+): Promise<{ error?: string }> {
   try {
-    await selectWarehouse(id);
+    await selectWarehouse(id, expected);
     revalidatePath('/', 'layout');
 
     return {};

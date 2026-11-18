@@ -33,3 +33,35 @@ export function assertStock(demands: StockDemand[], available: Map<string, numbe
       );
   });
 }
+
+export interface WarehouseConsignment {
+  id: string;
+  line_item_ids: string[];
+  selected_pickup_option?: { pickup_method_id: number };
+  selected_shipping_option?: { type: string };
+}
+
+export function warehouseFulfillmentCompatible(
+  warehouse: Warehouse,
+  itemIds: string[],
+  consignments: WarehouseConsignment[],
+) {
+  const assigned = consignments.flatMap((consignment) => consignment.line_item_ids);
+
+  return (
+    consignments.length <= 1 &&
+    new Set(assigned).size === assigned.length &&
+    assigned.every((id) => itemIds.includes(id)) &&
+    (!consignments.some(
+      (consignment) => consignment.selected_pickup_option || consignment.selected_shipping_option,
+    ) ||
+      assigned.length === itemIds.length) &&
+    consignments.every((consignment) =>
+      consignment.selected_pickup_option
+        ? consignment.selected_pickup_option.pickup_method_id === warehouse.pickupMethodId
+        : !consignment.selected_shipping_option ||
+          (warehouse.allowShipping &&
+            consignment.selected_shipping_option.type !== 'shipping_pickupinstore'),
+    )
+  );
+}
