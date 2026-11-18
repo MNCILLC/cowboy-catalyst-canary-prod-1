@@ -107,6 +107,7 @@ validation checks the resulting consignment separately. Responses are no-store.
 CORS preflight does not grant access: POST verifies the signed origin.
 
 Optional server configuration:
+
 - `WAREHOUSE_VALIDATION_SECRET`: stable secret of at least 32 characters; otherwise
   derives a purpose-separated key from existing `AUTH_SECRET`/`NEXTAUTH_SECRET`.
 - `WAREHOUSE_VALIDATION_BASE_URL`: canonical storefront origin for the validation
@@ -158,3 +159,72 @@ tests compile the real validator and authentication/policy modules in memory wit
 explicit fake API, inventory and persistence dependencies. They do not read store
 credentials or issue network requests. Concurrent successful validations and changes
 after client validation are documented limitations, not guarantees tested away.
+
+## Atomic persistence adapter: isolated milestone, not activated
+
+`atomic/persistence.ts` implements a server-only, dependency-injected Redis adapter.
+It is intentionally **not wired into** the live metafield persistence module,
+storefront actions, or validator. No BigCommerce writes, existing-cart migration,
+or hosted checkout activation are part of this milestone. The standalone checkout
+repository and its public validation contract are unchanged.
+
+The adapter exposes `read({storeHash, channelId, cartId})` and
+`compareAndSet({...scope, warehouseId, expectedRevision, operationId})`.
+Ownership, warehouse configuration, and stock checks remain the caller's job.
+Cart, revision and operation UUIDs are normalized to lowercase to prevent aliases.
+Use a stable UUID operation ID for retries of the same selection intent; a genuinely
+new action uses a new ID. `expectedRevision: null` means create-only, not overwrite.
+
+One Redis hash per namespace/store/channel/cart holds the current record and
+successful operation receipts. A Lua EVAL checks identity, record validity,
+revision and operation ID, then performs one multi-field HSET for both the head
+and receipt. There is no lease, second datastore write, cache, TTL, or in-memory
+fallback. Distinct concurrent requests with the same expected revision have one
+winner; losers receive `STALE_WAREHOUSE` (409). A reused operation ID with a
+changed payload gets `OPERATION_CONFLICT` (409).
+
+Successful retries return the original `record`, plus `currentRecord` from the
+same atomic operation and `replayed: true`. An old receipt is not permission to
+restore that old selection: future callers must use the current authority for
+cookies, handoffs and checkout authorization. A timeout can mean the commit
+succeeded but its response was lost; retry the same operation ID. Transport
+failures return `WAREHOUSE_STORAGE_UNAVAILABLE` (503), without exposing underlying
+credentials. Invalid/expiring state fails closed. A missing record with a non-null
+expected revision is stale; the adapter never repopulates it from a metafield.
+
+Receipts are retained with the cart record, bounded at 1,024 successful operations
+by default (configurable up to 10,000). At the limit, new selections fail with
+`SELECTION_LIMIT`; existing receipts remain replayable. There is no automatic
+expiry or receipt eviction. Before rollout, define terminal-cart cleanup and
+retention, durable/no-eviction storage, a consistent primary execution endpoint,
+and recovery procedures. Local atomicity does not prove cloud failover durability.
+
+`atomic/upstash.ts` supplies an explicit-config factory using the installed SDK,
+HTTPS, a fresh request deadline, no caching, no automatic pipelining, and no
+implicit environment loading or fallback. The hosted Upstash transport is not
+live-tested in this milestone. All consumers must switch to the same authority
+together during a later rollout; mixed metafield/Redis writers are unsafe. Any
+BigCommerce mirror must remain secondary and requires separate reconciliation.
+
+Run the synthetic two-process suite from `core` using explicitly supplied local
+Redis binaries (nothing is installed globally):
+
+```sh
+ATOMIC_TEST_REDIS_SERVER=/absolute/path/to/redis-server \
+ATOMIC_TEST_REDIS_CLI=/absolute/path/to/redis-cli \
+node --test lib/warehouse/atomic/persistence.test.cjs
+```
+
+The suite starts its own private temporary Unix-socket Redis with TCP disabled,
+AOF persistence, `appendfsync always`, and `noeviction`. Two independent Node
+processes rendezvous after reading the same revision, then race real Lua writes.
+It covers 20 creation races, 40 update races, duplicate and conflicting operation
+IDs, lost responses, old receipt replay, signed capability invalidation, scope
+isolation, process exits, Redis outage/restart and hard-crash recovery, corrupt
+records, missing records, and receipt limits. It kills its own workers/server and
+removes its private data directory afterward. No store credentials are loaded;
+an import allowlist excludes live API modules, and HTTP fetch is prohibited.
+
+Atomic selection is not an inventory reservation, a transaction spanning
+BigCommerce and Redis, or mandatory enforcement at native order submission.
+Redis EVAL semantics: https://redis.io/docs/latest/develop/programmability/eval-intro/
