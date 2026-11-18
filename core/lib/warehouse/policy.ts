@@ -38,7 +38,7 @@ export interface WarehouseConsignment {
   id: string;
   line_item_ids: string[];
   selected_pickup_option?: { pickup_method_id: number };
-  selected_shipping_option?: { type: string };
+  selected_shipping_option?: { id?: string; type: string };
 }
 
 export function warehouseFulfillmentCompatible(

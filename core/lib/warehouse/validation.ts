@@ -12,6 +12,7 @@ import { getWarehouses } from './config';
 import { readWarehouseRecord } from './persistence';
 import { WarehouseConsignment, warehouseFulfillmentCompatible } from './policy';
 import { checkWarehouseStock } from './server';
+import { submissionMatches, submissionSnapshot, SubmissionSnapshot } from './submission';
 
 function signingSecret() {
   const secret =
@@ -56,6 +57,7 @@ export function createValidationAccess(
 }
 
 interface Checkout {
+  grand_total: number;
   id: string;
   order_id: number | null;
   cart: {
@@ -79,6 +81,7 @@ export async function validateWarehouseCheckout(
   cartId: string,
   revision: string,
   requestedMode?: 'pickup' | 'shipping',
+  submission?: SubmissionSnapshot,
 ) {
   const claims = verifyValidationClaims(token, signingSecret(), origin);
 
@@ -128,6 +131,13 @@ export async function validateWarehouseCheckout(
       'CART_CHANGED',
     );
 
+  if (submission && !submissionMatches(warehouse, checkout, submission, requestedMode))
+    throw new WarehouseValidationError(
+      'Checkout changed or fulfillment is incomplete. Review your cart and delivery choice before retrying.',
+      409,
+      'SUBMISSION_CONFLICT',
+    );
+
   const items = checkout.cart.line_items.physical_items;
 
   if (!items.length)
@@ -162,6 +172,18 @@ export async function validateWarehouseCheckout(
     );
   }
 
+  if (submission) {
+    // Detect mutations while stock is being checked. This is not a lock/reservation.
+    const latest = await warehouseApi<Checkout>(`checkouts/${encodeURIComponent(cartId)}`);
+
+    if (JSON.stringify(latest) !== JSON.stringify(checkout))
+      throw new WarehouseValidationError(
+        'Checkout changed during verification. Review your checkout and retry.',
+        409,
+        'SUBMISSION_CONFLICT',
+      );
+  }
+
   assertCurrentRecord(await readWarehouseRecord(cartId), claims);
 
   return {
@@ -171,5 +193,6 @@ export async function validateWarehouseCheckout(
     warehouse,
     allowedModes: warehouse.allowShipping ? ['shipping', 'pickup'] : ['pickup'],
     expiresAt: claims.exp,
+    ...(submission ? { submission: submissionSnapshot(checkout) } : {}),
   };
 }

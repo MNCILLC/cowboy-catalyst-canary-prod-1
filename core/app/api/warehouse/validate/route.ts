@@ -13,6 +13,36 @@ const inputSchema = z
     cartId: z.string().uuid(),
     revision: z.string().uuid(),
     requestedMode: z.enum(['shipping', 'pickup']).optional(),
+    submission: z
+      .object({
+        grandTotal: z.number().finite().nonnegative(),
+        items: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1),
+                productId: z.number().int().positive(),
+                variantId: z.number().int().nonnegative(),
+                quantity: z.number().int().positive(),
+              })
+              .strict(),
+          )
+          .min(1),
+        consignments: z
+          .array(
+            z
+              .object({
+                id: z.string().min(1),
+                lineItemIds: z.array(z.string().min(1)),
+                pickupMethodId: z.number().int().positive().nullable(),
+                shippingOptionId: z.string().min(1).nullable(),
+              })
+              .strict(),
+          )
+          .length(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -51,12 +81,12 @@ export async function POST(req: NextRequest) {
         401,
         'UNAUTHORIZED',
       );
-    if (Number(req.headers.get('content-length') ?? 0) > 4096)
+    if (Number(req.headers.get('content-length') ?? 0) > 65536)
       throw new WarehouseValidationError('Invalid validation request.', 400, 'INVALID_REQUEST');
 
     const raw = await req.text();
 
-    if (raw.length > 4096)
+    if (raw.length > 65536)
       throw new WarehouseValidationError('Invalid validation request.', 400, 'INVALID_REQUEST');
 
     const input = inputSchema.parse(JSON.parse(raw));
@@ -66,6 +96,7 @@ export async function POST(req: NextRequest) {
       input.cartId,
       input.revision,
       input.requestedMode,
+      input.submission,
     );
 
     return NextResponse.json(result, { headers });

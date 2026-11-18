@@ -134,3 +134,27 @@ validation, so that such changes require a new fulfillment choice in the UI.
 Focused tests: `node --test lib/warehouse/authorization.test.cjs
 lib/warehouse/policy.test.mts`. The authorization test compiles the pure TypeScript
 module in memory using the repository's existing TypeScript dependency.
+
+## Strict submit-time validation
+
+The validator accepts an optional `submission` snapshot (see the standalone
+checkout's WAREHOUSE-PREVIEW.md for the portable JSON contract). Ordinary editing
+checks still permit incomplete consignments. Submission checks require exactly one
+fully assigned, selected native pickup/shipping consignment matching the warehouse;
+legacy shipping-pickup options and simultaneous shipping/pickup selections fail.
+The reviewed physical items, quantities, fulfillment identifiers and grand total
+must match fresh server state. Checkout is read again after inventory validation,
+and the warehouse record is checked again before the response. The validator echoes
+the validated snapshot. It does not create an order or process a payment.
+
+The body limit is 64 KiB to accommodate cart snapshots. No native order enforcement,
+atomic cart lock, stock reservation or cross-tab deduplication is added. A change
+following the last read can still race submission. Validation errors block the
+supported checkout UI, which remains preview-only.
+
+Run `node --test lib/warehouse/submission.test.cjs
+lib/warehouse/authorization.test.cjs lib/warehouse/policy.test.mts`. The submission
+tests compile the real validator and authentication/policy modules in memory with
+explicit fake API, inventory and persistence dependencies. They do not read store
+credentials or issue network requests. Concurrent successful validations and changes
+after client validation are documented limitations, not guarantees tested away.
