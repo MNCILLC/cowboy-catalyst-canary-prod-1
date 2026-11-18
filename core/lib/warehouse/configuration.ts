@@ -25,12 +25,15 @@ const httpsOrigin = z.string().refine((value) => {
 export function readWarehouseConfiguration(env: Record<string, string | undefined>) {
   try {
     const explicit = env.WAREHOUSE_MODE;
-    let mode: 'off' | 'preview' | 'staging';
+    let mode: 'off' | 'preview' | 'staging' | 'development';
 
-    if (explicit !== undefined) mode = z.enum(['off', 'staging']).parse(explicit);
+    if (explicit !== undefined) mode = z.enum(['off', 'staging', 'development']).parse(explicit);
     else if (env.NODE_ENV === 'development' && env.WAREHOUSE_PREVIEW_ENABLED === 'true')
       mode = 'preview';
     else mode = 'off';
+
+    if (mode === 'development' && env.NODE_ENV !== 'development')
+      throw new Error('Local checkout requires the development server.');
 
     if (mode === 'off') {
       const emptyWarehouses: Array<z.infer<typeof warehouseSchema>> = [];
@@ -59,7 +62,10 @@ export function readWarehouseConfiguration(env: Record<string, string | undefine
       .parse(env.WAREHOUSE_REDIS_NAMESPACE);
     z.string().trim().min(32).parse(env.WAREHOUSE_VALIDATION_SECRET);
 
-    const validationOrigin = httpsOrigin.parse(env.WAREHOUSE_VALIDATION_BASE_URL);
+    const validationOrigin =
+      mode === 'development'
+        ? z.literal('http://localhost:3000').parse(env.WAREHOUSE_VALIDATION_BASE_URL)
+        : httpsOrigin.parse(env.WAREHOUSE_VALIDATION_BASE_URL);
     const checkoutOrigins = z
       .array(httpsOrigin)
       .min(1)

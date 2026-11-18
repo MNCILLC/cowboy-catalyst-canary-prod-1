@@ -6,7 +6,7 @@ export function getWarehouseConfiguration() {
   return readWarehouseConfiguration(process.env);
 }
 
-// Both modes remain non-purchasable and use the isolated checkout handoff.
+// Warehouse development and rehearsals remain non-purchasable.
 export function warehousePreviewEnabled() {
   return getWarehouseConfiguration().mode !== 'off';
 }
@@ -18,5 +18,7 @@ export function getWarehouses() {
 export function warehouseCheckoutOriginAllowed(origin: string) {
   const config = getWarehouseConfiguration();
 
-  return config.mode !== 'staging' || config.checkoutOrigins.includes(origin);
+  return (
+    config.mode === 'off' || config.mode === 'preview' || config.checkoutOrigins.includes(origin)
+  );
 }

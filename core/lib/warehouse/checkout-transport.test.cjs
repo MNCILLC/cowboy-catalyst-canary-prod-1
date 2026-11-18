@@ -16,6 +16,7 @@ let failStock = false;
 class PolicyError extends Error {}
 
 const dependencies = {
+  '~/lib/warehouse/local-checkout': { assertLocalCheckoutReady: async () => {} },
   '@bigcommerce/catalyst-client': { BigCommerceAuthError: TypeError },
   'next/navigation': { unstable_rethrow() {} },
   'next/server': { NextResponse },

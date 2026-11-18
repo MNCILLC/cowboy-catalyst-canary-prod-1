@@ -21,7 +21,8 @@ import { preparePickupCheckout } from '~/lib/pickup-checkout/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
-import { warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { getWarehouseConfiguration, warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { assertLocalCheckoutReady } from '~/lib/warehouse/local-checkout';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { prepareWarehousePreview } from '~/lib/warehouse/server';
 import { createValidationAccess } from '~/lib/warehouse/validation';
@@ -113,7 +114,12 @@ async function prepareCheckoutFulfillment(cartId: string) {
 }
 
 async function getWarehouseHandoff(cartId: string) {
-  return warehousePreviewEnabled() ? prepareWarehousePreview(cartId) : undefined;
+  if (!warehousePreviewEnabled()) return undefined;
+  await assertLocalCheckoutReady();
+
+  const handoff = await prepareWarehousePreview(cartId);
+
+  return getWarehouseConfiguration().mode === 'development' ? undefined : handoff;
 }
 
 async function checkoutCartId(req: NextRequest) {

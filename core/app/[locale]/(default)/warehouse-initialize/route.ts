@@ -12,7 +12,8 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   const configuration = getWarehouseConfiguration();
 
-  if (configuration.mode !== 'staging') return new Response(null, { status: 404 });
+  if (configuration.mode !== 'staging' && configuration.mode !== 'development')
+    return new Response(null, { status: 404 });
 
   let request;
 

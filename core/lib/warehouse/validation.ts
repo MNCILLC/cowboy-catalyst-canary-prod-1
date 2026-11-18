@@ -86,7 +86,10 @@ function allowedClaims(token: string, origin: string) {
 
   const claims = verifyValidationClaims(token, signingSecret(), origin);
 
-  if (configuration.mode === 'staging' && claims.channelId !== configuration.channelId)
+  if (
+    (configuration.mode === 'staging' || configuration.mode === 'development') &&
+    claims.channelId !== configuration.channelId
+  )
     throw new WarehouseValidationError('Checkout channel is not allowed.', 401, 'UNAUTHORIZED');
 
   return claims;

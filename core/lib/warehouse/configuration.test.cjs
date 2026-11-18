@@ -114,3 +114,21 @@ invalid.forEach((override, index) =>
     });
   }),
 );
+
+test('local development requires next dev and the exact loopback storefront origin', () => {
+  const local = {
+    ...stage,
+    NODE_ENV: 'development',
+    WAREHOUSE_MODE: 'development',
+    WAREHOUSE_VALIDATION_BASE_URL: 'http://localhost:3000',
+  };
+
+  assert.equal(readWarehouseConfiguration(local).mode, 'development');
+  assert.throws(() => readWarehouseConfiguration({ ...local, NODE_ENV: 'production' }));
+  assert.throws(() =>
+    readWarehouseConfiguration({
+      ...local,
+      WAREHOUSE_VALIDATION_BASE_URL: 'http://elsewhere.example',
+    }),
+  );
+});

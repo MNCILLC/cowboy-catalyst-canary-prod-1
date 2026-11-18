@@ -69,6 +69,7 @@ export default async (): Promise<NextConfig> => {
     reactStrictMode: true,
     distDir: {
       off: '.next',
+      development: '.next',
       preview: '.next-warehouse-preview',
       staging: '.next-warehouse-staging',
     }[warehouse.mode],
