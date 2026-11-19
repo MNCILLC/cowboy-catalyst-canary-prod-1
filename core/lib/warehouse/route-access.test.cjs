@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file -- Distinct synthetic error types match production classification. */
 const { NextRequest, NextResponse } = require('next/server');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -31,7 +32,8 @@ class AuthorizationError extends Error {
         warehouseCheckoutOriginAllowed: (origin) => origin === 'https://checkout.example',
       },
       '~/lib/warehouse/authorization': { WarehouseValidationError: AuthorizationError },
-      '~/lib/warehouse/policy': { WarehouseError: Error },
+      '~/lib/warehouse/policy': { WarehouseError: class extends Error {} },
+      '~/lib/warehouse/test-provider-server': { authorizeTestProvider: async () => ({}) },
       '~/lib/warehouse/check-test-server': { authorizeCheckTest: async () => ({}) },
       '~/lib/warehouse/validation': { validateWarehouseCheckout: rejectCredential },
       '~/lib/warehouse/freight': { warehouseFreight: rejectCredential },
@@ -97,4 +99,93 @@ class AuthorizationError extends Error {
     assert.equal(route.OPTIONS(request('OPTIONS')).status, 404);
     assert.equal((await route.POST(request('POST'))).status, 404);
   });
+});
+
+test('validate: provider claims retain strict transport and cannot mix with Check', async () => {
+  let calls = 0;
+  let received;
+  const result = { version: 1, warehouse: { id: 'west' } };
+  const dependencies = {
+    'next/server': { NextRequest, NextResponse },
+    zod: { z },
+    '~/lib/warehouse/config': {
+      warehousePreviewEnabled: () => true,
+      warehouseCheckoutOriginAllowed: () => true,
+    },
+    '~/lib/warehouse/authorization': { WarehouseValidationError: AuthorizationError },
+    '~/lib/warehouse/policy': { WarehouseError: class extends Error {} },
+    '~/lib/warehouse/check-test-server': { authorizeCheckTest: async () => ({}) },
+    '~/lib/warehouse/test-provider-server': {
+      authorizeTestProvider: async (input) => {
+        received = input;
+
+        return { testProviderClaimed: true };
+      },
+    },
+    '~/lib/warehouse/validation': {
+      validateWarehouseCheckout: async () => {
+        calls += 1;
+
+        return result;
+      },
+    },
+  };
+  const file = path.resolve(__dirname, '../../app/api/warehouse/validate/route.ts');
+  const loaded = new Module(file, module);
+
+  loaded.require = (id) => {
+    assert.ok(id in dependencies);
+
+    return dependencies[id];
+  };
+
+  // eslint-disable-next-line no-underscore-dangle -- Load the route against isolated dependencies only.
+  loaded._compile(
+    ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText,
+    file,
+  );
+
+  const claim = {
+    token: 'synthetic',
+    methodId: 'bigpaypay',
+    gatewayId: null,
+    usesStoredInstrument: false,
+    shouldSaveInstrument: false,
+  };
+  const body = {
+    cartId: '11111111-1111-4111-8111-111111111111',
+    revision: '22222222-2222-4222-8222-222222222222',
+    testProvider: claim,
+  };
+  const invoke = (value) =>
+    loaded.exports.POST(
+      new NextRequest('https://backend.example/api/warehouse/validate', {
+        method: 'POST',
+        headers: { origin: 'https://checkout.example', authorization: 'Bearer synthetic' },
+        body: JSON.stringify(value),
+      }),
+    );
+
+  const invalid = [
+    { ...body, checkTest: { token: 'synthetic', methodId: 'cheque', gatewayId: null } },
+    { ...body, testProvider: { ...claim, methodId: 'stripe' } },
+    { ...body, testProvider: { ...claim, gatewayId: 'other' } },
+    { ...body, testProvider: { ...claim, usesStoredInstrument: true } },
+    { ...body, testProvider: { ...claim, shouldSaveInstrument: true } },
+    { ...body, testProvider: { ...claim, ccNumber: 'synthetic-not-card-data' } },
+    { ...body, testProvider: { ...claim, token: '' } },
+  ];
+
+  await Promise.all(invalid.map(async (value) => assert.equal((await invoke(value)).status, 400)));
+  assert.equal(calls, 0);
+
+  const response = await invoke(body);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(received.claim, claim);
+  assert.equal(received.warehouseId, 'west');
+  assert.equal((await response.json()).testProviderClaimed, true);
 });

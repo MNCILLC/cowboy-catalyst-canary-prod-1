@@ -5,6 +5,7 @@ import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { authorizeCheckTest } from '~/lib/warehouse/check-test-server';
 import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { WarehouseError } from '~/lib/warehouse/policy';
+import { authorizeTestProvider } from '~/lib/warehouse/test-provider-server';
 import { validateWarehouseCheckout } from '~/lib/warehouse/validation';
 
 export const runtime = 'nodejs';
@@ -18,6 +19,16 @@ const inputSchema = z
         token: z.string().min(1).max(4096),
         methodId: z.string().min(1),
         gatewayId: z.string().nullable(),
+      })
+      .strict()
+      .optional(),
+    testProvider: z
+      .object({
+        token: z.string().min(1).max(4096),
+        methodId: z.literal('bigpaypay'),
+        gatewayId: z.null(),
+        usesStoredInstrument: z.literal(false),
+        shouldSaveInstrument: z.literal(false),
       })
       .strict()
       .optional(),
@@ -109,6 +120,10 @@ export async function POST(req: NextRequest) {
       throw new WarehouseValidationError('Invalid validation request.', 400, 'INVALID_REQUEST');
 
     const input = inputSchema.parse(JSON.parse(raw));
+
+    if (input.checkTest && input.testProvider)
+      throw new WarehouseValidationError('Choose one test authorization.', 400, 'INVALID_REQUEST');
+
     const result = await validateWarehouseCheckout(
       authorization.slice(7),
       origin,
@@ -128,7 +143,17 @@ export async function POST(req: NextRequest) {
       claim: input.checkTest,
     });
 
-    return NextResponse.json({ ...result, ...checkTest }, { headers });
+    const testProvider = await authorizeTestProvider({
+      token: authorization.slice(7),
+      origin,
+      cartId: input.cartId,
+      revision: input.revision,
+      warehouseId: result.warehouse.id,
+      submission: input.submission,
+      claim: input.testProvider,
+    });
+
+    return NextResponse.json({ ...result, ...checkTest, ...testProvider }, { headers });
   } catch (error) {
     let status = 503;
     let code = 'UNAVAILABLE';
