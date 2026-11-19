@@ -109,27 +109,37 @@ export async function claimCheckTestAttempt(
   policy: CheckTestPolicy,
   fingerprint: string,
 ) {
-  if (!/^[a-zA-Z0-9:_-]{1,80}$/.test(namespace)) throw checkTestDenied();
-
-  const identity = createHash('sha256')
-    .update(JSON.stringify([policy.storeHash, policy.channelId, policy.cartId]))
-    .digest('hex');
+  const key = testPaymentAttemptKey(namespace, policy);
   let result: unknown;
 
   try {
     result = await redis.eval(
       CLAIM_CHECK_TEST_SCRIPT,
-      [`${namespace}:check-test:v1:${identity}`],
+      [key],
       [JSON.stringify({ grantId: policy.id, fingerprint, claimedAt: Date.now() })],
     );
   } catch {
     throw checkTestDenied(
-      'Test submission status is uncertain. Reconcile the cart before retrying.',
+      'Order status is uncertain. Do not submit again. Contact the store to confirm the outcome.',
     );
   }
 
   if (result !== 1)
     throw checkTestDenied(
-      'This test cart already has an attempt. Reconcile its order status before retrying.',
+      'This test cart already has an attempt. Do not submit again. Contact the store to confirm the outcome.',
     );
+}
+
+// Shared identity for read-only recovery and the permanent Check/Test provider claim.
+export function testPaymentAttemptKey(
+  namespace: string,
+  scope: Pick<CheckTestPolicy, 'storeHash' | 'channelId' | 'cartId'>,
+) {
+  if (!/^[a-zA-Z0-9:_-]{1,80}$/.test(namespace)) throw checkTestDenied();
+
+  const identity = createHash('sha256')
+    .update(JSON.stringify([scope.storeHash, scope.channelId, scope.cartId]))
+    .digest('hex');
+
+  return `${namespace}:check-test:v1:${identity}`;
 }

@@ -95,13 +95,13 @@ function allowedClaims(token: string, origin: string) {
   return claims;
 }
 
-export async function validateWarehouseCheckout(
+// Authentication only: recovery must remain readable after cart conversion or warehouse edits.
+// This does not authorize fulfillment or a new submission.
+export function authenticateWarehouseAccess(
   token: string,
   origin: string,
   cartId: string,
   revision: string,
-  requestedMode?: 'pickup' | 'shipping',
-  submission?: SubmissionSnapshot,
 ) {
   const claims = allowedClaims(token, origin);
 
@@ -117,6 +117,19 @@ export async function validateWarehouseCheckout(
       409,
       'STALE_WAREHOUSE',
     );
+
+  return claims;
+}
+
+export async function validateWarehouseCheckout(
+  token: string,
+  origin: string,
+  cartId: string,
+  revision: string,
+  requestedMode?: 'pickup' | 'shipping',
+  submission?: SubmissionSnapshot,
+) {
+  const claims = authenticateWarehouseAccess(token, origin, cartId, revision);
 
   const record = await readWarehouseRecord(cartId, claims.channelId);
 

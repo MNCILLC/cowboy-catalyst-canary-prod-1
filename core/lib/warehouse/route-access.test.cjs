@@ -27,6 +27,7 @@ class AuthorizationError extends Error {
     const dependencies = {
       'next/server': { NextRequest, NextResponse },
       zod: { z },
+      '~/lib/warehouse/recovery': { readSubmissionRecovery: async () => false },
       '~/lib/warehouse/config': {
         warehousePreviewEnabled: () => enabled,
         warehouseCheckoutOriginAllowed: (origin) => origin === 'https://checkout.example',
@@ -108,6 +109,7 @@ test('validate: provider claims retain strict transport and cannot mix with Chec
   const dependencies = {
     'next/server': { NextRequest, NextResponse },
     zod: { z },
+    '~/lib/warehouse/recovery': { readSubmissionRecovery: async () => false },
     '~/lib/warehouse/config': {
       warehousePreviewEnabled: () => true,
       warehouseCheckoutOriginAllowed: () => true,

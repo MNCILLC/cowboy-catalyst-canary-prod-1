@@ -5,6 +5,7 @@ import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { authorizeCheckTest } from '~/lib/warehouse/check-test-server';
 import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { WarehouseError } from '~/lib/warehouse/policy';
+import { readSubmissionRecovery } from '~/lib/warehouse/recovery';
 import { authorizeTestProvider } from '~/lib/warehouse/test-provider-server';
 import { validateWarehouseCheckout } from '~/lib/warehouse/validation';
 
@@ -123,6 +124,20 @@ export async function POST(req: NextRequest) {
 
     if (input.checkTest && input.testProvider)
       throw new WarehouseValidationError('Choose one test authorization.', 400, 'INVALID_REQUEST');
+
+    if (await readSubmissionRecovery(authorization.slice(7), origin, input.cartId, input.revision))
+      return NextResponse.json(
+        {
+          version: 1,
+          cartId: input.cartId,
+          revision: input.revision,
+          code: 'SUBMISSION_REVIEW_REQUIRED',
+          recovery: { status: 'review_required' },
+          message:
+            'An order attempt has been recorded. Do not submit again. Contact the store to confirm its outcome.',
+        },
+        { status: 409, headers },
+      );
 
     const result = await validateWarehouseCheckout(
       authorization.slice(7),
