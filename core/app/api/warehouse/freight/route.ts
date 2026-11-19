@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { shippingSelectionSchema } from '~/lib/freight-cart/policy';
-import { FreightPreferenceConflict } from '~/lib/freight-cart/transport';
+import {
+  FreightPreferenceConflict,
+  FreightPreferenceUnavailable,
+} from '~/lib/freight-cart/transport';
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { warehouseFreight } from '~/lib/warehouse/freight';
@@ -111,6 +114,16 @@ export async function POST(req: NextRequest) {
       status = 400;
       code = 'INVALID_REQUEST';
       message = 'Invalid validation request.';
+    } else {
+      // Log only fixed diagnostic fields; never include the capability, shopper
+      // data, connection URL, upstream body or raw exception message.
+      // eslint-disable-next-line no-console -- Sanitized server diagnostics for upstream outages.
+      console.error('Warehouse Freight validation unavailable', {
+        dependency: error instanceof FreightPreferenceUnavailable ? 'freight' : 'unknown',
+        reason: error instanceof FreightPreferenceUnavailable ? error.reason : 'unexpected',
+        upstreamStatus:
+          error instanceof FreightPreferenceUnavailable ? error.upstreamStatus : undefined,
+      });
     }
 
     return NextResponse.json({ code, message }, { status, headers });

@@ -23,7 +23,16 @@ function compile(name, deps) {
 }
 const policy = compile('../freight-cart/policy.ts', {});
 const transport = compile('../freight-cart/transport.ts', { './policy': policy });
-let prefs, requests, writes, validations, rejectMode, race, outage, conflict, lostResponse;
+let prefs,
+  requests,
+  writes,
+  validations,
+  rejectMode,
+  race,
+  outage,
+  conflict,
+  lostResponse,
+  invalidResponse;
 const { warehouseFreight } = compile('freight.ts', {
   'server-only': {},
   '~/lib/freight-cart/policy': policy,
@@ -44,6 +53,10 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   if (outage) {
     res.writeHead(503).end('{}');
+    return;
+  }
+  if (invalidResponse) {
+    res.end(invalidResponse);
     return;
   }
   if (req.method === 'PUT') {
@@ -92,6 +105,7 @@ beforeEach(() => {
   requests = writes = validations = 0;
   rejectMode = 'never';
   race = outage = conflict = lostResponse = false;
+  invalidResponse = undefined;
   process.env.WAREHOUSE_FREIGHT_ENABLED = 'true';
 });
 const call = (update) =>
@@ -160,4 +174,31 @@ test('upstream outage fails without writes', async () => {
   outage = true;
   await assert.rejects(call(update(0)), /Unable/);
   assert.equal(writes, 0);
+});
+
+test('HTTP outage retains only safe diagnostic metadata and never retries a write', async () => {
+  outage = true;
+  await assert.rejects(call(update(0)), (error) => {
+    assert.ok(error instanceof transport.FreightPreferenceUnavailable);
+    assert.equal(error.reason, 'http');
+    assert.equal(error.upstreamStatus, 503);
+    assert.equal(error.cause, undefined);
+    assert.ok(!JSON.stringify(error).includes(process.env.FREIGHT_APP_CHECKOUT_TOKEN));
+    return true;
+  });
+  assert.equal(requests, 1);
+  assert.equal(writes, 0);
+});
+['<html>unavailable</html>', '{"preferences":{"version":"bad"}}'].forEach((body, index) => {
+  test(`malformed upstream data ${index} is unavailable, not an invalid shopper request`, async () => {
+    invalidResponse = body;
+    await assert.rejects(call(), (error) => {
+      assert.ok(error instanceof transport.FreightPreferenceUnavailable);
+      assert.equal(error.reason, 'invalid-response');
+      assert.equal(error.upstreamStatus, 200);
+      assert.ok(!JSON.stringify(error).includes(body));
+      return true;
+    });
+    assert.equal(writes, 0);
+  });
 });

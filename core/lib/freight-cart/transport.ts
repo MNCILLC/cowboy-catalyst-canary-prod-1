@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file -- Related transport error types form one public contract. */
 import { z } from 'zod';
 
 import { shippingPreferencesSchema, type ShippingSelection } from './policy';
@@ -9,6 +10,16 @@ export interface FreightConnection {
 }
 
 export class FreightPreferenceConflict extends Error {}
+
+// Safe diagnostic metadata only: never retain URLs, credentials or response bodies.
+export class FreightPreferenceUnavailable extends Error {
+  constructor(
+    readonly reason: 'http' | 'timeout' | 'network' | 'invalid-response',
+    readonly upstreamStatus?: number,
+  ) {
+    super('Unable to save or load shipping preferences.');
+  }
+}
 
 // Only called on the server. Never pass the connection or token into client props.
 export async function requestCartPreferences(
@@ -45,6 +56,12 @@ export async function requestCartPreferences(
     cache: 'no-store',
     redirect: 'error',
     signal: AbortSignal.timeout(5000),
+  }).catch((error: unknown) => {
+    throw new FreightPreferenceUnavailable(
+      error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)
+        ? 'timeout'
+        : 'network',
+    );
   });
 
   if (response.status === 409)
@@ -52,9 +69,13 @@ export async function requestCartPreferences(
       'Delivery preferences changed in another tab. Reload preferences and review them.',
     );
 
-  if (!response.ok) throw new Error('Unable to save or load shipping preferences.');
+  if (!response.ok) throw new FreightPreferenceUnavailable('http', response.status);
 
-  return z
-    .object({ preferences: shippingPreferencesSchema.nullable() })
-    .parse(await response.json()).preferences;
+  try {
+    return z
+      .object({ preferences: shippingPreferencesSchema.nullable() })
+      .parse(await response.json()).preferences;
+  } catch {
+    throw new FreightPreferenceUnavailable('invalid-response', response.status);
+  }
 }
