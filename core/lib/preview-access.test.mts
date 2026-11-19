@@ -290,3 +290,30 @@ test('submission rejects cross-origin forms, oversized bodies, wrong content typ
   assert.equal(response.status, 429);
   assert.equal(response.headers.get('retry-after'), '900');
 });
+
+test('only signed warehouse API preflights and POSTs reach their handlers without preview cookies', async () => {
+  const h = harness();
+  for (const path of ['/api/warehouse/validate', '/api/warehouse/freight/']) {
+    for (const method of ['OPTIONS', 'POST']) {
+      const response = await h.proxy(request(path, undefined, method), {});
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('x-middleware-next'), '1');
+      assert.equal(response.headers.get('cache-control'), 'private, no-store');
+      assert.equal(response.headers.get('access-control-allow-origin'), null);
+    }
+    assert.equal((await h.proxy(request(path), {})).status, 401);
+  }
+  for (const path of [
+    '/api/warehouse/validate/extra',
+    '/api/warehouse/validate-evil',
+    '/api/warehouse/freight/extra',
+    '/api/warehouse/selection',
+    '/api/warehouse',
+  ]) {
+    assert.equal((await h.proxy(request(path, undefined, 'OPTIONS'), {})).status, 401);
+    assert.equal((await h.proxy(request(path, undefined, 'POST'), {})).status, 401);
+  }
+  assert.equal((await h.proxy(request('/warehouse-initialize'), {})).status, 303);
+  assert.equal((await h.proxy(request('/en/warehouse-initialize'), {})).status, 303);
+  assert.equal(h.downstreamCalls, 0);
+});

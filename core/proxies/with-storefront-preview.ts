@@ -29,6 +29,17 @@ export const withStorefrontPreview: ProxyFactory = (next) => {
       return NextResponse.next();
     }
 
+    // Checkout deliberately omits storefront cookies. Only these capability-authenticated
+    // handlers may receive its preflight/POST requests; they enforce the allowed origin,
+    // signed cart credential, expiry, warehouse revision and inventory themselves.
+    // Initialization and every other storefront/API route still require preview access.
+    if (
+      ['OPTIONS', 'POST'].includes(request.method) &&
+      /^\/api\/warehouse\/(?:validate|freight)\/?$/.test(pathname)
+    ) {
+      return privateResponse(NextResponse.next());
+    }
+
     if (config.enabled && pathname === '/robots.txt') {
       return privateResponse(
         new NextResponse('User-agent: *\nDisallow: /\n', {

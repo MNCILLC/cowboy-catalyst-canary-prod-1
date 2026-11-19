@@ -3,45 +3,35 @@
   "remoteCache": {
     "signature": true
   },
-  "globalDependencies": [
-    ".env.local"
-  ],
+  "globalDependencies": [".env.local"],
   "tasks": {
     "topo": {
-      "dependsOn": [
-        "^topo"
-      ]
+      "dependsOn": ["^topo"]
     },
     "build": {
       "env": ["*"],
-      "dependsOn": [
-        "^build"
-      ],
+      "dependsOn": ["^build"],
       "outputs": [
         "dist/**",
         ".next/**",
-        "!.next/cache/**"
+        "!.next/cache/**",
+        ".next-warehouse-staging/**",
+        "!.next-warehouse-staging/cache/**",
+        ".next-warehouse-preview/**",
+        "!.next-warehouse-preview/cache/**"
       ]
     },
     "lint": {
       "env": ["*"],
-      "dependsOn": [
-        "^build"
-      ]
+      "dependsOn": ["^build"]
     },
     "typecheck": {
       "env": ["*"],
-      "dependsOn": [
-        "topo"
-      ],
-      "outputs": [
-        "node_modules/.cache/tsbuildinfo.json"
-      ]
+      "dependsOn": ["topo"],
+      "outputs": ["node_modules/.cache/tsbuildinfo.json"]
     },
     "test": {
-      "dependsOn": [
-        "topo"
-      ]
+      "dependsOn": ["topo"]
     },
     "dev": {
       "env": ["*"],
