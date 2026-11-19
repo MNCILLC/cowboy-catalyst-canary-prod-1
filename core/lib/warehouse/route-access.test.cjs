@@ -32,6 +32,7 @@ class AuthorizationError extends Error {
       },
       '~/lib/warehouse/authorization': { WarehouseValidationError: AuthorizationError },
       '~/lib/warehouse/policy': { WarehouseError: Error },
+      '~/lib/warehouse/check-test-server': { authorizeCheckTest: async () => ({}) },
       '~/lib/warehouse/validation': { validateWarehouseCheckout: rejectCredential },
       '~/lib/warehouse/freight': { warehouseFreight: rejectCredential },
       '~/lib/freight-cart/policy': { shippingSelectionSchema: z.object({}) },

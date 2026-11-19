@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
+import { authorizeCheckTest } from '~/lib/warehouse/check-test-server';
 import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { validateWarehouseCheckout } from '~/lib/warehouse/validation';
@@ -12,6 +13,14 @@ const inputSchema = z
   .object({
     cartId: z.string().uuid(),
     revision: z.string().uuid(),
+    checkTest: z
+      .object({
+        token: z.string().min(1).max(4096),
+        methodId: z.string().min(1),
+        gatewayId: z.string().nullable(),
+      })
+      .strict()
+      .optional(),
     requestedMode: z.enum(['shipping', 'pickup']).optional(),
     submission: z
       .object({
@@ -109,7 +118,17 @@ export async function POST(req: NextRequest) {
       input.submission,
     );
 
-    return NextResponse.json(result, { headers });
+    const checkTest = await authorizeCheckTest({
+      token: authorization.slice(7),
+      origin,
+      cartId: input.cartId,
+      revision: input.revision,
+      warehouseId: result.warehouse.id,
+      submission: input.submission,
+      claim: input.checkTest,
+    });
+
+    return NextResponse.json({ ...result, ...checkTest }, { headers });
   } catch (error) {
     let status = 503;
     let code = 'UNAVAILABLE';
