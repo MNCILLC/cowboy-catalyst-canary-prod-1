@@ -43,6 +43,7 @@ const stats = {
   forbiddenCalls: 0,
   apiReads: 0,
   consignmentDeletes: 0,
+  consignmentCreates: 0,
   metafieldCalls: 0,
 };
 
@@ -117,12 +118,24 @@ async function api(endpoint, method = 'GET', body = undefined) {
     return undefined;
   }
 
+  if (method === 'POST' && endpoint === `checkouts/${state.cart.id}/consignments`) {
+    stats.consignmentCreates += 1;
+    state.checkout.consignments = body.map((entry) => ({
+      id: 'synthetic-native-pickup',
+      line_item_ids: entry.line_items.map((item) => item.item_id),
+      selected_pickup_option: entry.pickup_option,
+    }));
+
+    return structuredClone(state.checkout);
+  }
+
   stats.forbiddenCalls += 1;
   throw new Error(`Unexpected fake API call: ${method} ${endpoint}`);
 }
 
 const files = [
   'lib/warehouse/server.ts',
+  'lib/warehouse/pickup-handoff.ts',
   'lib/warehouse/config.ts',
   'lib/warehouse/configuration.ts',
   'lib/warehouse/policy.ts',

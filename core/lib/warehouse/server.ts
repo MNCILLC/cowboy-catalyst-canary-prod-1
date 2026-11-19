@@ -16,6 +16,7 @@ import {
   saveWarehouseRecord,
   warehousePersistenceIsAtomic,
 } from './persistence';
+import { preparePickupOnlyHandoff } from './pickup-handoff';
 import {
   assertStock,
   StockDemand,
@@ -410,6 +411,9 @@ export async function prepareWarehousePreview(cartId: string) {
     }
   }
 
+  await preparePickupOnlyHandoff(cartId, cart.line_items.physical_items, warehouse, async () => {
+    assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
+  });
   assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
 
   return { record, warehouse };

@@ -8,6 +8,8 @@ export interface FreightConnection {
   token: string;
 }
 
+export class FreightPreferenceConflict extends Error {}
+
 // Only called on the server. Never pass the connection or token into client props.
 export async function requestCartPreferences(
   connection: FreightConnection,
@@ -44,6 +46,11 @@ export async function requestCartPreferences(
     redirect: 'error',
     signal: AbortSignal.timeout(5000),
   });
+
+  if (response.status === 409)
+    throw new FreightPreferenceConflict(
+      'Delivery preferences changed in another tab. Reload preferences and review them.',
+    );
 
   if (!response.ok) throw new Error('Unable to save or load shipping preferences.');
 

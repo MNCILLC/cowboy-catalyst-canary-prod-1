@@ -434,3 +434,13 @@ Run the isolated availability tests from the repository root:
 `node --test core/lib/warehouse/availability*.test.*`. They use synthetic catalog,
 stock and session fixtures, covering location isolation, variants, pagination,
 missing stock, disabled stock, malformed responses and service failures.
+
+### Checkout-owned freight delivery preferences
+
+Set the server-only `WAREHOUSE_FREIGHT_ENABLED=true` to enable `/api/warehouse/freight`. Configure the standalone checkout's optional `freightEndpoint` to this route on the same backend origin as warehouse validation. The backend uses the existing private Freight App connection variables and never sends the Freight App credential to checkout.
+
+Both reads and writes require the initialized cart capability, allowed checkout Origin, matching warehouse revision, channel/cart checks, and current inventory validation. Writes additionally validate the requested fulfillment mode (pickup-only warehouses cannot request shipping). The Freight App's expected-version update rejects stale tabs; a retry can reuse only an identical immediately succeeding version. Readback and a second warehouse validation must pass before checkout accepts the operation. This cannot make separate BigCommerce, warehouse Redis, and Freight App writes atomic.
+
+The old cart fulfillment metadata is not required by this checkout-owned path. Non-warehouse cart behavior stays unchanged. Run `node --test core/lib/warehouse/freight.test.cjs` for isolated HTTP transport, stale-version, lost-response retry, outage, pickup-clearing, and warehouse race tests.
+
+Pickup-only handoffs now attach native pickup before redirecting to BigCommerce. Without a consignment, BigCommerce can reject a product stocked only at the pickup location during checkout loading, before the standalone UI can select pickup. `preparePickupOnlyHandoff` reuses an already matching consignment, otherwise replaces fulfillment with the configured pickup method and exact cart quantities, checks native readback, and checks the warehouse revision before and after writes. The first-party initialization popup remains read-only. Test this path with `node --test core/lib/warehouse/pickup-handoff.test.cjs`.

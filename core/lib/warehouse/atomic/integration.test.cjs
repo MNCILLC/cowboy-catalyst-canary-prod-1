@@ -342,7 +342,7 @@ test('Powell pickup and Forney pickup/shipping preserve the standalone validatio
   }
 });
 
-test('new warehouse invalidates signed access on the other instance and handoff clears incompatible fulfillment', async () => {
+test('new warehouse invalidates signed access and handoff replaces shipping with native pickup', async () => {
   const { cartId, record } = await setup();
 
   await call(b, 'fulfillment', { warehouseId: 'forney', mode: 'shipping' });
@@ -360,7 +360,7 @@ test('new warehouse invalidates signed access on the other instance and handoff 
   const fresh = await call(b, 'handoff');
 
   assert.equal((await call(b, 'stats')).consignmentDeletes, previousStats.consignmentDeletes + 1);
-  await call(b, 'fulfillment', { warehouseId: 'powell', mode: 'pickup' });
+  assert.equal((await call(b, 'stats')).consignmentCreates, previousStats.consignmentCreates + 1);
   assert.equal((await call(b, 'validate', { access: fresh.access, submit: true })).status, 200);
 });
 
