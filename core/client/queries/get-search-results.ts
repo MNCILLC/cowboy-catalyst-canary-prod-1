@@ -8,6 +8,7 @@ import { revalidate } from '~/client/revalidate-target';
 import { ProductCardFragment } from '~/components/product-card/fragment';
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
+import { getWarehouseAvailability } from '~/lib/warehouse/availability';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
@@ -60,13 +61,19 @@ export const getSearchResults = cache(async (searchTerm: string, locale?: string
     const { products } = response.data.site.search.searchProducts;
 
     const hidePrices = await requiresPricingLogin();
+    const availability = await getWarehouseAvailability(
+      removeEdgesAndNodes(products).map((p) => p.entityId),
+    );
 
     return {
       status: 'success',
       data: {
         products: removeEdgesAndNodes(products)
           .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
-          .map((product) => hideWholesalePrices(product, hidePrices)),
+          .map((product) => ({
+            ...hideWholesalePrices(product, hidePrices),
+            warehouseAvailability: availability(product.entityId),
+          })),
       },
     };
   } catch (error: unknown) {

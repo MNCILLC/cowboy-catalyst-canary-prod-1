@@ -9,6 +9,7 @@ import {
 import { Stream, Streamable } from '@/vibes/soul/lib/streamable';
 import { Accordion, AccordionItem } from '@/vibes/soul/primitives/accordion';
 import { AnimatedUnderline } from '@/vibes/soul/primitives/animated-underline';
+import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level';
 import { Price, PriceLabel } from '@/vibes/soul/primitives/price-label';
 import { ProUseGate, ProUseProductBadge } from '@/vibes/soul/primitives/pro-use';
 import * as Skeleton from '@/vibes/soul/primitives/skeleton';
@@ -293,6 +294,20 @@ export function ProductDetail<F extends Field>({
                       }
                     </Stream>
                   </div>
+                  {product.pricingRequiresLogin && (
+                    <Stream fallback={null} value={product.stockDisplayData}>
+                      {(stock) =>
+                        stock?.warehouse ? (
+                          <div aria-live="polite" className="mb-6">
+                            <EnhancedStockLevel
+                              message={stock.stockLevelMessage}
+                              status={stock.stockLevelStatus}
+                            />
+                          </div>
+                        ) : null
+                      }
+                    </Stream>
+                  )}
                   {!product.pricingRequiresLogin && (
                     <ProUseGate restricted={product.isProUseOnly}>
                       <div className="group/product-detail-form">

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import useSWR from 'swr';
 import { z } from 'zod';
 
+import { useWarehouseAvailabilityKey } from '~/components/warehouse-picker/availability-scope';
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import { useRecentlyViewed } from '~/lib/recently-viewed/use-recently-viewed';
@@ -53,10 +54,12 @@ export function useProducts({
     collection === 'category' && categoryId ? Number(categoryId) : undefined,
   );
   const locale = useLocale();
+  const warehouse = useWarehouseAvailabilityKey();
   const recentIds = useRecentlyViewed(collection === 'recently-viewed');
   const productIds = collection === 'recently-viewed' ? recentIds : additionalProductIds;
   const collectionParams = new URLSearchParams({
     locale,
+    warehouse,
     limit: String(Math.min(50, Math.max(1, Math.floor(collectionLimit) || 20))),
   });
 
@@ -80,6 +83,7 @@ export function useProducts({
 
   searchParams.append('ids', productIds.join(','));
   searchParams.append('locale', locale);
+  searchParams.append('warehouse', warehouse);
 
   const additionalProductsUrl = `/api/products/ids?${searchParams.toString()}`;
 

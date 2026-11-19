@@ -1,0 +1,147 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const Module = require('node:module');
+const path = require('node:path');
+const { test, beforeEach } = require('node:test');
+const ts = require('typescript');
+
+let enabled;
+let context;
+let requests;
+let fail;
+let malformed;
+let paginated;
+const warehouse = { id: 'north', label: 'North', locationId: 11 };
+
+function compile(name, dependencies) {
+  const file = path.join(__dirname, name);
+  const compiled = new Module(file, module);
+
+  compiled.require = (id) => {
+    if (Object.hasOwn(dependencies, id)) return dependencies[id];
+    if (id === 'zod') return require('zod');
+    throw new Error(`Unexpected dependency: ${id}`);
+  };
+
+  // eslint-disable-next-line no-underscore-dangle -- Execute the actual module with explicit fixtures, never live APIs.
+  compiled._compile(
+    ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText,
+    file,
+  );
+
+  return compiled.exports;
+}
+
+const policy = compile('availability-policy.ts', {});
+const { getWarehouseAvailability } = compile('availability.ts', {
+  'server-only': {},
+  react: { cache: (fn) => fn },
+  './availability-policy': policy,
+  './config': { warehousePreviewEnabled: () => enabled },
+  './server': {
+    getWarehouseContext: async () => {
+      if (context instanceof Error) throw context;
+
+      return context;
+    },
+  },
+  './api': {
+    warehouseApi: async (url) => {
+      requests.push(url);
+      if (fail) throw new Error('private upstream details must not reach shopper');
+
+      const params = new URL(url, 'https://test.invalid').searchParams;
+
+      if (url.startsWith('catalog/products'))
+        return params
+          .get('id:in')
+          .split(',')
+          .map(Number)
+          .map((id) => ({
+            id,
+            type: 'physical',
+            inventory_tracking: paginated ? 'variant' : 'product',
+          }));
+      if (malformed)
+        return [{ identity: { product_id: 1, variant_id: null }, available_to_sell: 'bad' }];
+      if (paginated)
+        return Number(params.get('page')) === 1
+          ? Array.from({ length: 250 }, (_, i) => ({
+              identity: { product_id: 1, variant_id: i + 1 },
+              available_to_sell: 0,
+            }))
+          : [{ identity: { product_id: 1, variant_id: 251 }, available_to_sell: 6 }];
+
+      return params
+        .get('product_id:in')
+        .split(',')
+        .map(Number)
+        .map((id) => ({
+          identity: { product_id: id, variant_id: null },
+          available_to_sell: url.includes('/11/') ? 4 : 0,
+        }));
+    },
+  },
+});
+
+beforeEach(() => {
+  enabled = true;
+  context = { warehouse };
+  requests = [];
+  fail = false;
+  malformed = false;
+  paginated = false;
+});
+test('off mode does not read inventory and leaves existing UI untouched', async () => {
+  enabled = false;
+  assert.equal((await getWarehouseAvailability([1]))(1), undefined);
+  assert.equal(requests.length, 0);
+});
+test('no selection prompts for a warehouse without fetching catalog inventory', async () => {
+  context = {};
+
+  const result = (await getWarehouseAvailability([1]))(1);
+
+  assert.equal(result.selectionRequired, 'warehouse');
+  assert.equal(result.canPurchase, false);
+  assert.equal(requests.length, 0);
+});
+test('batches cards and reads the authoritative location again on a new request', async () => {
+  const first = await getWarehouseAvailability([2, 1, 2]);
+
+  assert.equal(requests.length, 2);
+  assert.equal(first(1).quantity, 4);
+  assert.match(requests[1], /locations\/11\/items.*product_id:in=1,2/);
+  context = { warehouse: { ...warehouse, locationId: 22, label: 'South' } };
+
+  const second = await getWarehouseAvailability([1]);
+
+  assert.equal(second(1).quantity, 0);
+  assert.match(second(1).message, /South/);
+});
+test('pagination reaches a selected variant beyond the first inventory page', async () => {
+  paginated = true;
+
+  const result = await getWarehouseAvailability([1]);
+
+  assert.equal(result(1, 251).quantity, 6);
+  assert.equal(result(1, 1).quantity, 0);
+  assert.equal(requests.length, 3);
+});
+test('large collections are split into bounded batches', async () => {
+  const result = await getWarehouseAvailability(Array.from({ length: 51 }, (_, i) => i + 1));
+
+  assert.equal(requests.length, 4);
+  assert.equal(result(51).quantity, 4);
+});
+test('API failures, malformed stock and missing session authority never use aggregate stock', async () => {
+  fail = true;
+  assert.deepEqual((await getWarehouseAvailability([1]))(1), policy.unknownAvailability());
+  fail = false;
+  malformed = true;
+  assert.deepEqual((await getWarehouseAvailability([1]))(1), policy.unknownAvailability());
+  context = new Error('private cart details');
+  assert.deepEqual((await getWarehouseAvailability([1]))(1), policy.unknownAvailability());
+});

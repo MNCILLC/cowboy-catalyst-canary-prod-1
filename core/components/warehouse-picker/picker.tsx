@@ -34,7 +34,7 @@ export function Picker({
     });
   };
   const hint = selected
-    ? 'Availability is checked for this warehouse when you add items.'
+    ? 'Product availability reflects this warehouse. Stock is checked again when you add items.'
     : 'Choose a warehouse before adding items. You can browse first.';
 
   return (

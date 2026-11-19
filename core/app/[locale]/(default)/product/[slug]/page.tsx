@@ -35,6 +35,7 @@ import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { resolveRelatedProducts } from '~/lib/related-products';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
 import { getStockDisplayData } from '~/lib/stock-display';
+import { getWarehouseAvailability } from '~/lib/warehouse/availability';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 
 import { addToCart } from './_actions/add-to-cart';
@@ -286,6 +287,13 @@ export default async function Product({ params, searchParams }: Props) {
     }));
   });
 
+  const streamableWarehouseAvailability = Streamable.from(async () => {
+    const availability = await getWarehouseAvailability([Number(productId)]);
+    const variant = await streamableProductVariantInventory;
+
+    return availability(Number(productId), variant?.entityId);
+  });
+
   const streameableCtaLabel = Streamable.from(async () => {
     const product = await streamableProductInventory;
 
@@ -293,11 +301,17 @@ export default async function Product({ params, searchParams }: Props) {
       return t('ProductDetails.Submit.unavailable');
     }
 
+    const availability = await streamableWarehouseAvailability;
+
+    if (availability?.selectionRequired === 'warehouse') return 'Choose a warehouse';
+    if (availability?.selectionRequired === 'options') return 'Choose options';
+    if (availability && !availability.canPurchase) return 'Unavailable for this warehouse';
+
     if (product.availabilityV2.status === 'Preorder') {
       return t('ProductDetails.Submit.preorder');
     }
 
-    if (!product.inventory.isInStock) {
+    if (!availability && !product.inventory.isInStock) {
       return t('ProductDetails.Submit.outOfStock');
     }
 
@@ -310,6 +324,10 @@ export default async function Product({ params, searchParams }: Props) {
     if (product.availabilityV2.status === 'Unavailable') {
       return true;
     }
+
+    const availability = await streamableWarehouseAvailability;
+
+    if (availability) return !availability.canPurchase;
 
     if (product.availabilityV2.status === 'Preorder') {
       return false;
@@ -327,6 +345,17 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamableStockDisplayData = Streamable.from(async () => {
+    const availability = await streamableWarehouseAvailability;
+
+    if (availability)
+      return {
+        warehouse: true,
+        stockLevelMessage: availability.message,
+        stockLevelStatus: availability.status,
+        backorderAvailabilityPrompt: null,
+        enhanced: true,
+      };
+
     const [product, variant, inventorySetting] = await Streamable.all([
       streamableProductInventory,
       streamableProductVariantInventory,
@@ -348,6 +377,8 @@ export default async function Product({ params, searchParams }: Props) {
   });
 
   const streamableBackorderDisplayData = Streamable.from(async () => {
+    if (await streamableWarehouseAvailability) return null;
+
     const [product, variant, inventorySetting] = await Streamable.all([
       streamableProductInventory,
       streamableProductVariantInventory,

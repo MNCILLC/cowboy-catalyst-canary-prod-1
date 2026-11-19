@@ -9,6 +9,10 @@ import {
   showCrateProductTransformer,
 } from '~/data-transformers/show-crate-product-transformer';
 import { isProUseProduct } from '~/lib/pro-use/policy';
+import {
+  warehouseAvailabilitySchema,
+  warehouseCardDisplay,
+} from '~/lib/warehouse/availability-policy';
 import { hideWholesaleCardPrices } from '~/lib/wholesale-pricing-policy';
 
 const priceSchema = z.object({
@@ -28,6 +32,7 @@ const PricesSchema = z.object({
 });
 
 export const BcProductSchema = z.object({
+  warehouseAvailability: warehouseAvailabilitySchema.optional(),
   pricingRequiresLogin: z.boolean().optional(),
   proUseMetafields: z
     .object({
@@ -137,7 +142,9 @@ export function useBcProductToVibesProduct(
           canAddToCart:
             product.showCartAction &&
             product.availabilityV2.status !== 'Unavailable' &&
-            product.inventory.isInStock,
+            (product.warehouseAvailability
+              ? product.warehouseAvailability.canPurchase
+              : product.inventory.isInStock),
           isPreorder: product.availabilityV2.status === 'Preorder',
           minQuantity:
             product.minPurchaseQuantity != null
@@ -150,6 +157,7 @@ export function useBcProductToVibesProduct(
           subtitle: brand?.name,
           stockDisplayData: includeStockLevel ? product.stockDisplayData : undefined,
           useEnhancedStockDisplay: includeStockLevel && product.useEnhancedStockDisplay,
+          ...warehouseCardDisplay(product.warehouseAvailability),
         },
         product.pricingRequiresLogin === true,
       );

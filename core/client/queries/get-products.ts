@@ -13,6 +13,7 @@ import { getProductCardAttributes } from '~/data-transformers/product-card-trans
 import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getStockDisplayData } from '~/lib/stock-display';
+import { getWarehouseAvailability } from '~/lib/warehouse/availability';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
@@ -44,11 +45,13 @@ async function withStockDisplay(
   const attributeFilters = enhancedGridEnabled ? await getMetafieldFilters(locale) : [];
 
   const hidePrices = await requiresPricingLogin();
+  const availability = await getWarehouseAvailability(products.map((p) => p.entityId));
 
   return products
     .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
     .map((product) => ({
       ...hideWholesalePrices(product, hidePrices),
+      warehouseAvailability: availability(product.entityId),
       enhancedGridAttributes: enhancedGridEnabled
         ? getProductCardAttributes(product, attributeFilters)
         : undefined,

@@ -327,7 +327,6 @@ concurrent writers with one accepted revision, fresh checkout navigation,
 backend restarts, and one backend losing its Redis connection. Successful Redis
 writes alone are insufficient: both picker rendering and navigation must settle.
 
-
 ## Production-mode staging configuration
 
 `WAREHOUSE_MODE` accepts only `off` or `staging`. Invalid explicit values fail
@@ -368,7 +367,6 @@ warehouse authorization/submission tests. The two-process atomic integration
 suite includes a production staging case and uses only synthetic carts and a
 private local Redis socket; external HTTP is prohibited by the harness.
 
-
 ## First-party session initialization for standalone checkout
 
 The standalone staging checkout can now initialize without runner injection once
@@ -408,3 +406,31 @@ sessions require storefront sign-in and return from the cart; silent renewal and
 payment-return recovery are outside this non-purchasable milestone. Actual hosted
 COOP/popup/session behavior still requires deployment validation. No hosted
 checkout settings are activated by these code changes.
+
+## Warehouse availability on product pages and cards
+
+When warehouse mode is enabled, product pages and catalog cards use server-side,
+location-specific available-to-sell inventory. `availability.ts` reads the session's
+authoritative warehouse and batches catalog metadata and inventory requests in
+groups of 50 product IDs. Inventory pagination includes every variant. React
+cache deduplicates only within a request; inventory fetches remain no-store.
+
+Before selection, shoppers see Choose a warehouse to see availability. Product
+stock and purchase controls do not fall back to aggregate inventory on failures.
+Untracked physical products are unavailable in this flow, matching the existing
+cart validation policy. Variant cards show Options available without combining
+quantities; product pages use the selected variant. Location backorder promises
+are not inferred from aggregate data. The displayed quantity is a stock snapshot,
+not a reservation or an amount remaining after the shopper's cart. Existing
+catalog restrictions, wholesale sign-in and server cart/submission checks remain.
+
+Makeswift API responses contain only public display data. Their client cache keys
+include the authoritative selection/revision, so a successful picker change
+reloads cards; the URL cache key is never trusted to select inventory. Guest
+product pages display availability without exposing wholesale prices. Warehouse
+mode off retains the original stock display. Catalog stock filters are unchanged.
+
+Run the isolated availability tests from the repository root:
+`node --test core/lib/warehouse/availability*.test.*`. They use synthetic catalog,
+stock and session fixtures, covering location isolation, variants, pagination,
+missing stock, disabled stock, malformed responses and service failures.

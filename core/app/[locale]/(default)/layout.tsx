@@ -17,9 +17,9 @@ export default async function DefaultLayout({ params, children }: Props) {
   return (
     <>
       <Header />
-      <WarehousePicker />
-
-      <main>{children}</main>
+      <WarehousePicker>
+        <main>{children}</main>
+      </WarehousePicker>
 
       <Footer />
     </>

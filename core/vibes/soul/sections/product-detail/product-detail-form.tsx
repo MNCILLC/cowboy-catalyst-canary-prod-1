@@ -50,6 +50,7 @@ interface State<F extends Field> {
 export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData>;
 
 export interface StockDisplayData {
+  warehouse?: boolean;
   enhanced?: boolean;
   stockLevelMessage?: string | null;
   stockLevelStatus?: 'error' | 'success';
@@ -263,13 +264,14 @@ export function ProductDetailForm<F extends Field>({
             </FormStatus>
           ))}
 
-          <div className="h-[3.2rem] sm:h-[2.6rem]">
+          <div className={stockDisplayData?.warehouse ? 'min-h-10' : 'h-[3.2rem] sm:h-[2.6rem]'}>
             {!!stockDisplayData?.stockLevelMessage && (
               <div
                 className={clsx(
                   'flex flex-wrap justify-start gap-x-2.5 gap-y-2 text-sm text-[var(--product-detail-secondary-text,hsl(var(--contrast-500)))]',
                   'transition-transform duration-200 ease-in-out',
-                  backorderMessages?.backorderQuantityMessage ||
+                  stockDisplayData.warehouse ||
+                    backorderMessages?.backorderQuantityMessage ||
                     backorderMessages?.backorderInfoMessage
                     ? 'translate-y-0'
                     : 'translate-y-[calc(100%+4px)]',

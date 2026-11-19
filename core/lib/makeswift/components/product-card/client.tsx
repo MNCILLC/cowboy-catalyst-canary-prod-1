@@ -3,6 +3,7 @@
 import { useLocale } from 'next-intl';
 import useSWR from 'swr';
 
+import { useWarehouseAvailabilityKey } from '~/components/warehouse-picker/availability-scope';
 import { hasZeroPrice } from '~/data-transformers/prices-transformer';
 import { isShowCrateProduct } from '~/data-transformers/show-crate-product-transformer';
 import {
@@ -23,8 +24,11 @@ interface Props {
 export function MakeswiftProductCard({ className, entityId, badge, ...props }: Props) {
   const bcProductToVibesProduct = useBcProductToVibesProduct();
   const locale = useLocale();
+  const warehouse = useWarehouseAvailabilityKey();
   const { data, isLoading } = useSWR(
-    entityId ? `/api/products/${entityId}?locale=${locale}` : null,
+    entityId
+      ? `/api/products/${entityId}?locale=${locale}&warehouse=${encodeURIComponent(warehouse)}`
+      : null,
     async (url) =>
       fetch(url)
         .then((r) => r.json())

@@ -77,18 +77,31 @@ export default async function Compare(props: Props) {
     const format = await getFormatter();
 
     return Promise.all(
-      products.map(async (product) => ({
-        ...(await singleProductCardTransformer(product, format, undefined, undefined, taxDisplay)),
-        description: <div dangerouslySetInnerHTML={{ __html: product.description }} />,
-        customFields: [
-          { name: t('sku'), value: product.sku },
-          { name: t('weight'), value: `${product.weight?.value} ${product.weight?.unit}` },
-          ...removeEdgesAndNodes(product.customFields).map(({ name, value }) => ({ name, value })),
-        ],
-        hasVariants: removeEdgesAndNodes(product.productOptions).length > 0,
-        isPreorder: product.availabilityV2.status === 'Preorder',
-        disabled: product.availabilityV2.status === 'Unavailable' || !product.inventory.isInStock,
-      })),
+      products.map(async (product) => {
+        const card = await singleProductCardTransformer(
+          product,
+          format,
+          undefined,
+          undefined,
+          taxDisplay,
+        );
+
+        return {
+          ...card,
+          description: <div dangerouslySetInnerHTML={{ __html: product.description }} />,
+          customFields: [
+            { name: t('sku'), value: product.sku },
+            { name: t('weight'), value: `${product.weight?.value} ${product.weight?.unit}` },
+            ...removeEdgesAndNodes(product.customFields).map(({ name, value }) => ({
+              name,
+              value,
+            })),
+          ],
+          hasVariants: removeEdgesAndNodes(product.productOptions).length > 0,
+          isPreorder: product.availabilityV2.status === 'Preorder',
+          disabled: card.canAddToCart !== true,
+        };
+      }),
     );
   });
 

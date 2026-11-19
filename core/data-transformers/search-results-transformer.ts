@@ -5,7 +5,7 @@ import { SearchResult } from '@/vibes/soul/primitives/navigation';
 import { SearchProductFragment } from '~/components/header/_actions/fragment';
 
 import { hasZeroPrice, TaxDisplay } from './prices-transformer';
-import { singleProductCardTransformer } from './product-card-transformer';
+import { productCardTransformer } from './product-card-transformer';
 import { isShowCrateProduct } from './show-crate-product-transformer';
 
 export async function searchResultsTransformer(
@@ -21,10 +21,12 @@ export async function searchResultsTransformer(
   const productResults: SearchResult = {
     type: 'products',
     title: t('products'),
-    products: await Promise.all(
-      visibleProducts.map((product) =>
-        singleProductCardTransformer(product, format, undefined, undefined, taxDisplay),
-      ),
+    products: await productCardTransformer(
+      visibleProducts,
+      format,
+      undefined,
+      undefined,
+      taxDisplay,
     ),
   };
 

@@ -13,6 +13,11 @@ import {
   productFilterDefinitions,
 } from '~/lib/product-metafield-filters';
 import { getStockDisplayData, StockDisplaySettings } from '~/lib/stock-display';
+import { getWarehouseAvailability } from '~/lib/warehouse/availability';
+import {
+  type WarehouseAvailability,
+  warehouseCardDisplay,
+} from '~/lib/warehouse/availability-policy';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 import { hideWholesaleCardPrices } from '~/lib/wholesale-pricing-policy';
 
@@ -105,6 +110,17 @@ const productCardAttributeVariants = (
   };
 };
 
+function canAddProductToCart(
+  product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
+  availability: WarehouseAvailability | undefined,
+) {
+  return (
+    product.showCartAction &&
+    product.availabilityV2.status !== 'Unavailable' &&
+    (availability ? availability.canPurchase : product.inventory.isInStock)
+  );
+}
+
 export const singleProductCardTransformer = async (
   product: ResultOf<typeof ProductCardFragment | typeof WishlistItemProductFragment>,
   format: ExistingResultType<typeof getFormatter>,
@@ -114,8 +130,12 @@ export const singleProductCardTransformer = async (
   stockDisplay?: ProductCardStockDisplay,
   attributeFilters?: ProductAttributeFilter[],
   categoryId?: number,
+  availabilityForProduct?: (id: number) => WarehouseAvailability | undefined,
 ): Promise<Product> => {
   const pricingRequiresLogin = await requiresPricingLogin();
+  const availability = (
+    availabilityForProduct ?? (await getWarehouseAvailability([product.entityId]))
+  )(product.entityId);
 
   return hideWholesaleCardPrices(
     {
@@ -135,10 +155,7 @@ export const singleProductCardTransformer = async (
         'productOptions' in product
           ? removeEdgesAndNodes(product.productOptions).length > 0
           : undefined,
-      canAddToCart:
-        product.showCartAction &&
-        product.availabilityV2.status !== 'Unavailable' &&
-        product.inventory.isInStock,
+      canAddToCart: canAddProductToCart(product, availability),
       isPreorder: product.availabilityV2.status === 'Preorder',
       minQuantity:
         'minPurchaseQuantity' in product && product.minPurchaseQuantity != null
@@ -175,6 +192,7 @@ export const singleProductCardTransformer = async (
               stockDisplay.formatStock,
             )
           : undefined,
+      ...warehouseCardDisplay(availability),
       promotions:
         'featuredPromotions' in product
           ? removeEdgesAndNodes(product.featuredPromotions).map((p) => ({
@@ -197,6 +215,8 @@ export const productCardTransformer = async (
   attributeFilters?: ProductAttributeFilter[],
   categoryId?: number,
 ): Promise<Product[]> => {
+  const availability = await getWarehouseAvailability(products.map((p) => p.entityId));
+
   return Promise.all(
     products
       .filter((product) => isShowCrateProduct(product) || !hasZeroPrice(product))
@@ -210,6 +230,7 @@ export const productCardTransformer = async (
           stockDisplay,
           attributeFilters,
           categoryId,
+          availability,
         ),
       ),
   );

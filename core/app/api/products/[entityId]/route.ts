@@ -9,6 +9,7 @@ import { isShowCrateProduct } from '~/data-transformers/show-crate-product-trans
 import { routing } from '~/i18n/routing';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { MakeswiftProductFragment } from '~/lib/makeswift/utils/use-bc-product-to-vibes-product/fragment';
+import { getWarehouseAvailability } from '~/lib/warehouse/availability';
 import { requiresPricingLogin } from '~/lib/wholesale-pricing';
 import { hideWholesalePrices } from '~/lib/wholesale-pricing-policy';
 
@@ -58,10 +59,14 @@ export const GET = async (
 
   const product = data.site.product;
   const hidePrices = await requiresPricingLogin();
+  const availability = await getWarehouseAvailability(product ? [product.entityId] : []);
 
   return NextResponse.json(
     product && (isShowCrateProduct(product) || !hasZeroPrice(product))
-      ? hideWholesalePrices(product, hidePrices)
+      ? {
+          ...hideWholesalePrices(product, hidePrices),
+          warehouseAvailability: availability(product.entityId),
+        }
       : null,
     { headers: { 'Cache-Control': 'private, no-store' } },
   );
