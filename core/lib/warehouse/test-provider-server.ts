@@ -15,9 +15,10 @@ import {
   verifyTestProviderClaim,
 } from './test-provider';
 import { assertTestProviderEnabled } from './test-provider-method';
+import { authorizeNormalTestProvider } from './test-provider-normal-server';
 import { validateWarehouseCheckout } from './validation';
 
-interface TestCheckout extends SubmissionCheckout {
+export interface TestCheckout extends SubmissionCheckout {
   id: string;
   order_id: number | null;
   cart: SubmissionCheckout['cart'] & {
@@ -65,8 +66,7 @@ function matchesScope(
   );
 }
 
-// Called only after ordinary signed cart/revision/origin/stock validation succeeded.
-export async function authorizeTestProvider(input: {
+export interface TestProviderInput {
   token: string;
   origin: string;
   cartId: string;
@@ -74,7 +74,16 @@ export async function authorizeTestProvider(input: {
   warehouseId: string;
   submission?: SubmissionSnapshot;
   claim?: TestProviderClaim;
-}) {
+}
+
+export async function authorizeTestProvider(input: TestProviderInput) {
+  if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined)
+    return authorizeNormalTestProvider(input);
+
+  return authorizeCartTestProvider(input);
+}
+
+async function authorizeCartTestProvider(input: TestProviderInput) {
   const policy = readTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION);
 
   if (!policy) {
@@ -135,11 +144,7 @@ export async function authorizeTestProvider(input: {
   if (JSON.stringify(latest) !== JSON.stringify(checkout))
     throw testProviderDenied('Checkout changed during test authorization.');
   // Read current policy again: revocation/configuration changes must fail closed.
-  if (
-    JSON.stringify(readTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION)) !==
-    JSON.stringify(policy)
-  )
-    throw testProviderDenied();
+  assertCartPolicyCurrent(policy);
 
   const redis = new Redis({
     url: process.env.WAREHOUSE_REDIS_URL ?? '',
@@ -154,11 +159,7 @@ export async function authorizeTestProvider(input: {
 
   // Recheck immediately before claiming; unknown/live/missing provider state fails closed.
   await assertTestProviderEnabled(policy.storeHash);
-  if (
-    JSON.stringify(readTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION)) !==
-    JSON.stringify(policy)
-  )
-    throw testProviderDenied();
+  assertCartPolicyCurrent(policy);
 
   await claimTestProviderAttempt(
     redis,
@@ -168,4 +169,13 @@ export async function authorizeTestProvider(input: {
   );
 
   return { testProviderAuthorization: authorization, testProviderClaimed: true };
+}
+
+function assertCartPolicyCurrent(policy: TestProviderPolicy) {
+  if (
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined ||
+    JSON.stringify(readTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION)) !==
+      JSON.stringify(policy)
+  )
+    throw testProviderDenied();
 }

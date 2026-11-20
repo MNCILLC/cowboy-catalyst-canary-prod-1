@@ -474,3 +474,66 @@ A claim includes the normal capability and strict submission snapshot plus `test
 The standalone checkout independently requires `allowTestProvider:true` for its matching staging store entry. Its default remains blocked; enabling both Check and Test provider opt-ins is invalid. The native SDK card form remains responsible for payment; no backend payment processing was added. Production gateways, custom submit callbacks, stored instruments, and saving instruments are excluded from this test permission. The native SDK submission-enforcement limitation and post-validation race boundary still apply.
 
 Before a hosted test: run the isolated tests, prepare a fresh dedicated cart, verify the channel exposes the test provider, authorize exactly one amount and item, and use only synthetic test card details. After the one attempt (successful or ambiguous), restore the original loader, remove the temporary policy and checkout opt-in, redeploy and verify both blocks, and reconcile order/transaction/inventory records without retrying. Order cancellation or inventory restoration is a separate action.
+
+### Default-off policy for normal Test-provider carts
+
+`WAREHOUSE_TEST_PROVIDER_POLICY` adds automatic per-cart grants without a manually
+prepared product/cart authorization. It is **unset by default**, and this change
+installs no environment values. It does not enable the standalone checkout's
+`allowTestProvider` flag or change the preview/handoff flow. Keep both checkout
+payment opt-ins off until a separately authorized rehearsal.
+
+An enabled policy is strict JSON with these required fields:
+
+- `enabled: true`, `version: 1`, `id` (a policy-generation UUID),
+  `methodId: "bigpaypay"`, `testMode: true`.
+- `storeHash`, `channelId`, `origins` (exact HTTPS checkout origins),
+  `warehouseIds`, and `currencies` (uppercase three-letter codes).
+- `grantTtlSeconds` (30–900), `maxLineItems` (1–100), `maxQuantity` (positive
+  integer, summed over the whole cart), and `maxGrandTotal` (positive amount in
+  the permitted currency). These limits have no implicit permissive defaults.
+
+For this project, any later activation is limited to Sandbox Cowboy
+`3olkgrdpfq`, channel `1912525`, using only its Test payment provider. Configured
+store/channel and checkout origins must also match the warehouse backend's
+staging configuration. Other stores are not part of this milestone; the standalone
+checkout contract remains store-configurable.
+
+The backend accepts ready physical-product carts with multiple lines/quantities,
+Forney shipping or pickup, and Powell pickup according to configured warehouse
+rules. Guest customer ID `0` is supported only through the existing authenticated
+cart capability; it does not grant anonymous access to arbitrary carts. Empty,
+free, over-limit, nonphysical, incomplete-fulfillment, and already ordered carts
+receive no grant. A claim for an ineligible cart is rejected.
+
+The existing public `testProviderAuthorization`/`testProviderClaimed` contract is
+unchanged. Its opaque HMAC token now binds the entire policy hash, origin, cart,
+customer, warehouse/revision, currency, a hash of the canonical item/fulfillment/
+total snapshot, and an expiry. Hashing the snapshot keeps tokens small for larger
+carts. Policy changes revoke old grants; rotate `id` whenever re-enabling a policy
+so a previously issued, unexpired token cannot become valid again.
+
+Offers repeat stock/revision/fulfillment validation and verify the provider is in
+test mode without consuming a claim. Claims repeat those checks, compare the
+checkout readback, recheck policy/configuration and expiry, then use the same
+permanent cart attempt record as Check and the earlier Test-provider rehearsal.
+Concurrent claims have one winner; lost replies remain blocked. Existing recovery
+checks still run before authorization. Check, wallets, stored/saved instruments,
+and real gateways are not authorized. Configuring this new variable (even empty
+or `{"enabled":false}`) suppresses legacy Check grants and Test-provider fallback.
+Combining an enabled normal policy with either legacy authorization is rejected.
+
+Rollback: keep the checkout opt-ins off and set the normal policy to exactly
+`{"enabled":false}` (or remove it **and** both legacy authorization variables),
+then redeploy the backend. Restore a known blocked checkout bundle and the prior
+loader if a later rehearsal changed them. Preserve Redis data, namespace, and
+all attempt/recovery records. Policy removal does not undo an accepted/in-flight
+native SDK request and does not permit an uncertain cart to retry. The existing
+native-SDK enforcement boundary and gap between warehouse validation and the
+atomic attempt claim remain; this is not a BigCommerce-wide purchasing lock.
+
+Isolated coverage: `test-provider.test.cjs`, `check-test.test.cjs`,
+`recovery.test.cjs`, `route-access.test.cjs`, and `submission.test.cjs`. Run with
+explicit private Redis binary paths as above. All HTTP responses and carts are
+synthetic; real Redis uses a temporary Unix socket with TCP/persistence disabled.
+No local env files, real store APIs, orders, or payments are used by the tests.

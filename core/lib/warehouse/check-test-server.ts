@@ -64,8 +64,7 @@ function matchesScope(
   );
 }
 
-// Called only after ordinary signed cart/revision/origin/stock validation succeeded.
-export async function authorizeCheckTest(input: {
+interface CheckTestInput {
   token: string;
   origin: string;
   cartId: string;
@@ -73,7 +72,21 @@ export async function authorizeCheckTest(input: {
   warehouseId: string;
   submission?: SubmissionSnapshot;
   claim?: CheckTestClaim;
-}) {
+}
+
+// Called only after ordinary signed cart/revision/origin/stock validation succeeded.
+export async function authorizeCheckTest(input: CheckTestInput) {
+  // A configured normal Test-provider policy must never fall back to Check.
+  if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined) {
+    if (input.claim) throw checkTestDenied();
+
+    return {};
+  }
+
+  return authorizeCartCheckTest(input);
+}
+
+async function authorizeCartCheckTest(input: CheckTestInput) {
   const policy = readCheckTestPolicy(process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION);
 
   if (!policy) {
@@ -133,8 +146,9 @@ export async function authorizeCheckTest(input: {
     throw checkTestDenied('Checkout changed during test authorization.');
   // Read current policy again: revocation/configuration changes must fail closed.
   if (
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined ||
     JSON.stringify(readCheckTestPolicy(process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION)) !==
-    JSON.stringify(policy)
+      JSON.stringify(policy)
   )
     throw checkTestDenied();
 

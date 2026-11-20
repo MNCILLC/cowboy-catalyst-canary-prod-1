@@ -106,7 +106,7 @@ return 1
 export async function claimCheckTestAttempt(
   redis: WarehouseRedis,
   namespace: string,
-  policy: CheckTestPolicy,
+  policy: Pick<CheckTestPolicy, 'id' | 'storeHash' | 'channelId' | 'cartId'>,
   fingerprint: string,
 ) {
   const key = testPaymentAttemptKey(namespace, policy);

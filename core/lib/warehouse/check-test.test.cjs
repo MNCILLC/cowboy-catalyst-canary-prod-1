@@ -105,6 +105,7 @@ const origin = 'https://checkout.example';
 const secret = 'synthetic-signing-secret-never-a-live-credential';
 
 beforeEach(() => {
+  delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
   policy = {
     id: '11111111-1111-4111-8111-111111111111',
     storeHash: 'test-store',
@@ -344,4 +345,23 @@ test('real private Redis atomically admits one contender and never replays a cla
     await exit;
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('normal Test-provider policy suppresses Check offers and claims even while disabled', async () => {
+  for (const value of ['{"enabled":false}', '{}', 'invalid']) {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = value;
+    assert.deepEqual(await authorizeCheckTest(input()), {});
+    await assert.rejects(authorizeCheckTest(claim()));
+  }
+
+  assert.equal(attempts, 0);
+});
+
+test('enabling normal policy during a legacy Check claim revokes the legacy path', async () => {
+  mutate = () => {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = '{"enabled":false}';
+  };
+
+  await assert.rejects(authorizeCheckTest(claim()));
+  assert.equal(attempts, 0);
 });

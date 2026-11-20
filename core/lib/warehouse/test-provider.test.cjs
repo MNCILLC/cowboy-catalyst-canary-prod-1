@@ -25,6 +25,8 @@ after(() => {
   Object.assign(process.env, originalEnv);
 });
 
+const origin = 'https://checkout.example';
+
 let current;
 let policy;
 let reads;
@@ -36,6 +38,8 @@ let redisError;
 let providerMode;
 let providerReads;
 let deploymentMode;
+let providerMutate;
+let attemptClient;
 const cache = new Map();
 
 function load(name) {
@@ -62,8 +66,13 @@ function load(name) {
       return {
         getWarehouseConfiguration: () => ({
           mode: deploymentMode,
-          storeHash: 'test-store',
-          channelId: 37,
+          storeHash: '3olkgrdpfq',
+          channelId: 1912525,
+          checkoutOrigins: [origin],
+          warehouses: [
+            { id: 'powell', pickupMethodId: 83, allowShipping: false },
+            { id: 'forney', pickupMethodId: 84, allowShipping: true },
+          ],
         }),
       };
     if (id === './validation')
@@ -77,7 +86,8 @@ function load(name) {
     if (id === '@upstash/redis')
       return {
         Redis: class {
-          async eval() {
+          async eval(...args) {
+            if (attemptClient) return attemptClient.eval(...args);
             attempts += 1;
             if (redisError) throw redisError;
 
@@ -88,6 +98,8 @@ function load(name) {
     if (
       [
         './test-provider',
+        './test-provider-normal',
+        './test-provider-normal-server',
         './test-provider-method',
         './check-test',
         './authorization',
@@ -113,19 +125,23 @@ function load(name) {
 const pure = load('test-provider');
 const { authorizeTestProvider } = load('test-provider-server');
 const { submissionSnapshot } = load('submission');
-const origin = 'https://checkout.example';
 const secret = 'synthetic-signing-secret-never-a-live-credential';
 
 beforeEach(() => {
+  delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+  delete process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION;
+  providerMutate = undefined;
+  attemptClient = undefined;
   deploymentMode = 'staging';
   providerMode = 'test';
   providerReads = 0;
-  process.env.BIGCOMMERCE_STORE_HASH = 'test-store';
+  process.env.BIGCOMMERCE_STORE_HASH = '3olkgrdpfq';
   process.env.BIGCOMMERCE_ACCESS_TOKEN = 'synthetic-not-a-real-token';
 
   global.fetch = async (url, options) => {
     providerReads += 1;
-    assert.equal(url, 'https://api.bigcommerce.com/stores/test-store/v2/payments/methods');
+    if (providerMutate) providerMutate();
+    assert.equal(url, 'https://api.bigcommerce.com/stores/3olkgrdpfq/v2/payments/methods');
     assert.equal(options.method, 'GET');
     assert.equal(options.cache, 'no-store');
     if (providerMode === 'timeout') throw new Error('timeout');
@@ -145,11 +161,11 @@ beforeEach(() => {
     methodId: 'bigpaypay',
     testMode: true,
     id: '11111111-1111-4111-8111-111111111111',
-    storeHash: 'test-store',
-    channelId: 37,
+    storeHash: '3olkgrdpfq',
+    channelId: 1912525,
     cartId: '22222222-2222-4222-8222-222222222222',
     customerId: 5,
-    warehouseId: 'west',
+    warehouseId: 'powell',
     revision: '33333333-3333-4333-8333-333333333333',
     productId: 91,
     variantId: 92,
@@ -164,7 +180,7 @@ beforeEach(() => {
     grand_total: 50,
     cart: {
       customer_id: 5,
-      channel_id: 37,
+      channel_id: 1912525,
       currency: { code: 'USD' },
       line_items: {
         physical_items: [{ id: 'item', product_id: 91, variant_id: 92, quantity: 1 }],
@@ -370,6 +386,29 @@ test('real private Redis atomically admits one contender and never replays a cla
       ),
     );
 
+    setupNormal();
+
+    const normalClaim = await normalClaimInput();
+
+    attemptClient = redisClient(cli, socket);
+
+    const normalOutcomes = await Promise.allSettled(
+      Array.from({ length: 12 }, () => authorizeTestProvider(normalClaim)),
+    );
+
+    assert.equal(normalOutcomes.filter((x) => x.status === 'fulfilled').length, 1);
+    await assert.rejects(authorizeTestProvider(normalClaim), /already/);
+    await assert.rejects(
+      pure.claimTestProviderAttempt(
+        client,
+        process.env.WAREHOUSE_REDIS_NAMESPACE,
+        policy,
+        'legacy-method',
+      ),
+      /already/,
+    );
+    attemptClient = undefined;
+
     // Simulate a committed write whose HTTP response is lost, using another synthetic cart.
     const other = { ...policy, cartId: '77777777-7777-4777-8777-777777777777' };
 
@@ -419,6 +458,7 @@ test('provider must be present and verified in test mode, including at claim tim
 test('deployment, store, variant, extra items and policy changes fail closed', async () => {
   deploymentMode = 'development';
   await assert.rejects(authorizeTestProvider(claim()));
+  delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
   deploymentMode = 'staging';
 
   for (const change of [{ storeHash: 'other' }, { channelId: 99 }]) {
@@ -456,5 +496,390 @@ test('deployment, store, variant, extra items and policy changes fail closed', a
   };
 
   await assert.rejects(authorizeTestProvider(claim()));
+  assert.equal(attempts, 0);
+});
+
+const normal = load('test-provider-normal');
+
+function setupNormal(overrides = {}) {
+  delete process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION;
+
+  const configured = {
+    enabled: true,
+    version: 1,
+    id: policy.id,
+    methodId: 'bigpaypay',
+    testMode: true,
+    storeHash: '3olkgrdpfq',
+    channelId: 1912525,
+    origins: [origin],
+    warehouseIds: ['powell', 'forney'],
+    currencies: ['USD'],
+    grantTtlSeconds: 300,
+    maxLineItems: 10,
+    maxQuantity: 50,
+    maxGrandTotal: 1000,
+    ...overrides,
+  };
+
+  process.env.WAREHOUSE_TEST_PROVIDER_POLICY = JSON.stringify(configured);
+  current.cart.line_items.physical_items = [
+    { id: 'item', product_id: 91, variant_id: 92, quantity: 2 },
+    { id: 'item-2', product_id: 93, variant_id: 94, quantity: 3 },
+  ];
+  current.consignments[0].line_item_ids = ['item', 'item-2'];
+
+  return configured;
+}
+
+async function normalClaimInput(overrides = {}) {
+  const request = { ...input(), ...overrides };
+  const offer = await authorizeTestProvider(request);
+
+  return {
+    ...request,
+    submission: submissionSnapshot(current),
+    claim: {
+      token: offer.testProviderAuthorization.token,
+      methodId: 'bigpaypay',
+      gatewayId: null,
+      usesStoredInstrument: false,
+      shouldSaveInstrument: false,
+    },
+  };
+}
+
+test('normal policy defaults off and explicit disable prevents legacy fallback', async () => {
+  delete process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION;
+  assert.deepEqual(await authorizeTestProvider(input()), {});
+
+  for (const encoded of ['', '{"enabled":false}']) {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = encoded;
+    assert.deepEqual(await authorizeTestProvider(input()), {});
+    await assert.rejects(authorizeTestProvider(claim()));
+  }
+
+  assert.equal(reads + providerReads + attempts, 0);
+});
+
+test('normal policy rejects malformed, live-provider, excessive TTL and ambiguous policies', async () => {
+  for (const changes of [
+    { methodId: 'cheque' },
+    { testMode: false },
+    { grantTtlSeconds: 901 },
+    { origins: ['http://localhost:3000'] },
+    { maxLineItems: 101 },
+    { maxQuantity: 0 },
+    { maxGrandTotal: 0 },
+  ]) {
+    setupNormal(changes);
+    await assert.rejects(authorizeTestProvider(input()));
+  }
+
+  for (const encoded of ['invalid', '{}', '{"enabled":false,"extra":true}']) {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = encoded;
+    await assert.rejects(authorizeTestProvider(input()));
+  }
+
+  for (const key of [
+    'WAREHOUSE_TEST_PROVIDER_AUTHORIZATION',
+    'WAREHOUSE_CHECK_TEST_AUTHORIZATION',
+  ]) {
+    setupNormal();
+    process.env[key] = JSON.stringify(policy);
+    await assert.rejects(authorizeTestProvider(input()));
+    delete process.env[key];
+  }
+
+  assert.equal(reads + attempts, 0);
+});
+
+test('normal multi-item pickup grant is read-only and permits exactly one simulated claim', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+
+  assert.ok(request.claim.token.length < 4096);
+  assert.equal(attempts, 0);
+  assert.equal((await authorizeTestProvider(request)).testProviderClaimed, true);
+  await assert.rejects(authorizeTestProvider(request), /already/);
+});
+
+test('Forney shipping and pickup qualify; Powell shipping does not', async () => {
+  setupNormal();
+  current.consignments[0] = {
+    id: 'freight',
+    line_item_ids: ['item', 'item-2'],
+    selected_shipping_option: { id: 'freight-quote', type: 'shipping_byweight' },
+  };
+  assert.deepEqual(await authorizeTestProvider(input()), {});
+  assert.ok(
+    (await authorizeTestProvider({ ...input(), warehouseId: 'forney' })).testProviderAuthorization,
+  );
+  current.consignments[0] = {
+    id: 'pickup',
+    line_item_ids: ['item', 'item-2'],
+    selected_pickup_option: { pickup_method_id: 84 },
+  };
+  assert.ok(
+    (await authorizeTestProvider({ ...input(), warehouseId: 'forney' })).testProviderAuthorization,
+  );
+  assert.equal(attempts, 0);
+});
+
+test('authenticated guest cart can qualify but its grant cannot move to another customer', async () => {
+  setupNormal();
+  current.cart.customer_id = 0;
+
+  const request = await normalClaimInput();
+
+  current.cart.customer_id = 5;
+  await assert.rejects(authorizeTestProvider(request));
+  assert.equal(attempts, 0);
+});
+
+test('normal grant binds customer, items, quantities, totals, currency and fulfillment', async () => {
+  setupNormal({ currencies: ['USD', 'CAD'] });
+
+  const request = await normalClaimInput();
+
+  for (const edit of [
+    (c) => (c.cart.customer_id += 1),
+    (c) => (c.cart.line_items.physical_items[0].quantity += 1),
+    (c) => (c.cart.line_items.physical_items[0].product_id += 1),
+    (c) => (c.cart.line_items.physical_items[0].variant_id += 1),
+    (c) => (c.grand_total += 1),
+    (c) => {
+      c.cart.currency.code = 'CAD';
+    },
+    (c) => {
+      c.consignments[0].id = 'changed';
+    },
+  ]) {
+    const baseline = structuredClone(current);
+
+    edit(current);
+    await assert.rejects(
+      authorizeTestProvider({ ...request, submission: submissionSnapshot(current) }),
+    );
+    current = baseline;
+  }
+
+  assert.equal(attempts, 0);
+});
+
+test('normal scope, method, wallet, stored instrument and forged token cannot bypass grant', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+
+  for (const change of [
+    { origin: 'https://other.example' },
+    { warehouseId: 'forney' },
+    { revision: '55555555-5555-4555-8555-555555555555' },
+    { cartId: '55555555-5555-4555-8555-555555555555' },
+  ]) {
+    await assert.rejects(authorizeTestProvider({ ...request, ...change }));
+  }
+
+  for (const change of [
+    { methodId: 'cheque' },
+    { methodId: 'paypal' },
+    { gatewayId: 'wallet' },
+    { usesStoredInstrument: true },
+    { shouldSaveInstrument: true },
+    { token: 'forged' },
+    { token: `${request.claim.token}x` },
+  ]) {
+    await assert.rejects(
+      authorizeTestProvider({ ...request, claim: { ...request.claim, ...change } }),
+    );
+  }
+
+  await assert.rejects(authorizeTestProvider({ ...request, submission: undefined }));
+  assert.equal(attempts, 0);
+});
+
+test('normal limits, invalid items, nonphysical items, incomplete fulfillment and existing orders fail closed', async () => {
+  setupNormal();
+
+  for (const edit of [
+    (c) => {
+      c.order_id = 123;
+    },
+    (c) => {
+      c.cart.channel_id = 99;
+    },
+    (c) => {
+      c.grand_total = 1001;
+    },
+    (c) => {
+      c.grand_total = 0;
+    },
+    (c) => {
+      c.cart.line_items.physical_items[0].quantity = 51;
+    },
+    (c) => {
+      c.cart.line_items.physical_items[0].quantity = 0.5;
+    },
+    (c) => {
+      c.cart.line_items.physical_items = [];
+    },
+    (c) => c.cart.line_items.digital_items.push({}),
+    (c) => c.cart.line_items.custom_items.push({}),
+    (c) => c.cart.line_items.gift_certificates.push({}),
+    (c) => {
+      c.consignments = [];
+    },
+    (c) => {
+      c.consignments[0].line_item_ids = ['item'];
+    },
+  ]) {
+    const baseline = structuredClone(current);
+
+    edit(current);
+    assert.deepEqual(await authorizeTestProvider(input()), {});
+    current = baseline;
+  }
+
+  setupNormal({ maxLineItems: 1 });
+  assert.deepEqual(await authorizeTestProvider(input()), {});
+  assert.equal(attempts, 0);
+});
+
+test('normal grant expiry and policy generation/scope changes revoke outstanding grants', async () => {
+  const configured = setupNormal();
+  const request = await normalClaimInput();
+  const data = JSON.parse(Buffer.from(request.claim.token.split('.')[0], 'base64url'));
+
+  assert.throws(() =>
+    normal.verifyNormalTestProviderClaim(
+      configured,
+      data.binding,
+      secret,
+      request.claim,
+      data.expiresAt * 1000,
+    ),
+  );
+
+  for (const changes of [
+    { id: '44444444-4444-4444-8444-444444444444' },
+    { maxQuantity: 49 },
+    { storeHash: 'wrong-fixture-store' },
+    { channelId: 99 },
+    { enabled: false },
+  ]) {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = JSON.stringify({ ...configured, ...changes });
+    await assert.rejects(authorizeTestProvider(request));
+  }
+
+  delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+  await assert.rejects(authorizeTestProvider(request));
+  assert.equal(attempts, 0);
+});
+
+test('normal mid-validation stock, stale revision, checkout and policy failures cannot consume an attempt', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+
+  for (const message of ['inventory conflict', 'stale revision', 'recovery unavailable']) {
+    validationError = new Error(message);
+    await assert.rejects(authorizeTestProvider(request));
+  }
+
+  validationError = undefined;
+
+  mutate = () => {
+    current.grand_total += 1;
+  };
+
+  await assert.rejects(authorizeTestProvider(request), /changed/);
+  current.grand_total -= 1;
+
+  mutate = () => {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = '{"enabled":false}';
+  };
+
+  await assert.rejects(authorizeTestProvider(request));
+  assert.equal(attempts, 0);
+});
+
+test('normal provider live, missing, malformed, unavailable and late revocation fail closed', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+
+  for (const mode of ['live', 'missing', 'malformed', 'timeout', 'error']) {
+    providerMode = mode;
+    await assert.rejects(authorizeTestProvider(request));
+  }
+
+  providerMode = 'test';
+
+  providerMutate = () => {
+    delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+  };
+
+  await assert.rejects(authorizeTestProvider(request));
+  assert.equal(attempts, 0);
+});
+
+test('normal lost claim response remains blocked on retry and policy rotation', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+
+  redisError = new Error('lost response');
+  await assert.rejects(authorizeTestProvider(request), /uncertain/);
+  redisError = undefined;
+  await assert.rejects(authorizeTestProvider(request), /already/);
+  setupNormal({ id: '44444444-4444-4444-8444-444444444444' });
+  await assert.rejects(authorizeTestProvider(await normalClaimInput()), /already/);
+});
+
+test('enabling normal policy during a legacy Test-provider claim revokes the legacy path', async () => {
+  mutate = () => {
+    process.env.WAREHOUSE_TEST_PROVIDER_POLICY = '{"enabled":false}';
+  };
+
+  await assert.rejects(authorizeTestProvider(claim()));
+  assert.equal(attempts, 0);
+});
+
+test('normal grant expiring during provider lookup cannot consume a claim', async () => {
+  setupNormal();
+
+  const request = await normalClaimInput();
+  const originalNow = Date.now;
+  const expiredNow = originalNow() + 301000;
+
+  providerMutate = () => {
+    Date.now = () => expiredNow;
+  };
+
+  try {
+    await assert.rejects(authorizeTestProvider(request));
+    assert.equal(attempts, 0);
+  } finally {
+    Date.now = originalNow;
+  }
+});
+
+test('100-line normal carts keep grants within the existing standalone transport contract', async () => {
+  setupNormal({ maxLineItems: 100, maxQuantity: 100 });
+  current.cart.line_items.physical_items = Array.from({ length: 100 }, (_, i) => ({
+    id: `item-${i}`,
+    product_id: i + 1,
+    variant_id: 0,
+    quantity: 1,
+  }));
+  current.consignments[0].line_item_ids = current.cart.line_items.physical_items.map(
+    (item) => item.id,
+  );
+
+  const request = await normalClaimInput();
+
+  assert.ok(request.claim.token.length < 4096);
   assert.equal(attempts, 0);
 });
