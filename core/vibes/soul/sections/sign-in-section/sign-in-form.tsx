@@ -3,7 +3,7 @@
 import { getFormProps, getInputProps, SubmissionResult, useForm } from '@conform-to/react';
 import { getZodConstraint } from '@conform-to/zod';
 import { useTranslations } from 'next-intl';
-import { startTransition, useActionState, useEffect } from 'react';
+import { useActionState, useEffect } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { FormStatus } from '@/vibes/soul/form/form-status';
@@ -41,12 +41,6 @@ export function SignInForm({
     constraint: getZodConstraint(schema),
     shouldValidate: 'onBlur',
     shouldRevalidate: 'onInput',
-    onSubmit(event, { formData }) {
-      event.preventDefault();
-      startTransition(() => {
-        formAction(formData);
-      });
-    },
     onValidate({ formData }) {
       return parseWithZodTranslatedErrors(formData, { schema, errorTranslations });
     },
@@ -80,7 +74,7 @@ export function SignInForm({
   };
 
   return (
-    <form {...getFormProps(form)} className="flex grow flex-col gap-5">
+    <form {...getFormProps(form)} action={formAction} className="flex grow flex-col gap-5">
       <Input
         {...getInputProps(fields.email, { type: 'text' })}
         errors={fields.email.errors}

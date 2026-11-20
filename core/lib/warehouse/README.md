@@ -15,9 +15,8 @@ Launch `node poc/warehouse-preview.cjs` from the independent Open Checkout repo
 (after running its `npm run dev` asset builder). Set `STOREFRONT_URL` if needed.
 The launched Chrome browser is required for the isolated preview. Shop and sign
 in normally; the cart's Preview checkout button passes the session cart to the
-local checkout assets. Without that browser, the local checkout route returns
-the preview handoff JSON instead of activating a hosted checkout. That response
-contains a short-lived checkout URL: do not save or publish it.
+local checkout assets. The runner explicitly requests the JSON handoff with
+`?handoff=json`. Its short-lived checkout URL must be kept private.
 
 ## Behavior
 
@@ -44,7 +43,7 @@ Existing Freight App preferences are not modified by this milestone.
 
 ## Independent checkout contract
 
-The response protocol is `warehouse-preview-v2`. Its `warehouseCheckout` object
+The explicit rehearsal response protocol is `warehouse-preview-v2`. Its `warehouseCheckout` object
 contains `version: 1`, `preview: true`, `cartId`, and a public warehouse object:
 `id`, `label`, `pickupLabel`, `locationId`, `pickupMethodId`, `allowShipping`.
 No Catalyst package import or management credential is required in checkout.
@@ -352,7 +351,7 @@ unlisted checkout origins; staging also checks the signed capability's channel
 against this backend's configured channel. Existing signed cart, store, expiry,
 revision, stock, and consignment checks remain in place.
 
-The handoff remains `warehouse-preview-v2` with `preview: true`. The independent
+The explicit JSON handoff remains `warehouse-preview-v2` with `preview: true`. The independent
 checkout must be built in its own `WAREHOUSE_CHECKOUT_MODE=staging` mode, with a
 public checkout-origin/validator-endpoint mapping. Its `warehouse-build.json`
 identifies that mode. Do not substitute an ordinary/off checkout build for an
@@ -370,12 +369,12 @@ private local Redis socket; external HTTP is prohibited by the harness.
 ## First-party session initialization for standalone checkout
 
 The standalone staging checkout can now initialize without runner injection once
-it is loaded. Catalyst `/checkout/` deliberately retains its protected
-`warehouse-preview-v2` JSON handoff in both preview and staging modes: with hosted
-settings unchanged, automatically redirecting would reach standard checkout where
-our purchase blocks do not run. Wiring an ordinary cart redirect is deferred until
-a separately verified activation of the non-purchasable standalone bundle. The
-initialization endpoint does not navigate shoppers to hosted checkout.
+it is loaded. Ordinary staging cart navigation to `/checkout/` checks that the
+channel has custom checkout configured, validates the warehouse and cart, then
+redirects the browser to the allowlisted BigCommerce checkout URL. The existing
+development loader check still applies in development mode. Rehearsal clients
+request `/checkout/?handoff=json` to receive the no-store `warehouse-preview-v2`
+payload. Legacy preview mode requires the rehearsal client.
 
 `/[locale]/warehouse-initialize/` (public locale prefix according to storefront
 routing) supplies a runner-independent, popup-based authorization bridge. It is

@@ -7,6 +7,7 @@ const ts = require('typescript');
 
 const file = path.join(__dirname, 'local-checkout.ts');
 const compiled = new Module(file, module);
+let mode = 'development';
 let settings = {
   checkout_type: 'custom',
   custom_checkout_script_url: 'http://localhost:8080/auto-loader-dev.js',
@@ -29,7 +30,7 @@ compiled.require = (id) => {
   if (id === './config')
     return {
       getWarehouseConfiguration: () => ({
-        mode: 'development',
+        mode,
         channelId: 37,
         checkoutOrigins: ['https://checkout.invalid'],
       }),
@@ -55,19 +56,39 @@ test('local redirect requires the activated local loader and correct non-purchas
   };
 
   try {
-    await compiled.exports.assertLocalCheckoutReady();
+    await compiled.exports.assertWarehouseCheckoutReady(false);
     settings = { ...settings, checkout_type: 'optimized' };
-    await assert.rejects(compiled.exports.assertLocalCheckoutReady());
+    await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
     settings = { ...settings, checkout_type: 'custom' };
     manifest = { ...manifest, mode: 'off' };
-    await assert.rejects(compiled.exports.assertLocalCheckoutReady());
+    await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
 
     global.fetch = async () => {
       throw new Error('offline');
     };
 
-    await assert.rejects(compiled.exports.assertLocalCheckoutReady());
+    await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
   } finally {
     global.fetch = original;
   }
+});
+
+test('staging shopper redirects require a configured custom checkout', async () => {
+  mode = 'staging';
+  settings = {
+    checkout_type: 'custom',
+    custom_checkout_script_url: 'https://assets.invalid/loader.js',
+  };
+  await compiled.exports.assertWarehouseCheckoutReady(false);
+  settings = { ...settings, checkout_type: 'optimized' };
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+  await compiled.exports.assertWarehouseCheckoutReady(true);
+  settings = { checkout_type: 'custom', custom_checkout_script_url: '' };
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+});
+
+test('legacy preview requires its explicit rehearsal transport', async () => {
+  mode = 'preview';
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+  await compiled.exports.assertWarehouseCheckoutReady(true);
 });

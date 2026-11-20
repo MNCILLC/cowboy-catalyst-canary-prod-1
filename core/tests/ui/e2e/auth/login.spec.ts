@@ -47,6 +47,42 @@ test('Login with invalid credentials returns an error', async ({ page }) => {
   await expect(page.getByText(t('invalidCredentials'))).toBeVisible();
 });
 
+test.describe('Server-rendered login form', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('submits credentials in the POST body with JavaScript disabled', async ({ page }) => {
+    const t = await getTranslations('Auth.Login');
+    const email = 'shopper@example.invalid';
+    const password = 'synthetic-login-fixture';
+
+    await page.goto('/login?redirectTo=%2Fcart');
+
+    const form = page.locator('form').filter({ has: page.getByLabel(t('password')) });
+
+    await expect(form).toHaveAttribute('method', /^post$/i);
+    await form.getByLabel(t('email')).fill(email);
+    await form.getByLabel(t('password')).fill(password);
+
+    // Observe the native submission without forwarding test credentials to a provider.
+    await page.route(/\/login\/?(?:\?|$)/, (route) => route.fulfill({ status: 200, body: 'OK' }));
+
+    const submitted = page.waitForRequest((candidate) => candidate.isNavigationRequest());
+
+    await form.getByRole('button', { name: t('cta') }).click();
+
+    const request = await submitted;
+    const url = new URL(request.url());
+
+    expect(request.method()).toBe('POST');
+    expect(url.searchParams.has('email')).toBe(false);
+    expect(url.searchParams.has('password')).toBe(false);
+    expect(decodeURIComponent(url.href)).not.toContain(email);
+    expect(decodeURIComponent(url.href)).not.toContain(password);
+    expect(request.postData()).toContain(email);
+    expect(request.postData()).toContain(password);
+  });
+});
+
 test('Browsing to /login/ when already logged in redirects to /account/orders/', async ({
   page,
   customer,

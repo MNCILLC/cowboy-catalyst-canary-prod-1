@@ -6,12 +6,14 @@ import { warehouseApi } from './api';
 import { getWarehouseConfiguration } from './config';
 import { WarehouseError } from './policy';
 
-// The local redirect is permitted only while the channel points to the required,
-// non-purchasable development bundle. Never fall through to standard checkout.
-export async function assertLocalCheckoutReady() {
+export async function assertWarehouseCheckoutReady(rehearsal: boolean) {
   const configuration = getWarehouseConfiguration();
 
-  if (configuration.mode !== 'development') return;
+  if (configuration.mode === 'preview' && !rehearsal)
+    throw new WarehouseError('Open the isolated preview browser to continue to checkout.');
+
+  if (configuration.mode !== 'development' && (configuration.mode !== 'staging' || rehearsal))
+    return;
 
   const loader = 'http://localhost:8080/auto-loader-dev.js';
 
@@ -21,7 +23,12 @@ export async function assertLocalCheckoutReady() {
       custom_checkout_script_url: string;
     }>(`checkouts/settings/channels/${configuration.channelId}`);
 
-    if (settings.checkout_type !== 'custom' || settings.custom_checkout_script_url !== loader)
+    if (settings.checkout_type !== 'custom' || !settings.custom_checkout_script_url)
+      throw new Error('Custom checkout is not activated.');
+
+    if (configuration.mode === 'staging') return;
+
+    if (settings.custom_checkout_script_url !== loader)
       throw new Error('Local checkout is not activated.');
 
     const response = await fetch('http://localhost:8080/warehouse-build.json', {
@@ -55,6 +62,11 @@ export async function assertLocalCheckoutReady() {
     )
       throw new Error('Wrong local bundle.');
   } catch {
+    if (configuration.mode === 'staging')
+      throw new WarehouseError(
+        'Custom warehouse checkout is unavailable. Please return to your cart.',
+      );
+
     throw new WarehouseError(
       'Start the local custom checkout on port 8080 and verify its sandbox activation before continuing.',
     );

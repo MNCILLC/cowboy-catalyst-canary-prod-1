@@ -22,8 +22,11 @@ export const login = async (
 
   const submission = parseWithZod(formData, { schema });
 
+  const reply = (formErrors?: string[]) =>
+    submission.reply({ formErrors, hideFields: ['password'] });
+
   if (submission.status !== 'success') {
-    return submission.reply();
+    return reply();
   }
 
   try {
@@ -38,9 +41,7 @@ export const login = async (
     console.error(error);
 
     if (error instanceof BigCommerceGQLError) {
-      return submission.reply({
-        formErrors: error.errors.map(({ message }) => message),
-      });
+      return reply(error.errors.map(({ message }) => message));
     }
 
     if (
@@ -50,7 +51,7 @@ export const login = async (
       error.cause.err instanceof BigCommerceGQLError &&
       error.cause.err.message.includes('Reset password"')
     ) {
-      return submission.reply({ formErrors: [t('passwordResetRequired')] });
+      return reply([t('passwordResetRequired')]);
     }
 
     if (
@@ -60,10 +61,10 @@ export const login = async (
       error.cause.err instanceof BigCommerceGQLError &&
       error.cause.err.message.includes('Invalid credentials')
     ) {
-      return submission.reply({ formErrors: [t('invalidCredentials')] });
+      return reply([t('invalidCredentials')]);
     }
 
-    return submission.reply({ formErrors: [t('somethingWentWrong')] });
+    return reply([t('somethingWentWrong')]);
   }
 
   return redirect({ href: redirectTo, locale });

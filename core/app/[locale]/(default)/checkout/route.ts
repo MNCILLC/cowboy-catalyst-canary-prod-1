@@ -21,8 +21,8 @@ import { preparePickupCheckout } from '~/lib/pickup-checkout/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
-import { getWarehouseConfiguration, warehousePreviewEnabled } from '~/lib/warehouse/config';
-import { assertLocalCheckoutReady } from '~/lib/warehouse/local-checkout';
+import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { assertWarehouseCheckoutReady } from '~/lib/warehouse/local-checkout';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { prepareWarehousePreview } from '~/lib/warehouse/server';
 import { createValidationAccess } from '~/lib/warehouse/validation';
@@ -113,13 +113,46 @@ async function prepareCheckoutFulfillment(cartId: string) {
   await prepareCheckout(cartId, await assertCartShipping(cartId));
 }
 
-async function getWarehouseHandoff(cartId: string) {
+async function getWarehouseHandoff(cartId: string, rehearsal: boolean) {
   if (!warehousePreviewEnabled()) return undefined;
-  await assertLocalCheckoutReady();
+  await assertWarehouseCheckoutReady(rehearsal);
 
-  const handoff = await prepareWarehousePreview(cartId);
+  return prepareWarehousePreview(cartId);
+}
 
-  return getWarehouseConfiguration().mode === 'development' ? undefined : handoff;
+function warehouseCheckoutResponse(
+  warehouseHandoff: Awaited<ReturnType<typeof prepareWarehousePreview>>,
+  checkoutUrl: string,
+  storefrontOrigin: string,
+  rehearsal: boolean,
+) {
+  const destination = new URL(checkoutUrl);
+
+  if (destination.protocol !== 'https:' || !warehouseCheckoutOriginAllowed(destination.origin))
+    throw new WarehouseError('The checkout address is not configured for this warehouse.');
+
+  const headers = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' };
+
+  if (!rehearsal) return NextResponse.redirect(destination, { status: 303, headers });
+
+  return NextResponse.json(
+    {
+      protocol: 'warehouse-preview-v2',
+      warehouseCheckout: {
+        version: 1,
+        preview: true,
+        cartId: warehouseHandoff.record.cartId,
+        warehouse: warehouseHandoff.warehouse,
+        validation: createValidationAccess(
+          warehouseHandoff.record,
+          destination.origin,
+          storefrontOrigin,
+        ),
+      },
+      checkoutUrl,
+    },
+    { headers },
+  );
 }
 
 async function checkoutCartId(req: NextRequest) {
@@ -178,7 +211,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       return redirect({ href: '/cart', locale });
     }
 
-    const warehouseHandoff = await getWarehouseHandoff(cartId);
+    const rehearsal = req.nextUrl.searchParams.get('handoff') === 'json';
+    const warehouseHandoff = await getWarehouseHandoff(cartId, rehearsal);
 
     const { data } = await client.fetch({
       document: CheckoutRedirectMutation,
@@ -206,31 +240,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       return redirect({ href: '/cart', locale });
     }
 
-    if (warehouseHandoff) {
-      return NextResponse.json(
-        {
-          protocol: 'warehouse-preview-v2',
-          warehouseCheckout: {
-            version: 1,
-            preview: true,
-            cartId,
-            warehouse: warehouseHandoff.warehouse,
-            validation: createValidationAccess(
-              warehouseHandoff.record,
-              new URL(data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl).origin,
-              req.nextUrl.origin,
-            ),
-          },
-          checkoutUrl: data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl,
-        },
-        { headers: { 'Cache-Control': 'no-store' } },
-      );
-    }
+    const checkoutUrl = data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl;
 
-    return redirect({
-      href: data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl,
-      locale,
-    });
+    if (warehouseHandoff)
+      return warehouseCheckoutResponse(
+        warehouseHandoff,
+        checkoutUrl,
+        req.nextUrl.origin,
+        rehearsal,
+      );
+
+    return redirect({ href: checkoutUrl, locale });
   } catch (error) {
     rethrow(error);
 
