@@ -742,8 +742,29 @@ test('normal limits, invalid items, nonphysical items, incomplete fulfillment an
     current = baseline;
   }
 
+  assert.equal(attempts, 0);
+});
+
+test('removing the extra pickup line restores a normal offer at the configured limit', async () => {
   setupNormal({ maxLineItems: 1 });
-  assert.deepEqual(await authorizeTestProvider(input()), {});
+  const second = current.cart.line_items.physical_items.pop();
+  current.consignments[0].line_item_ids.pop();
+
+  // Two units of one line remain eligible.
+  assert.ok((await authorizeTestProvider(input())).testProviderAuthorization);
+
+  current.cart.line_items.physical_items.push(second);
+  current.consignments[0].line_item_ids.push(second.id);
+  assert.deepEqual(await authorizeTestProvider(input()), {
+    testProviderIneligibility: { code: 'MAX_LINE_ITEMS_EXCEEDED', maxLineItems: 1 },
+  });
+
+  current.cart.line_items.physical_items.pop();
+  current.consignments[0].line_item_ids.pop();
+  const restored = await authorizeTestProvider(input());
+
+  assert.ok(restored.testProviderAuthorization);
+  assert.equal(restored.testProviderIneligibility, undefined);
   assert.equal(attempts, 0);
 });
 

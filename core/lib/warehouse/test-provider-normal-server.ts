@@ -18,7 +18,7 @@ import {
 import type { TestCheckout, TestProviderInput } from './test-provider-server';
 import { validateWarehouseCheckout } from './validation';
 
-function eligibleNormalCheckout(
+function normalCheckoutIneligibility(
   checkout: TestCheckout,
   policy: NormalTestProviderPolicy,
   input: TestProviderInput,
@@ -28,7 +28,7 @@ function eligibleNormalCheckout(
   const snapshot = submissionSnapshot(checkout);
   const quantity = snapshot.items.reduce((sum, item) => sum + item.quantity, 0);
 
-  return !(
+  if (
     checkout.id !== input.cartId ||
     checkout.order_id ||
     checkout.cart.channel_id !== policy.channelId ||
@@ -37,15 +37,22 @@ function eligibleNormalCheckout(
     !policy.currencies.includes(checkout.cart.currency.code) ||
     !Number.isFinite(snapshot.grandTotal) ||
     snapshot.grandTotal <= 0 ||
-    snapshot.grandTotal > policy.maxGrandTotal ||
-    snapshot.items.length > policy.maxLineItems ||
-    quantity > policy.maxQuantity ||
     snapshot.items.some((item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1) ||
     items.digital_items?.length ||
     items.custom_items?.length ||
-    items.gift_certificates?.length ||
+    items.gift_certificates?.length
+  )
+    return 'INELIGIBLE';
+
+  if (snapshot.items.length > policy.maxLineItems) return 'MAX_LINE_ITEMS_EXCEEDED';
+  if (
+    snapshot.grandTotal > policy.maxGrandTotal ||
+    quantity > policy.maxQuantity ||
     !submissionReady(warehouse, checkout)
-  );
+  )
+    return 'INELIGIBLE';
+
+  return undefined;
 }
 
 function normalWarehouse(
@@ -94,10 +101,14 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
     `checkouts/${encodeURIComponent(input.cartId)}`,
   );
 
-  if (!eligibleNormalCheckout(checkout, policy, input, warehouse)) {
+  const reason = normalCheckoutIneligibility(checkout, policy, input, warehouse);
+
+  if (reason) {
     if (input.claim) throw testProviderDenied();
 
-    return {};
+    return reason === 'MAX_LINE_ITEMS_EXCEEDED'
+      ? { testProviderIneligibility: { code: reason, maxLineItems: policy.maxLineItems } }
+      : {};
   }
 
   const snapshot = submissionSnapshot(checkout);
