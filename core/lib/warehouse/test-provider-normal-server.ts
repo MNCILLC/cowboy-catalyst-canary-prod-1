@@ -44,12 +44,11 @@ function normalCheckoutIneligibility(
   )
     return 'INELIGIBLE';
 
-  if (snapshot.items.length > policy.maxLineItems) return 'MAX_LINE_ITEMS_EXCEEDED';
-  if (
-    snapshot.grandTotal > policy.maxGrandTotal ||
-    quantity > policy.maxQuantity ||
-    !submissionReady(warehouse, checkout)
-  )
+  if (snapshot.items.length > policy.maxLineItems)
+    return { code: 'MAX_LINE_ITEMS_EXCEEDED', maxLineItems: policy.maxLineItems } as const;
+  if (quantity > policy.maxQuantity)
+    return { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: policy.maxQuantity } as const;
+  if (snapshot.grandTotal > policy.maxGrandTotal || !submissionReady(warehouse, checkout))
     return 'INELIGIBLE';
 
   return undefined;
@@ -106,9 +105,7 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   if (reason) {
     if (input.claim) throw testProviderDenied();
 
-    return reason === 'MAX_LINE_ITEMS_EXCEEDED'
-      ? { testProviderIneligibility: { code: reason, maxLineItems: policy.maxLineItems } }
-      : {};
+    return reason === 'INELIGIBLE' ? {} : { testProviderIneligibility: reason };
   }
 
   const snapshot = submissionSnapshot(checkout);

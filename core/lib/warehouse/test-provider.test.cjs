@@ -717,9 +717,6 @@ test('normal limits, invalid items, nonphysical items, incomplete fulfillment an
       c.grand_total = 0;
     },
     (c) => {
-      c.cart.line_items.physical_items[0].quantity = 51;
-    },
-    (c) => {
       c.cart.line_items.physical_items[0].quantity = 0.5;
     },
     (c) => {
@@ -747,7 +744,9 @@ test('normal limits, invalid items, nonphysical items, incomplete fulfillment an
 
 test('removing the extra pickup line restores a normal offer at the configured limit', async () => {
   setupNormal({ maxLineItems: 1 });
+
   const second = current.cart.line_items.physical_items.pop();
+
   current.consignments[0].line_item_ids.pop();
 
   // Two units of one line remain eligible.
@@ -761,10 +760,57 @@ test('removing the extra pickup line restores a normal offer at the configured l
 
   current.cart.line_items.physical_items.pop();
   current.consignments[0].line_item_ids.pop();
+
   const restored = await authorizeTestProvider(input());
 
   assert.ok(restored.testProviderAuthorization);
   assert.equal(restored.testProviderIneligibility, undefined);
+  assert.equal(attempts, 0);
+});
+
+test('Powell pickup grants five units, explains six, and grants five again without a claim', async (t) => {
+  setupNormal({ maxLineItems: 1, maxQuantity: 5, maxGrandTotal: 948.38 });
+
+  const [item] = current.cart.line_items.physical_items;
+
+  current.cart.line_items.physical_items = [item];
+  current.consignments[0].line_item_ids = [item.id];
+
+  const offer = (quantity) => {
+    item.quantity = quantity;
+    current.grand_total = (12236 * quantity) / 100;
+
+    return authorizeTestProvider(input());
+  };
+
+  const initial = await offer(5);
+
+  assert.ok(initial.testProviderAuthorization);
+  assert.deepEqual(await offer(6), {
+    testProviderIneligibility: { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: 5 },
+  });
+
+  const later = Date.now() + 1000;
+
+  t.mock.method(Date, 'now', () => later);
+
+  const restored = await offer(5);
+
+  assert.ok(restored.testProviderAuthorization);
+  assert.notEqual(
+    restored.testProviderAuthorization.token,
+    initial.testProviderAuthorization.token,
+  );
+  assert.equal(restored.testProviderIneligibility, undefined);
+  assert.equal(attempts, 0);
+});
+
+test('quantity limit counts units across different pickup lines', async () => {
+  setupNormal({ maxQuantity: 5 });
+  current.cart.line_items.physical_items[0].quantity = 3;
+  assert.deepEqual(await authorizeTestProvider(input()), {
+    testProviderIneligibility: { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: 5 },
+  });
   assert.equal(attempts, 0);
 });
 
