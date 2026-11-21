@@ -1,4 +1,5 @@
-import { DM_Serif_Text, Inter, Roboto, Roboto_Condensed, Roboto_Mono } from 'next/font/google';
+import { DM_Serif_Text, Inter, Roboto, Roboto_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 
 export const inter = Inter({
   display: 'swap',
@@ -26,10 +27,10 @@ export const roboto = Roboto({
   variable: '--font-family-roboto',
 });
 
-export const robotoCondensed = Roboto_Condensed({
+export const robotoCondensed = localFont({
+  src: './fonts/roboto-condensed/roboto-condensed.woff2',
   display: 'swap',
-  subsets: ['latin'],
-  weight: ['500', '600'],
+  weight: '500 600',
   variable: '--font-family-roboto-condensed',
 });
 
