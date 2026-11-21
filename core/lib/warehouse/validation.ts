@@ -8,7 +8,8 @@ import {
   WarehouseRecord,
   WarehouseValidationError,
 } from './authorization';
-import { getWarehouseConfiguration, getWarehouses, warehouseCheckoutOriginAllowed } from './config';
+import { getWarehouseConfiguration, warehouseCheckoutOriginAllowed } from './config';
+import { getEnabledWarehouses } from './locations';
 import { readWarehouseRecord } from './persistence';
 import { WarehouseConsignment, warehouseFulfillmentCompatible } from './policy';
 import { checkWarehouseStock } from './server';
@@ -135,7 +136,7 @@ export async function validateWarehouseCheckout(
 
   assertCurrentRecord(record, claims);
 
-  const warehouse = getWarehouses().find((w) => w.id === record?.warehouseId);
+  const warehouse = (await getEnabledWarehouses()).find((w) => w.id === record?.warehouseId);
 
   if (!warehouse)
     throw new WarehouseValidationError(

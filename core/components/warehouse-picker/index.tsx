@@ -1,7 +1,8 @@
 import { type PropsWithChildren } from 'react';
 
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
-import { getWarehouseConfiguration, getWarehouses } from '~/lib/warehouse/config';
+import { getWarehouseConfiguration, warehousePreviewEnabled } from '~/lib/warehouse/config';
+import { getEnabledWarehouses } from '~/lib/warehouse/locations';
 import { getWarehouseContext } from '~/lib/warehouse/server';
 
 import { startLocalTestCart } from './actions';
@@ -9,9 +10,26 @@ import { AvailabilityScope } from './availability-scope';
 import { Picker } from './picker';
 
 export async function WarehousePicker({ children }: PropsWithChildren) {
-  const warehouses = getWarehouses();
+  if (!warehousePreviewEnabled()) return children;
 
-  if (!warehouses.length) return children;
+  const warehouses = await getEnabledWarehouses().catch((error: unknown) => {
+    if (
+      error instanceof WarehouseValidationError &&
+      error.code === 'WAREHOUSE_LOCATIONS_UNAVAILABLE'
+    )
+      return [];
+    throw error;
+  });
+
+  if (!warehouses.length)
+    return (
+      <AvailabilityScope value="unavailable">
+        <p className="border-b bg-gray-50 px-4 py-3 text-sm" role="status">
+          No shopping warehouses are available right now. Please check again later.
+        </p>
+        {children}
+      </AvailabilityScope>
+    );
 
   try {
     const { warehouse, ...context } = await getWarehouseContext();

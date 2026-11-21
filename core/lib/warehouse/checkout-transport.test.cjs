@@ -3,12 +3,28 @@ const assert = require('node:assert/strict');
 const { afterEach, beforeEach, test } = require('node:test');
 const { renderToStaticMarkup } = require('react-dom/server');
 
-const { hostedEnv, loadTestModule } = require('./mode-test-support.cjs');
+const { hostedEnv, loadTestModule, warehouse } = require('./mode-test-support.cjs');
 
 const originalEnv = process.env;
+let locations;
+let locationReads;
 
-beforeEach(() => {
-  process.env = { ...hostedEnv };
+beforeEach((t) => {
+  process.env = { ...hostedEnv, BIGCOMMERCE_ACCESS_TOKEN: 'synthetic-token' };
+  locations = [{ id: warehouse.locationId, enabled: true }];
+  locationReads = 0;
+  t.mock.method(global, 'fetch', (url, options) => {
+    const endpoint = new URL(url);
+
+    assert.equal(endpoint.origin, 'https://api.bigcommerce.com');
+    assert.equal(endpoint.pathname, '/stores/synthetic-a/v3/inventory/locations');
+    assert.equal(options.method, 'GET');
+    assert.equal(options.cache, 'no-store');
+    locationReads += 1;
+    if (locations === null) return Response.json({}, { status: 503 });
+
+    return Response.json({ data: locations });
+  });
 });
 afterEach(() => {
   process.env = originalEnv;
@@ -19,11 +35,26 @@ const config = loadTestModule('config.ts', {
   './configuration': loadTestModule('configuration.ts', { zod: require('zod') }),
 });
 const react = { react: require('react'), 'react/jsx-runtime': require('react/jsx-runtime') };
+const authorization = loadTestModule('authorization.ts', {
+  'node:crypto': require('node:crypto'),
+  zod: require('zod'),
+  './policy': loadTestModule('policy.ts', {}),
+});
+const locationLookup = loadTestModule('locations.ts', {
+  'server-only': {},
+  'next/navigation': { unstable_rethrow() {} },
+  react: react.react,
+  zod: require('zod'),
+  './api': loadTestModule('api.ts', { 'server-only': {}, './authorization': authorization }),
+  './authorization': authorization,
+  './config': config,
+});
 const pickerPath = '../../components/warehouse-picker/';
 const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   ...react,
   '~/lib/warehouse/config': config,
-  '~/lib/warehouse/authorization': {},
+  '~/lib/warehouse/authorization': authorization,
+  '~/lib/warehouse/locations': locationLookup,
   '~/lib/warehouse/server': {
     getWarehouseContext: async () => ({ cartId: null, revision: null }),
   },
@@ -121,6 +152,56 @@ const run = (search = '') =>
     params: Promise.resolve({ locale: 'en' }),
   });
 
+test('one running storefront reflects Powell being disabled and re-enabled on the next render', async () => {
+  process.env.WAREHOUSE_CONFIG = JSON.stringify([
+    {
+      ...warehouse,
+      id: 'forney',
+      locationId: 1,
+      pickupMethodId: 1,
+      label: 'Ship/Pickup in Forney, TX',
+    },
+    { ...warehouse, id: 'powell', locationId: 2, pickupMethodId: 2, label: 'Pickup in Powell, WY' },
+  ]);
+
+  const powell = { id: 2, enabled: true };
+
+  // An enabled but unconfigured location may never add an option or change the configured order.
+  locations = [{ id: 3, enabled: true }, powell, { id: 1, enabled: true }];
+
+  const options = async () => {
+    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+
+    return Array.from(html.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g), (match) => [
+      match[1],
+      match[2],
+    ]);
+  };
+  const forneyOption = ['forney', 'Ship/Pickup in Forney, TX'];
+  const powellOption = ['powell', 'Pickup in Powell, WY'];
+
+  assert.deepEqual(await options(), [forneyOption, powellOption]);
+  powell.enabled = false;
+  assert.deepEqual(await options(), [forneyOption]);
+  powell.enabled = true;
+  assert.deepEqual(await options(), [forneyOption, powellOption]);
+  locations = [{ id: 1, enabled: true }];
+  assert.deepEqual(await options(), [forneyOption]);
+  assert.equal(locationReads, 4);
+});
+
+[[], [{ id: warehouse.locationId, enabled: false }], null].forEach((response) => {
+  test(`unavailable locations (${JSON.stringify(response)}) show a message while the storefront still renders`, async () => {
+    locations = response;
+
+    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+
+    assert.doesNotMatch(html, /warehouse-choice/);
+    assert.match(html, /No shopping warehouses are available/);
+    assert.match(html, /Storefront/);
+  });
+});
+
 ['multi-location', 'staging'].forEach((mode) => {
   test(`${mode} renders the picker and redirects to the validated checkout URL`, async () => {
     process.env.WAREHOUSE_MODE = mode;
@@ -191,6 +272,7 @@ const run = (search = '') =>
     });
     assert.equal(prepared, before);
     assert.equal(signed, signatures);
+    assert.equal(locationReads, 0);
   });
 });
 

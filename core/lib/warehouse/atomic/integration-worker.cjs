@@ -76,6 +76,11 @@ async function api(endpoint, method = 'GET', body = undefined) {
 
   if (method === 'GET') {
     stats.apiReads += 1;
+    if (endpoint === 'inventory/locations?location_id:in=101,102&limit=2')
+      return [
+        { id: 101, enabled: true },
+        { id: 102, enabled: state.powellEnabled !== false },
+      ];
     if (endpoint === `carts/${state.cart.id}`) return structuredClone(state.cart);
     if (endpoint === `checkouts/${state.cart.id}`) return structuredClone(state.checkout);
     if (endpoint === 'catalog/products/9001?include=variants')
@@ -138,6 +143,7 @@ const files = [
   'lib/warehouse/pickup-handoff.ts',
   'lib/warehouse/config.ts',
   'lib/warehouse/configuration.ts',
+  'lib/warehouse/locations.ts',
   'lib/warehouse/policy.ts',
   'lib/warehouse/authorization.ts',
   'lib/warehouse/persistence.ts',
@@ -166,6 +172,8 @@ function load(relative) {
 
   compiled.require = (id) => {
     if (id === 'server-only') return {};
+    if (id === 'react') return require('react');
+    if (id === 'next/navigation') return { unstable_rethrow() {} };
     if (id === 'node:crypto') return require('node:crypto');
     if (id === 'zod') return require('zod');
     if (id === 'next/server') return require('next/server');

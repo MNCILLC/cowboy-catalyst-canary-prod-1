@@ -35,6 +35,7 @@ function load(name) {
         warehouseCheckoutOriginAllowed: (origin) => origin === 'https://checkout.example',
         getWarehouses: () => [],
       };
+    if (id === './locations') return { getEnabledWarehouses: async () => [] };
     if (id === './api')
       return {
         warehouseApi: () => {

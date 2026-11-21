@@ -9,7 +9,8 @@ import { getCartId } from '~/lib/cart';
 
 import { warehouseApi as api } from './api';
 import { assertCurrentRecord, WarehouseValidationError } from './authorization';
-import { getWarehouses, warehousePreviewEnabled } from './config';
+import { warehousePreviewEnabled } from './config';
+import { getEnabledWarehouses } from './locations';
 import {
   findWarehouseOperation,
   readWarehouseRecord,
@@ -89,7 +90,7 @@ interface Inventory {
 async function cookieWarehouse() {
   const selected = (await cookies()).get(COOKIE)?.value;
 
-  return getWarehouses().find((w) => w.id === selected);
+  return (await getEnabledWarehouses()).find((w) => w.id === selected);
 }
 
 export async function getWarehouseContext() {
@@ -100,7 +101,7 @@ export async function getWarehouseContext() {
   if (cart) requireExistingRecord(record);
 
   const warehouse = record
-    ? getWarehouses().find((w) => w.id === record.warehouseId)
+    ? (await getEnabledWarehouses()).find((w) => w.id === record.warehouseId)
     : await cookieWarehouse();
 
   return { warehouse, cartId: cart?.id ?? null, revision: record?.revision ?? null };
@@ -273,7 +274,7 @@ async function warehouseForCart(cart: Cart) {
   )
     throw new WarehouseError('Invalid cart warehouse.');
 
-  const warehouse = getWarehouses().find((w) => w.id === record.warehouseId);
+  const warehouse = (await getEnabledWarehouses()).find((w) => w.id === record.warehouseId);
 
   if (!warehouse) throw new WarehouseError('Your selected warehouse is no longer available.');
 
@@ -283,7 +284,7 @@ async function warehouseForCart(cart: Cart) {
 // Called only by the successful new-cart creation callback; never adopt an existing cart here.
 export async function persistNewCartWarehouse(cartId: string, warehouseId: string) {
   const cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
-  const warehouse = getWarehouses().find((w) => w.id === warehouseId);
+  const warehouse = (await getEnabledWarehouses()).find((w) => w.id === warehouseId);
 
   if (
     !warehouse ||
@@ -308,9 +309,11 @@ export async function selectWarehouse(
       'INVALID_SELECTION_REQUEST',
     );
 
-  const warehouse = getWarehouses().find((w) => w.id === id);
+  const warehouses = await getEnabledWarehouses();
+  const warehouse = warehouses.find((w) => w.id === id);
 
-  if (!warehouse) throw new WarehouseError('Choose a valid warehouse.');
+  if (!warehouse)
+    throw new WarehouseError('This warehouse is unavailable. Choose another warehouse.');
 
   const cart = await sessionCart(await getCartId());
 
@@ -360,7 +363,7 @@ export async function selectWarehouse(
     warehousePersistenceIsAtomic();
   }
 
-  if (!getWarehouses().some((w) => w.id === selectedId))
+  if (!warehouses.some((w) => w.id === selectedId))
     throw new WarehouseError('Your selected warehouse is no longer available.');
 
   (await cookies()).set(COOKIE, selectedId, {

@@ -63,6 +63,7 @@ function load(name) {
         },
       };
     if (id === './config') return { getWarehouses: () => [warehouse], getWarehouseConfiguration: () => ({ mode: 'preview' }), warehouseCheckoutOriginAllowed: () => true };
+    if (id === './locations') return { getEnabledWarehouses: async () => [warehouse] };
     if (id === './persistence') return { readWarehouseRecord: async () => clone(record) };
     if (id === './server')
       return {

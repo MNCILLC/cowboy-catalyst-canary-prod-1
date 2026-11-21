@@ -6,6 +6,17 @@ purpose:
     then node tests/pickup-checkout-simulation.mts from the repository root.
     Next session and the centralized GraphQL client transport boundary are adapted; checkout logic is not duplicated.
 assumptions:
+  - id: warehouse-picker-location-status
+    status: supported
+    claim: Catalyst can filter its configured warehouses by the Inventory Locations API's boolean enabled field.
+    reason: The read-only Sandbox Cowboy response for location IDs 1 and 2 returned Forney enabled and Powell disabled.
+    verification: >-
+      A local Chrome session rendered the Catalyst picker against this simulation. With the same configuration
+      and server process, Powell appeared, disappeared, and appeared again across refreshes as the simulated
+      flag changed. Forney stayed visible. A previously selected Powell returned to the placeholder while
+      disabled. The simulation logged the filtered GET requests. The hosted store was read only.
+    source: https://docs.bigcommerce.com/developer/api-reference/rest/admin/management/inventory/locations/get-locations
+    updated_at: "2026-11-21"
   - id: address-contract
     status: supported
     claim: The gateway operations and version inputs are accepted by the sandbox Storefront GraphQL API.
@@ -122,6 +133,10 @@ assumptions:
     source: core/lib/pickup-checkout/server.ts; tests/pickup-checkout-simulation.mts; BigCommerce customer-address API read-only inspection
     updated_at: "2026-11-15"
 fingerprints:
+  - id: warehouse-picker-locations
+    date: "2026-11-21"
+    commit: "a946708e (working tree with enabled-location filter)"
+    cli: Postman 1.82.0
   - id: sandbox-pickup-1
     date: "2026-11-13"
     commit: "1571a58a7862b4c8494603754d997361f1aea1c7 (dirty tree: Pickup implementation)"

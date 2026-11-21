@@ -1,4 +1,4 @@
-// Local synthetic GraphQL state. No live store credentials or customer data.
+// Local synthetic BigCommerce state. No live store credentials or customer data.
 const http = require("node:http");
 let state;
 const blankAddress = {
@@ -40,6 +40,10 @@ function reset(config = {}) {
       { entityId: "item-2", quantity: 1 },
     ],
     customerId: 7,
+    locations: [
+      { id: 1, enabled: true },
+      { id: 2, enabled: true },
+    ],
     events: [],
     config,
     ...config.state,
@@ -61,6 +65,12 @@ http
     if (req.url === "/__patch") {
       Object.assign(state, body);
       return send(200, {});
+    }
+    const url = new URL(req.url, "http://localhost");
+    if (url.pathname === "/stores/synthetic-a/v3/inventory/locations" && req.method === "GET") {
+      if (req.headers["x-auth-token"] !== "synthetic-token") return send(401, {});
+      const ids = (url.searchParams.get("location_id:in") || "").split(",").map(Number);
+      return send(200, { data: state.locations.filter((location) => ids.includes(location.id)) });
     }
     if (req.url !== "/graphql" || req.method !== "POST")
       return send(501, { error: "Unmodeled endpoint" });

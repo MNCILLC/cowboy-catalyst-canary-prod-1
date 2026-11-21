@@ -300,6 +300,32 @@ test('actual picker retry helper retains the original payload across changed pro
   assert.notEqual(result.next.expected.operationId, result.attempt.expected.operationId);
 });
 
+test('a disabled Powell selection is rejected and its cart can choose Forney', async () => {
+  const { cartId, record } = await setup();
+
+  assert.deepEqual(await call(a, 'select', selection(cartId, record.revision)), {});
+
+  const saved = await call(b, 'context');
+  const handoff = await call(b, 'handoff');
+
+  await call(b, 'patch', { powellEnabled: false });
+
+  const disabled = await call(b, 'context');
+
+  assert.equal(disabled.warehouse, undefined);
+  assert.equal(disabled.revision, saved.revision);
+  assert.equal(
+    (await call(b, 'validate', { access: handoff.access })).body.code,
+    'WAREHOUSE_UNAVAILABLE',
+  );
+  assert.match((await call(b, 'select', selection(cartId, saved.revision))).error, /unavailable/);
+  await call(b, 'patch', { powellEnabled: true });
+  assert.deepEqual(await call(b, 'context'), saved);
+  await call(b, 'patch', { powellEnabled: false });
+  assert.deepEqual(await call(b, 'select', selection(cartId, saved.revision, 'forney')), {});
+  assert.equal((await call(b, 'context')).warehouse.id, 'forney');
+});
+
 test('Powell pickup and Forney pickup/shipping preserve the standalone validation contract', async () => {
   const { cartId, record } = await setup();
 
