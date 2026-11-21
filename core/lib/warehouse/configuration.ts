@@ -24,15 +24,13 @@ const httpsOrigin = z.string().refine((value) => {
 // Pure parsing: no provider connections, environment reads, or secret values in errors.
 export function readWarehouseConfiguration(env: Record<string, string | undefined>) {
   try {
-    const explicit = env.WAREHOUSE_MODE;
-    let mode: 'off' | 'preview' | 'staging' | 'development';
+    const configuredMode = env.WAREHOUSE_MODE ?? 'off';
+    // Both hosted names use the same build directory and checkout validation policy.
+    const mode = z
+      .enum(['off', 'staging', 'development', 'preview'])
+      .parse(configuredMode === 'multi-location' ? 'staging' : configuredMode);
 
-    if (explicit !== undefined) mode = z.enum(['off', 'staging', 'development']).parse(explicit);
-    else if (env.NODE_ENV === 'development' && env.WAREHOUSE_PREVIEW_ENABLED === 'true')
-      mode = 'preview';
-    else mode = 'off';
-
-    if (mode === 'development' && env.NODE_ENV !== 'development')
+    if ((mode === 'development' || mode === 'preview') && env.NODE_ENV !== 'development')
       throw new Error('Local checkout requires the development server.');
 
     if (mode === 'off') {

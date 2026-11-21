@@ -1,14 +1,41 @@
 const { NextRequest, NextResponse } = require('next/server');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const Module = require('node:module');
-const path = require('node:path');
-const { test } = require('node:test');
-const ts = require('typescript');
+const { afterEach, beforeEach, test } = require('node:test');
+const { renderToStaticMarkup } = require('react-dom/server');
 
-const file = path.resolve(__dirname, '../../app/[locale]/(default)/checkout/route.ts');
-const compiled = new Module(file, module);
-let mode = 'staging';
+const { hostedEnv, loadTestModule } = require('./mode-test-support.cjs');
+
+const originalEnv = process.env;
+
+beforeEach(() => {
+  process.env = { ...hostedEnv };
+});
+afterEach(() => {
+  process.env = originalEnv;
+});
+
+const config = loadTestModule('config.ts', {
+  'server-only': {},
+  './configuration': loadTestModule('configuration.ts', { zod: require('zod') }),
+});
+const react = { react: require('react'), 'react/jsx-runtime': require('react/jsx-runtime') };
+const pickerPath = '../../components/warehouse-picker/';
+const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
+  ...react,
+  '~/lib/warehouse/config': config,
+  '~/lib/warehouse/authorization': {},
+  '~/lib/warehouse/server': {
+    getWarehouseContext: async () => ({ cartId: null, revision: null }),
+  },
+  './actions': {},
+  './availability-scope': loadTestModule(`${pickerPath}availability-scope.tsx`, react),
+  './picker': loadTestModule(`${pickerPath}picker.tsx`, {
+    ...react,
+    './actions': {},
+    './selection-attempt': {},
+  }),
+});
+
 let prepared = 0;
 let signed = 0;
 let failStock = false;
@@ -68,10 +95,7 @@ const dependencies = {
   '~/lib/pro-use/policy': { ProUseRequiredError: PolicyError },
   '~/lib/pro-use/server': { assertProUseCart: async () => {} },
   '~/lib/server-toast': { serverToast: { error: async () => {} } },
-  '~/lib/warehouse/config': {
-    warehousePreviewEnabled: () => mode !== 'off',
-    warehouseCheckoutOriginAllowed: (origin) => origin === 'https://checkout.invalid',
-  },
+  '~/lib/warehouse/config': config,
   '~/lib/warehouse/policy': { WarehouseError: PolicyError },
   '~/lib/warehouse/server': {
     prepareWarehousePreview: async () => {
@@ -90,42 +114,41 @@ const dependencies = {
   },
 };
 
-compiled.require = (id) => {
-  if (id in dependencies) return dependencies[id];
-  throw new Error(`Unexpected dependency ${id}`);
-};
-
-// eslint-disable-next-line no-underscore-dangle -- Compile the actual route against explicit isolated adapters.
-compiled._compile(
-  ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText,
-  file,
-);
+const { GET } = loadTestModule('../../app/[locale]/(default)/checkout/route.ts', dependencies);
 
 const run = (search = '') =>
-  compiled.exports.GET(new NextRequest(`https://store.invalid/checkout/${search}`), {
+  GET(new NextRequest(`https://store.invalid/checkout/${search}`), {
     params: Promise.resolve({ locale: 'en' }),
   });
 
-test('ordinary warehouse navigation redirects to the exact validated checkout URL', async () => {
-  mode = 'staging';
+['multi-location', 'staging'].forEach((mode) => {
+  test(`${mode} renders the picker and redirects to the validated checkout URL`, async () => {
+    process.env.WAREHOUSE_MODE = mode;
 
-  const before = prepared;
-  const signatures = signed;
-  const response = await run();
+    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
 
-  assert.equal(response.status, 303);
-  assert.equal(response.headers.get('location'), destination);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
-  assert.equal(await response.text(), '');
-  assert.equal(prepared, before + 1);
-  assert.equal(signed, signatures);
+    assert.match(html, /<select[^>]+id="warehouse-choice"/);
+    assert.match(html, /<option value="north">North<\/option>/);
+
+    const before = prepared;
+    const signatures = signed;
+    const response = await run();
+
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), destination);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(await response.text(), '');
+    assert.equal(prepared, before + 1);
+    assert.equal(signed, signatures);
+  });
 });
 
 ['staging', 'preview', 'development'].forEach((warehouseMode) => {
   test(`explicit ${warehouseMode} rehearsals retain the protected v2 JSON handoff`, async () => {
-    mode = warehouseMode;
+    process.env.WAREHOUSE_MODE = warehouseMode;
+    if (warehouseMode !== 'staging') process.env.NODE_ENV = 'development';
+    if (warehouseMode === 'development')
+      process.env.WAREHOUSE_VALIDATION_BASE_URL = 'http://localhost:3000';
 
     const before = prepared;
     const signatures = signed;
@@ -147,19 +170,32 @@ test('ordinary warehouse navigation redirects to the exact validated checkout UR
   });
 });
 
-test('warehouse off keeps the standard checkout path even with a rehearsal request', async () => {
-  mode = 'off';
+['off', undefined].forEach((mode) => {
+  test(`${mode ?? 'unset'} omits the picker and uses the standard BigCommerce checkout handoff`, async () => {
+    if (mode === undefined) delete process.env.WAREHOUSE_MODE;
+    else process.env.WAREHOUSE_MODE = mode;
+    process.env.NODE_ENV = 'development';
+    process.env.WAREHOUSE_PREVIEW_ENABLED = 'true';
+    assert.equal(
+      renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' })),
+      'Storefront',
+    );
 
-  const before = prepared;
+    const before = prepared;
+    const signatures = signed;
+    const responses = await Promise.all([run(), run('?handoff=json')]);
 
-  assert.equal((await run('?handoff=json')).status, 302);
-  assert.equal(prepared, before);
+    responses.forEach((response) => {
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), destination);
+    });
+    assert.equal(prepared, before);
+    assert.equal(signed, signatures);
+  });
 });
 
 ['', '?handoff=json'].forEach((search) => {
   test(`warehouse and origin failures block ${search || 'ordinary navigation'}`, async () => {
-    mode = 'staging';
-
     const expected = destination;
 
     try {

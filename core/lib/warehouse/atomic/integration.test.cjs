@@ -444,8 +444,8 @@ test('provider/config errors fail closed; no Redis activation outside local prev
 
   for (const env of [
     { WAREHOUSE_PERSISTENCE_PROVIDER: 'typo' },
-    { WAREHOUSE_PERSISTENCE_PROVIDER: 'redis', NODE_ENV: 'production' },
-    { NODE_ENV: 'development', WAREHOUSE_REDIS_TOKEN: '' },
+    { WAREHOUSE_PERSISTENCE_PROVIDER: 'redis', NODE_ENV: 'production', WAREHOUSE_MODE: null },
+    { NODE_ENV: 'development', WAREHOUSE_MODE: 'preview', WAREHOUSE_REDIS_TOKEN: '' },
   ]) {
     await call(a, 'env', env);
     await expectError(a, 'context', {}, 'WAREHOUSE_STORAGE_UNAVAILABLE', 503);
@@ -538,7 +538,7 @@ test('isolation audit: two distinct processes, zero external requests and no une
   assert.equal(metrics.pickerRaces, 12);
 });
 
-test('production staging handoff, validation and stale selections work across isolated processes', async () => {
+test('multi-location and its staging alias share handoff, validation and stale selections across processes', async () => {
   const staging = {
     NODE_ENV: 'production',
     WAREHOUSE_MODE: 'staging',
@@ -547,7 +547,10 @@ test('production staging handoff, validation and stale selections work across is
     WAREHOUSE_CHECKOUT_ORIGINS: '["https://checkout.invalid"]',
   };
 
-  await Promise.all([call(a, 'env', staging), call(b, 'env', staging)]);
+  await Promise.all([
+    call(a, 'env', { ...staging, WAREHOUSE_MODE: 'multi-location' }),
+    call(b, 'env', staging),
+  ]);
 
   try {
     const { cartId, record } = await setup();
@@ -588,7 +591,7 @@ test('production staging handoff, validation and stale selections work across is
   } finally {
     const restore = {
       NODE_ENV: 'development',
-      WAREHOUSE_MODE: null,
+      WAREHOUSE_MODE: 'preview',
       WAREHOUSE_VALIDATION_BASE_URL: null,
       WAREHOUSE_CHECKOUT_ORIGINS: null,
     };

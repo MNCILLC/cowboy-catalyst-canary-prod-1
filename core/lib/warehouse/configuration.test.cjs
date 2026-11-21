@@ -1,68 +1,27 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const Module = require('node:module');
-const path = require('node:path');
 const { test } = require('node:test');
-const ts = require('typescript');
 
-const file = path.join(__dirname, 'configuration.ts');
-const compiled = new Module(file, module);
+const { hostedEnv: stage, loadTestModule, warehouse } = require('./mode-test-support.cjs');
 
-compiled.filename = file;
-compiled.paths = module.paths;
+const { readWarehouseConfiguration } = loadTestModule('configuration.ts', { zod: require('zod') });
 
-compiled.require = (id) => {
-  if (id === 'zod') return require('zod');
-  throw Error('Unexpected dependency');
-};
+test('missing and explicit off ignore the legacy flag and do not require warehouse configuration', () => {
+  const off = { mode: 'off', warehouses: [], checkoutOrigins: [] };
 
-// eslint-disable-next-line no-underscore-dangle -- Compile only the pure configuration module in memory.
-compiled._compile(
-  ts.transpileModule(fs.readFileSync(file, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText,
-  file,
-);
+  assert.deepEqual(readWarehouseConfiguration({}), off);
+  ['production', 'development'].forEach((NODE_ENV) => {
+    const env = { NODE_ENV, WAREHOUSE_PREVIEW_ENABLED: 'true', WAREHOUSE_CONFIG: 'invalid' };
 
-const { readWarehouseConfiguration } = compiled.exports;
-const warehouse = {
-  id: 'north',
-  label: 'North',
-  pickupLabel: 'Collect North',
-  locationId: 71,
-  pickupMethodId: 92,
-  allowShipping: false,
-};
-const stage = {
-  NODE_ENV: 'production',
-  WAREHOUSE_MODE: 'staging',
-  WAREHOUSE_CONFIG: JSON.stringify([warehouse]),
-  WAREHOUSE_PERSISTENCE_PROVIDER: 'redis',
-  WAREHOUSE_REDIS_URL: 'https://redis.invalid',
-  WAREHOUSE_REDIS_TOKEN: 'synthetic-token',
-  WAREHOUSE_REDIS_NAMESPACE: 'synthetic-staging',
-  WAREHOUSE_VALIDATION_SECRET: 'synthetic-secret-at-least-32-characters',
-  WAREHOUSE_VALIDATION_BASE_URL: 'https://store-a.example',
-  WAREHOUSE_CHECKOUT_ORIGINS: '["https://checkout-a.example"]',
-  BIGCOMMERCE_STORE_HASH: 'synthetic-a',
-  BIGCOMMERCE_CHANNEL_ID: '37',
-};
+    assert.deepEqual(readWarehouseConfiguration(env), off);
+    assert.deepEqual(readWarehouseConfiguration({ ...env, WAREHOUSE_MODE: 'off' }), off);
+  });
+});
 
-test('off is default, explicit off overrides preview, legacy preview stays development-only', () => {
-  assert.equal(readWarehouseConfiguration({}).mode, 'off');
-  assert.equal(
-    readWarehouseConfiguration({ NODE_ENV: 'production', WAREHOUSE_PREVIEW_ENABLED: 'true' }).mode,
-    'off',
-  );
-  assert.equal(
-    readWarehouseConfiguration({ ...stage, WAREHOUSE_MODE: 'off', WAREHOUSE_CONFIG: 'invalid' })
-      .mode,
-    'off',
-  );
+test('lightweight preview requires explicit opt-in and the development server', () => {
   assert.equal(
     readWarehouseConfiguration({
       NODE_ENV: 'development',
-      WAREHOUSE_PREVIEW_ENABLED: 'true',
+      WAREHOUSE_MODE: 'preview',
       WAREHOUSE_CONFIG: stage.WAREHOUSE_CONFIG,
     }).mode,
     'preview',
@@ -82,6 +41,7 @@ test('production staging works for independent store configurations with no exte
   });
 
   assert.equal(first.mode, 'staging');
+  assert.deepEqual(readWarehouseConfiguration({ ...stage, WAREHOUSE_MODE: 'staging' }), first);
   assert.equal(second.mode, 'staging');
   assert.equal(first.warehouses[0].pickupMethodId, 92);
   assert.equal(second.warehouses[0].pickupMethodId, 900);
@@ -90,6 +50,7 @@ test('production staging works for independent store configurations with no exte
 
 const invalid = [
   { WAREHOUSE_MODE: 'production' },
+  { WAREHOUSE_MODE: 'preview' },
   { WAREHOUSE_MODE: '' },
   { WAREHOUSE_CONFIG: '[]' },
   { WAREHOUSE_CONFIG: '{' },

@@ -8,7 +8,7 @@ const { redisClient } = require('./test-support.cjs');
 
 // Synthetic environment only: the parent passes no store credentials or env files.
 process.env.NODE_ENV = 'development';
-process.env.WAREHOUSE_PREVIEW_ENABLED = 'true';
+process.env.WAREHOUSE_MODE = 'preview';
 process.env.WAREHOUSE_PERSISTENCE_PROVIDER = 'redis';
 process.env.BIGCOMMERCE_STORE_HASH = 'synthetic-store';
 process.env.WAREHOUSE_REDIS_URL = 'https://redis.invalid';
@@ -181,6 +181,11 @@ function load(relative) {
     if (id === 'next-intl/server') return { getLocale: async () => 'en' };
     if (id === '~/channels.config') return { getChannelIdFromLocale: () => 37 };
     if (id === '~/lib/cart') return { getCartId: async () => state.sessionCartId };
+    // These synthetic carts have no previous submission or enabled payment provider.
+    if (id === '~/lib/warehouse/recovery') return { readSubmissionRecovery: async () => false };
+    if (id === '~/lib/warehouse/check-test-server') return { authorizeCheckTest: async () => ({}) };
+    if (id === '~/lib/warehouse/test-provider-server')
+      return { authorizeTestProvider: async () => ({}) };
     if (id === 'next/cache')
       return {
         revalidatePath: () => {
@@ -256,6 +261,7 @@ const validation = load('lib/warehouse/validation.ts');
 const route = load('app/api/warehouse/validate/route.ts');
 const submission = load('lib/warehouse/submission.ts');
 const persistence = load('lib/warehouse/persistence.ts');
+const { getWarehouseConfiguration } = load('lib/warehouse/config.ts');
 
 async function validate(payload) {
   const req = new NextRequest('http://localhost/api/warehouse/validate', {
@@ -263,7 +269,7 @@ async function validate(payload) {
     headers: {
       origin:
         payload.origin ??
-        (process.env.WAREHOUSE_MODE === 'staging'
+        (getWarehouseConfiguration().mode === 'staging'
           ? 'https://checkout.invalid'
           : 'http://localhost:4010'),
       authorization: `Bearer ${payload.access.token}`,
@@ -354,7 +360,7 @@ async function dispatch(command, payload = {}) {
         ...result,
         access: validation.createValidationAccess(
           result.record,
-          process.env.WAREHOUSE_MODE === 'staging'
+          getWarehouseConfiguration().mode === 'staging'
             ? 'https://checkout.invalid'
             : 'http://localhost:4010',
           'http://localhost:3011',

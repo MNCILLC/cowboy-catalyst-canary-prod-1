@@ -1,9 +1,11 @@
 # Local warehouse picker milestone
 
-The default mode is off. `WAREHOUSE_MODE=staging` explicitly enables the
-non-purchasable warehouse flow in development or production builds. The legacy
-`WAREHOUSE_PREVIEW_ENABLED=true` flag still works only in development when
-`WAREHOUSE_MODE` is unset. Neither mode activates hosted custom checkout.
+Set `WAREHOUSE_MODE=multi-location` to enable the warehouse picker, location-specific
+inventory checks, and warehouse checkout handoff. `staging` is a backward-compatible
+alias. Omitting `WAREHOUSE_MODE` or setting it to `off` skips the picker and uses
+Catalyst's standard checkout handoff in every environment. The legacy
+`WAREHOUSE_PREVIEW_ENABLED` flag has no effect. BigCommerce's channel settings
+determine which hosted checkout opens.
 
 Run from `core`: `node scripts/warehouse-dev.cjs`. This loads the existing local
 environment and `.env.warehouse.example`, then starts port 3011 with a separate
@@ -328,8 +330,10 @@ writes alone are insufficient: both picker rendering and navigation must settle.
 
 ## Production-mode staging configuration
 
-`WAREHOUSE_MODE` accepts only `off` or `staging`. Invalid explicit values fail
-configuration validation. Explicit `off` wins over the legacy preview flag.
+Production builds accept `multi-location`, its alias `staging`, or `off` (the default).
+The `preview` and `development` modes require the development server. Use
+`WAREHOUSE_MODE=preview` for the lightweight local rehearsal. Invalid explicit
+values fail configuration validation.
 Staging validates configuration during Next build and Node server startup, and
 again at warehouse entry points. It uses `.next-warehouse-staging` as its build
 output; both instances must run the same artifact and share their action key,
