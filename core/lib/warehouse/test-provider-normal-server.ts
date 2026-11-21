@@ -48,8 +48,13 @@ function normalCheckoutIneligibility(
     return { code: 'MAX_LINE_ITEMS_EXCEEDED', maxLineItems: policy.maxLineItems } as const;
   if (quantity > policy.maxQuantity)
     return { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: policy.maxQuantity } as const;
-  if (snapshot.grandTotal > policy.maxGrandTotal || !submissionReady(warehouse, checkout))
-    return 'INELIGIBLE';
+  if (snapshot.grandTotal > policy.maxGrandTotal)
+    return {
+      code: 'MAX_GRAND_TOTAL_EXCEEDED',
+      maxGrandTotal: policy.maxGrandTotal,
+      currency: checkout.cart.currency.code,
+    } as const;
+  if (!submissionReady(warehouse, checkout)) return 'INELIGIBLE';
 
   return undefined;
 }

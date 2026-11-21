@@ -711,9 +711,6 @@ test('normal limits, invalid items, nonphysical items, incomplete fulfillment an
       c.cart.channel_id = 99;
     },
     (c) => {
-      c.grand_total = 1001;
-    },
-    (c) => {
       c.grand_total = 0;
     },
     (c) => {
@@ -804,6 +801,66 @@ test('Powell pickup grants five units, explains six, and grants five again witho
   assert.equal(restored.testProviderIneligibility, undefined);
   assert.equal(attempts, 0);
 });
+
+test('Forney pickup reports the total cap and currency, then grants the reduced cart again', async (t) => {
+  setupNormal({ maxLineItems: 1, maxQuantity: 5, maxGrandTotal: 948.38 });
+
+  const [item] = current.cart.line_items.physical_items;
+  Object.assign(item, { product_id: 243, sku: 'CBFT003', name: 'The Showgirl', quantity: 3 });
+  current.cart.line_items.physical_items = [item];
+  current.consignments = [
+    {
+      id: 'forney-pickup',
+      line_item_ids: [item.id],
+      selected_pickup_option: { pickup_method_id: 84 },
+    },
+  ];
+  const offer = () => authorizeTestProvider({ ...input(), warehouseId: 'forney' });
+
+  current.grand_total = 718.8;
+  const initial = await offer();
+  assert.ok(initial.testProviderAuthorization);
+
+  item.quantity = 4;
+  current.grand_total = 958.4;
+  assert.deepEqual(await offer(), {
+    testProviderIneligibility: {
+      code: 'MAX_GRAND_TOTAL_EXCEEDED',
+      maxGrandTotal: 948.38,
+      currency: 'USD',
+    },
+  });
+
+  const later = Date.now() + 1000;
+  t.mock.method(Date, 'now', () => later);
+  item.quantity = 3;
+  current.grand_total = 718.8;
+  const restored = await offer();
+  assert.ok(restored.testProviderAuthorization);
+  assert.notEqual(
+    restored.testProviderAuthorization.token,
+    initial.testProviderAuthorization.token,
+  );
+  assert.equal(restored.testProviderIneligibility, undefined);
+  assert.equal(attempts, 0);
+});
+
+for (const [currency, maxGrandTotal, aboveLimit] of [
+  ['USD', 948.38, 948.39],
+  ['CAD', 500.25, 500.26],
+]) {
+  test(`the configured monetary limit is inclusive for ${currency}`, async () => {
+    setupNormal({ maxGrandTotal, currencies: [currency] });
+    current.cart.currency.code = currency;
+    current.grand_total = maxGrandTotal;
+    assert.ok((await authorizeTestProvider(input())).testProviderAuthorization);
+    current.grand_total = aboveLimit;
+    assert.deepEqual(await authorizeTestProvider(input()), {
+      testProviderIneligibility: { code: 'MAX_GRAND_TOTAL_EXCEEDED', maxGrandTotal, currency },
+    });
+    assert.equal(attempts, 0);
+  });
+}
 
 test('quantity limit counts units across different pickup lines', async () => {
   setupNormal({ maxQuantity: 5 });
