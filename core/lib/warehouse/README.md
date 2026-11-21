@@ -14,7 +14,7 @@ to change the port. Existing normal dev servers can remain running.
 Launch `node poc/warehouse-preview.cjs` from the independent Open Checkout repo
 (after running its `npm run dev` asset builder). Set `STOREFRONT_URL` if needed.
 The launched Chrome browser is required for the isolated preview. Shop and sign
-in normally; the cart's Preview checkout button passes the session cart to the
+in normally; the cart's Checkout button passes the session cart to the
 local checkout assets. The runner explicitly requests the JSON handoff with
 `?handoff=json`. Its short-lived checkout URL must be kept private.
 
@@ -488,9 +488,11 @@ An enabled policy is strict JSON with these required fields:
   `methodId: "bigpaypay"`, `testMode: true`.
 - `storeHash`, `channelId`, `origins` (exact HTTPS checkout origins),
   `warehouseIds`, and `currencies` (uppercase three-letter codes).
-- `grantTtlSeconds` (30–900), `maxLineItems` (1–100), `maxQuantity` (positive
-  integer, summed over the whole cart), and `maxGrandTotal` (positive amount in
-  the permitted currency). These limits have no implicit permissive defaults.
+- `grantTtlSeconds` (30–900).
+
+Normal carts have no custom upper limit on line count, quantity, or grand total.
+Existing policies may still contain `maxLineItems`, `maxQuantity`, and
+`maxGrandTotal`. The backend ignores these fields when authorizing a cart.
 
 For this project, any later activation is limited to Sandbox Cowboy
 `3olkgrdpfq`, channel `1912525`, using only its Test payment provider. Configured
@@ -502,7 +504,7 @@ The backend accepts ready physical-product carts with multiple lines/quantities,
 Forney shipping or pickup, and Powell pickup according to configured warehouse
 rules. Guest customer ID `0` is supported only through the existing authenticated
 cart capability; it does not grant anonymous access to arbitrary carts. Empty,
-free, over-limit, nonphysical, incomplete-fulfillment, and already ordered carts
+free, nonphysical, incomplete-fulfillment, and already ordered carts
 receive no grant. A claim for an ineligible cart is rejected.
 
 The existing public `testProviderAuthorization`/`testProviderClaimed` contract is

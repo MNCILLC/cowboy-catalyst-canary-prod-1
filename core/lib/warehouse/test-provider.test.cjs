@@ -516,9 +516,6 @@ function setupNormal(overrides = {}) {
     warehouseIds: ['powell', 'forney'],
     currencies: ['USD'],
     grantTtlSeconds: 300,
-    maxLineItems: 10,
-    maxQuantity: 50,
-    maxGrandTotal: 1000,
     ...overrides,
   };
 
@@ -700,7 +697,7 @@ test('normal scope, method, wallet, stored instrument and forged token cannot by
   assert.equal(attempts, 0);
 });
 
-test('normal limits, invalid items, nonphysical items, incomplete fulfillment and existing orders fail closed', async () => {
+test('invalid items, nonphysical items, incomplete fulfillment and existing orders fail closed', async () => {
   setupNormal();
 
   for (const edit of [
@@ -739,135 +736,63 @@ test('normal limits, invalid items, nonphysical items, incomplete fulfillment an
   assert.equal(attempts, 0);
 });
 
-test('removing the extra pickup line restores a normal offer at the configured limit', async () => {
-  setupNormal({ maxLineItems: 1 });
+[
+  ['line count', 26, 1, 260],
+  ['total units', 1, 101, 1010],
+  ['grand total', 1, 1, 25000.01],
+].forEach(([label, lineCount, quantityPerLine, total]) => {
+  test(`normal pickup grants carts above the former ${label} cap`, async () => {
+    setupNormal();
 
-  const second = current.cart.line_items.physical_items.pop();
+    const items = Array.from({ length: lineCount }, (_, i) => ({
+      id: `item-${i}`,
+      product_id: i + 1,
+      variant_id: 0,
+      quantity: quantityPerLine,
+    }));
 
-  current.consignments[0].line_item_ids.pop();
+    current.cart.line_items.physical_items = items;
+    current.consignments[0].line_item_ids = items.map((item) => item.id);
+    current.grand_total = total;
 
-  // Two units of one line remain eligible.
-  assert.ok((await authorizeTestProvider(input())).testProviderAuthorization);
+    const { testProviderAuthorization: grant } = await authorizeTestProvider(input());
 
-  current.cart.line_items.physical_items.push(second);
-  current.consignments[0].line_item_ids.push(second.id);
-  assert.deepEqual(await authorizeTestProvider(input()), {
-    testProviderIneligibility: { code: 'MAX_LINE_ITEMS_EXCEEDED', maxLineItems: 1 },
-  });
+    assert.equal(grant.methodId, 'bigpaypay');
+    assert.equal(grant.testMode, true);
 
-  current.cart.line_items.physical_items.pop();
-  current.consignments[0].line_item_ids.pop();
+    const { binding } = JSON.parse(Buffer.from(grant.token.split('.')[0], 'base64url'));
 
-  const restored = await authorizeTestProvider(input());
-
-  assert.ok(restored.testProviderAuthorization);
-  assert.equal(restored.testProviderIneligibility, undefined);
-  assert.equal(attempts, 0);
-});
-
-test('Powell pickup grants five units, explains six, and grants five again without a claim', async (t) => {
-  setupNormal({ maxLineItems: 1, maxQuantity: 5, maxGrandTotal: 948.38 });
-
-  const [item] = current.cart.line_items.physical_items;
-
-  current.cart.line_items.physical_items = [item];
-  current.consignments[0].line_item_ids = [item.id];
-
-  const offer = (quantity) => {
-    item.quantity = quantity;
-    current.grand_total = (12236 * quantity) / 100;
-
-    return authorizeTestProvider(input());
-  };
-
-  const initial = await offer(5);
-
-  assert.ok(initial.testProviderAuthorization);
-  assert.deepEqual(await offer(6), {
-    testProviderIneligibility: { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: 5 },
-  });
-
-  const later = Date.now() + 1000;
-
-  t.mock.method(Date, 'now', () => later);
-
-  const restored = await offer(5);
-
-  assert.ok(restored.testProviderAuthorization);
-  assert.notEqual(
-    restored.testProviderAuthorization.token,
-    initial.testProviderAuthorization.token,
-  );
-  assert.equal(restored.testProviderIneligibility, undefined);
-  assert.equal(attempts, 0);
-});
-
-test('Forney pickup reports the total cap and currency, then grants the reduced cart again', async (t) => {
-  setupNormal({ maxLineItems: 1, maxQuantity: 5, maxGrandTotal: 948.38 });
-
-  const [item] = current.cart.line_items.physical_items;
-  Object.assign(item, { product_id: 243, sku: 'CBFT003', name: 'The Showgirl', quantity: 3 });
-  current.cart.line_items.physical_items = [item];
-  current.consignments = [
-    {
-      id: 'forney-pickup',
-      line_item_ids: [item.id],
-      selected_pickup_option: { pickup_method_id: 84 },
-    },
-  ];
-  const offer = () => authorizeTestProvider({ ...input(), warehouseId: 'forney' });
-
-  current.grand_total = 718.8;
-  const initial = await offer();
-  assert.ok(initial.testProviderAuthorization);
-
-  item.quantity = 4;
-  current.grand_total = 958.4;
-  assert.deepEqual(await offer(), {
-    testProviderIneligibility: {
-      code: 'MAX_GRAND_TOTAL_EXCEEDED',
-      maxGrandTotal: 948.38,
-      currency: 'USD',
-    },
-  });
-
-  const later = Date.now() + 1000;
-  t.mock.method(Date, 'now', () => later);
-  item.quantity = 3;
-  current.grand_total = 718.8;
-  const restored = await offer();
-  assert.ok(restored.testProviderAuthorization);
-  assert.notEqual(
-    restored.testProviderAuthorization.token,
-    initial.testProviderAuthorization.token,
-  );
-  assert.equal(restored.testProviderIneligibility, undefined);
-  assert.equal(attempts, 0);
-});
-
-for (const [currency, maxGrandTotal, aboveLimit] of [
-  ['USD', 948.38, 948.39],
-  ['CAD', 500.25, 500.26],
-]) {
-  test(`the configured monetary limit is inclusive for ${currency}`, async () => {
-    setupNormal({ maxGrandTotal, currencies: [currency] });
-    current.cart.currency.code = currency;
-    current.grand_total = maxGrandTotal;
-    assert.ok((await authorizeTestProvider(input())).testProviderAuthorization);
-    current.grand_total = aboveLimit;
-    assert.deepEqual(await authorizeTestProvider(input()), {
-      testProviderIneligibility: { code: 'MAX_GRAND_TOTAL_EXCEEDED', maxGrandTotal, currency },
-    });
+    assert.equal(binding.snapshotHash, normal.testProviderHash(submissionSnapshot(current)));
+    assert.equal(validations, 1);
     assert.equal(attempts, 0);
   });
-}
+});
 
-test('quantity limit counts units across different pickup lines', async () => {
-  setupNormal({ maxQuantity: 5 });
-  current.cart.line_items.physical_items[0].quantity = 3;
-  assert.deepEqual(await authorizeTestProvider(input()), {
-    testProviderIneligibility: { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: 5 },
+test('previously saved cap fields are ignored and unrelated policy keys remain invalid', async () => {
+  const configured = setupNormal();
+  const legacy = { ...configured, maxLineItems: 2, maxQuantity: 5, maxGrandTotal: 948.38 };
+
+  process.env.WAREHOUSE_TEST_PROVIDER_POLICY = JSON.stringify(legacy);
+  current.cart.line_items.physical_items.push({
+    id: 'third',
+    product_id: 95,
+    variant_id: 0,
+    quantity: 101,
   });
+  current.consignments[0].line_item_ids.push('third');
+  current.grand_total = 25000.01;
+  assert.deepEqual(normal.readNormalTestProviderPolicy(JSON.stringify(legacy)), configured);
+
+  const { testProviderAuthorization: grant } = await authorizeTestProvider(input());
+
+  assert.ok(grant);
+
+  const payload = JSON.parse(Buffer.from(grant.token.split('.')[0], 'base64url'));
+
+  assert.equal(payload.policyHash, normal.testProviderHash(configured));
+  assert.throws(() =>
+    normal.readNormalTestProviderPolicy(JSON.stringify({ ...legacy, unknown: true })),
+  );
   assert.equal(attempts, 0);
 });
 
@@ -888,7 +813,7 @@ test('normal grant expiry and policy generation/scope changes revoke outstanding
 
   for (const changes of [
     { id: '44444444-4444-4444-8444-444444444444' },
-    { maxQuantity: 49 },
+    { grantTtlSeconds: 299 },
     { storeHash: 'wrong-fixture-store' },
     { channelId: 99 },
     { enabled: false },
@@ -991,7 +916,7 @@ test('normal grant expiring during provider lookup cannot consume a claim', asyn
 });
 
 test('100-line normal carts keep grants within the existing standalone transport contract', async () => {
-  setupNormal({ maxLineItems: 100, maxQuantity: 100 });
+  setupNormal();
   current.cart.line_items.physical_items = Array.from({ length: 100 }, (_, i) => ({
     id: `item-${i}`,
     product_id: i + 1,

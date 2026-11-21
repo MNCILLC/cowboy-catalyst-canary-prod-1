@@ -17,24 +17,30 @@ const originSchema = z
 
     return url.protocol === 'https:' && url.origin === value;
   });
-const policySchema = z
-  .object({
-    enabled: z.literal(true),
-    version: z.literal(1),
-    id: z.string().uuid(),
-    methodId: z.literal('bigpaypay'),
-    testMode: z.literal(true),
-    storeHash: z.string().min(1),
-    channelId: z.number().int().positive(),
-    origins: z.array(originSchema).min(1),
-    warehouseIds: z.array(z.string().min(1)).min(1),
-    currencies: z.array(z.string().regex(/^[A-Z]{3}$/)).min(1),
-    grantTtlSeconds: z.number().int().min(30).max(900),
-    maxLineItems: z.number().int().min(1).max(100),
-    maxQuantity: z.number().int().positive().safe(),
-    maxGrandTotal: z.number().finite().positive(),
+const policySchema = z.object({
+  enabled: z.literal(true),
+  version: z.literal(1),
+  id: z.string().uuid(),
+  methodId: z.literal('bigpaypay'),
+  testMode: z.literal(true),
+  storeHash: z.string().min(1),
+  channelId: z.number().int().positive(),
+  origins: z.array(originSchema).min(1),
+  warehouseIds: z.array(z.string().min(1)).min(1),
+  currencies: z.array(z.string().regex(/^[A-Z]{3}$/)).min(1),
+  grantTtlSeconds: z.number().int().min(30).max(900),
+});
+
+// Accept saved policies from earlier deployments, but omit their retired caps
+// from the effective policy and the hash used to sign new grants.
+const savedPolicySchema = policySchema
+  .extend({
+    maxLineItems: z.number().int().min(1).max(100).optional(),
+    maxQuantity: z.number().int().positive().safe().optional(),
+    maxGrandTotal: z.number().finite().positive().optional(),
   })
-  .strict();
+  .strict()
+  .pipe(policySchema);
 
 export type NormalTestProviderPolicy = z.infer<typeof policySchema>;
 export interface NormalTestProviderBinding {
@@ -61,7 +67,7 @@ export function readNormalTestProviderPolicy(encoded: string | undefined) {
     )
       return undefined;
 
-    return policySchema.parse(value);
+    return savedPolicySchema.parse(value);
   } catch {
     throw testProviderDenied();
   }

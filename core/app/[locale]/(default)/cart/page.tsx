@@ -398,7 +398,7 @@ export default async function Cart({ params }: Props) {
           }}
           checkoutAction={CHECKOUT_URL}
           checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
-          checkoutLabel={warehousePreview ? 'Preview checkout' : t('proceedToCheckout')}
+          checkoutLabel={warehousePreview ? 'Checkout' : t('proceedToCheckout')}
           checkoutMessage={SHOW_SHIPPING_QUOTE_MESSAGE ? SHIPPING_QUOTE_MESSAGE : undefined}
           checkoutMessageTitle={SHOW_SHIPPING_QUOTE_MESSAGE ? 'Shipping Quotes Note' : undefined}
           couponCode={{

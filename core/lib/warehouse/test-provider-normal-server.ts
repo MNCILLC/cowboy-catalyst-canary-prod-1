@@ -18,15 +18,13 @@ import {
 import type { TestCheckout, TestProviderInput } from './test-provider-server';
 import { validateWarehouseCheckout } from './validation';
 
-function normalCheckoutIneligibility(
+function normalCheckoutEligible(
   checkout: TestCheckout,
   policy: NormalTestProviderPolicy,
   input: TestProviderInput,
   warehouse: Warehouse,
 ) {
   const items = checkout.cart.line_items;
-  const snapshot = submissionSnapshot(checkout);
-  const quantity = snapshot.items.reduce((sum, item) => sum + item.quantity, 0);
 
   if (
     checkout.id !== input.cartId ||
@@ -35,28 +33,18 @@ function normalCheckoutIneligibility(
     !Number.isSafeInteger(checkout.cart.customer_id) ||
     checkout.cart.customer_id < 0 ||
     !policy.currencies.includes(checkout.cart.currency.code) ||
-    !Number.isFinite(snapshot.grandTotal) ||
-    snapshot.grandTotal <= 0 ||
-    snapshot.items.some((item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1) ||
+    !Number.isFinite(checkout.grand_total) ||
+    checkout.grand_total <= 0 ||
+    items.physical_items.some(
+      (item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1,
+    ) ||
     items.digital_items?.length ||
     items.custom_items?.length ||
     items.gift_certificates?.length
   )
-    return 'INELIGIBLE';
+    return false;
 
-  if (snapshot.items.length > policy.maxLineItems)
-    return { code: 'MAX_LINE_ITEMS_EXCEEDED', maxLineItems: policy.maxLineItems } as const;
-  if (quantity > policy.maxQuantity)
-    return { code: 'MAX_QUANTITY_EXCEEDED', maxQuantity: policy.maxQuantity } as const;
-  if (snapshot.grandTotal > policy.maxGrandTotal)
-    return {
-      code: 'MAX_GRAND_TOTAL_EXCEEDED',
-      maxGrandTotal: policy.maxGrandTotal,
-      currency: checkout.cart.currency.code,
-    } as const;
-  if (!submissionReady(warehouse, checkout)) return 'INELIGIBLE';
-
-  return undefined;
+  return submissionReady(warehouse, checkout);
 }
 
 function normalWarehouse(
@@ -105,12 +93,10 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
     `checkouts/${encodeURIComponent(input.cartId)}`,
   );
 
-  const reason = normalCheckoutIneligibility(checkout, policy, input, warehouse);
-
-  if (reason) {
+  if (!normalCheckoutEligible(checkout, policy, input, warehouse)) {
     if (input.claim) throw testProviderDenied();
 
-    return reason === 'INELIGIBLE' ? {} : { testProviderIneligibility: reason };
+    return {};
   }
 
   const snapshot = submissionSnapshot(checkout);
