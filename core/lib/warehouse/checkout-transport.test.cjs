@@ -44,6 +44,7 @@ const authorization = loadTestModule('authorization.ts', {
   './policy': policy,
 });
 const locationLookup = loadTestModule('locations.ts', {
+  '~/lib/map-section/address': loadTestModule('../map-section/address.ts', {}),
   'server-only': {},
   'next/navigation': { unstable_rethrow() {} },
   react: react.react,
@@ -65,7 +66,7 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   './availability-scope': loadTestModule(`${pickerPath}availability-scope.tsx`, react),
   './picker': loadTestModule(`${pickerPath}picker.tsx`, {
     ...react,
-    'lucide-react': { Warehouse: () => null, ChevronDown: () => null },
+    'lucide-react': { Warehouse: () => null, ChevronDown: () => null, MapPin: () => null },
     '~/lib/warehouse/policy': policy,
     './actions': {},
     './selection-attempt': {},
@@ -201,6 +202,52 @@ test('a recovered cart starts checking only an enabled shipping origin without a
   assert.match(saved, /<option value="north" selected="">North/);
   assert.match(saved, />Pick up at<\/span><span[^>]*>Collect North<\/span>/);
   assert.doesNotMatch(saved, /Confirm warehouse/);
+});
+
+test('the map link uses only the selected warehouse’s public street address', async () => {
+  const second = { ...warehouse, id: 'south', locationId: 72, pickupMethodId: 93 };
+  process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, second]);
+  const address = {
+    address1: '12 North & West St',
+    address2: 'Unit #4',
+    city: 'North',
+    state: 'TX',
+    zip: '75000',
+    country_code: 'US',
+  };
+  locations = [
+    {
+      id: second.locationId,
+      enabled: true,
+      storefront_visibility: true,
+      address: { ...address, address1: '42 South St', address2: null, city: 'South' },
+    },
+    { id: warehouse.locationId, enabled: true, storefront_visibility: true, address },
+  ];
+  const mapUrl = async () => {
+    const html = await renderStorefront();
+    const href = /href="(https:\/\/www\.google\.com\/maps\/search\/[^"]+)"/.exec(html)?.[1];
+
+    return href ? new URL(href.replaceAll('&amp;', '&')) : null;
+  };
+
+  assert.equal(await mapUrl(), null);
+  pickerContext.warehouse = warehouse;
+  const north = await mapUrl();
+  assert.equal(north.searchParams.get('api'), '1');
+  assert.equal(north.searchParams.get('query'), '12 North & West St, Unit #4, North, TX 75000, US');
+  assert.match(await renderStorefront(), /title="North, TX Warehouse"/);
+  pickerContext.warehouse = second;
+  assert.equal((await mapUrl()).searchParams.get('query'), '42 South St, South, TX 75000, US');
+  assert.match(await renderStorefront(), /title="South, TX Warehouse"/);
+  locations[0].storefront_visibility = false;
+  assert.equal(await mapUrl(), null);
+  locations[0].storefront_visibility = true;
+  locations[0].address.address1 = ' ';
+  assert.equal(await mapUrl(), null);
+  delete locations[0].address;
+  assert.equal(await mapUrl(), null);
+  assert.match(await renderStorefront(), /<option value="south" selected=""/);
 });
 
 test('one running storefront reflects Powell being disabled and re-enabled on the next render', async () => {

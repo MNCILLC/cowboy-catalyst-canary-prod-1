@@ -150,6 +150,7 @@ async function api(endpoint, method = 'GET', body = undefined) {
 }
 
 const files = [
+  'lib/map-section/address.ts',
   'lib/warehouse/server.ts',
   'lib/warehouse/pickup-handoff.ts',
   'lib/warehouse/config.ts',

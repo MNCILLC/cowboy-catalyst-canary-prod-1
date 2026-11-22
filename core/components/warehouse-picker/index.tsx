@@ -2,7 +2,7 @@ import { type PropsWithChildren, type ReactNode } from 'react';
 
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { warehousePreviewEnabled } from '~/lib/warehouse/config';
-import { getEnabledWarehouses } from '~/lib/warehouse/locations';
+import { getWarehouseLocations } from '~/lib/warehouse/locations';
 import { getWarehouseContext } from '~/lib/warehouse/server';
 
 import { AvailabilityScope } from './availability-scope';
@@ -20,16 +20,16 @@ export async function WarehousePicker({
       </>
     );
 
-  const warehouses = await getEnabledWarehouses().catch((error: unknown) => {
+  const locations = await getWarehouseLocations().catch((error: unknown) => {
     if (
       error instanceof WarehouseValidationError &&
       error.code === 'WAREHOUSE_LOCATIONS_UNAVAILABLE'
     )
-      return [];
+      return null;
     throw error;
   });
 
-  if (!warehouses.length)
+  if (!locations?.warehouses.length)
     return (
       <AvailabilityScope value="unavailable">
         {renderHeader(null)}
@@ -48,8 +48,9 @@ export async function WarehousePicker({
         <Picker
           context={context}
           key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
+          mapAddress={warehouse && locations.mapAddresses.get(warehouse.locationId)}
           selected={warehouse?.id}
-          warehouses={warehouses}
+          warehouses={locations.warehouses}
         />,
       )}
       {children}
