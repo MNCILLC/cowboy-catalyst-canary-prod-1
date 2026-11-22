@@ -452,6 +452,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         <div
           className={clsx(
             'flex items-center justify-start self-stretch',
+            warehousePicker && 'min-w-0 gap-2 @sm:gap-4 @xl:min-w-max',
             linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
           )}
         >
@@ -473,6 +474,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
               width={mobileLogoWidth}
             />
           )}
+          {warehousePicker}
         </div>
 
         {/* Top Level Nav Links */}
@@ -565,7 +567,6 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
             linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
           )}
         >
-          {warehousePicker}
           {searchAction ? (
             <Popover.Root onOpenChange={setIsSearchOpen} open={isSearchOpen}>
               <Popover.Anchor className="absolute left-0 right-0 top-full" />

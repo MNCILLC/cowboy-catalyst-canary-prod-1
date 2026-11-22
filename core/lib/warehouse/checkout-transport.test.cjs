@@ -65,6 +65,7 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   './availability-scope': loadTestModule(`${pickerPath}availability-scope.tsx`, react),
   './picker': loadTestModule(`${pickerPath}picker.tsx`, {
     ...react,
+    'lucide-react': { Warehouse: () => null, ChevronDown: () => null },
     '~/lib/warehouse/policy': policy,
     './actions': {},
     './selection-attempt': {},
@@ -166,7 +167,15 @@ const run = (search = '') =>
   });
 
 test('a recovered cart starts checking only an enabled shipping origin without a confirmation button', async () => {
-  const origin = { ...warehouse, id: 'south', label: 'South', locationId: 1, pickupMethodId: 12 };
+  const origin = {
+    ...warehouse,
+    id: 'south',
+    label: 'South',
+    pickupLabel: 'Pickup in South',
+    allowShipping: true,
+    locationId: 1,
+    pickupMethodId: 12,
+  };
 
   process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, origin]);
   pickerContext = { cartId: 'cart', revision: null };
@@ -175,6 +184,7 @@ test('a recovered cart starts checking only an enabled shipping origin without a
   const recovery = await renderStorefront();
 
   assert.match(recovery, /<option value="south" selected="">South/);
+  assert.match(recovery, />Ship or pick up<\/span><span[^>]*>South<\/span>/);
   assert.match(recovery, /Checking cart availability/);
   assert.doesNotMatch(recovery, /Confirm warehouse/);
   locations[1].enabled = false;
@@ -182,12 +192,14 @@ test('a recovered cart starts checking only an enabled shipping origin without a
   const disabled = await renderStorefront();
 
   assert.doesNotMatch(disabled, /value="south"|Confirm warehouse/);
+  assert.match(disabled, />Choose warehouse<\/span>/);
   locations[1].enabled = true;
   pickerContext = { ...pickerContext, warehouse, revision: 'saved' };
 
   const saved = await renderStorefront();
 
   assert.match(saved, /<option value="north" selected="">North/);
+  assert.match(saved, />Pick up at<\/span><span[^>]*>Collect North<\/span>/);
   assert.doesNotMatch(saved, /Confirm warehouse/);
 });
 
