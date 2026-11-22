@@ -21,7 +21,7 @@ const warehouses = [
     id: 'forney',
     label: 'Ship/Pickup Forney',
     pickupLabel: 'Forney',
-    locationId: 101,
+    locationId: 1,
     pickupMethodId: 201,
     allowShipping: true,
   },
@@ -76,9 +76,9 @@ async function api(endpoint, method = 'GET', body = undefined) {
 
   if (method === 'GET') {
     stats.apiReads += 1;
-    if (endpoint === 'inventory/locations?location_id:in=101,102&limit=2')
+    if (endpoint === 'inventory/locations?location_id:in=1,102&limit=2')
       return [
-        { id: 101, enabled: true },
+        { id: 1, enabled: state.forneyEnabled !== false },
         { id: 102, enabled: state.powellEnabled !== false },
       ];
     if (endpoint === `carts/${state.cart.id}`) return structuredClone(state.cart);
@@ -93,7 +93,7 @@ async function api(endpoint, method = 'GET', body = undefined) {
       };
 
     if (
-      /^inventory\/locations\/(101|102)\/items\?product_id:in=9001&limit=250&page=1$/.test(endpoint)
+      /^inventory\/locations\/(1|102)\/items\?product_id:in=9001&limit=250&page=1$/.test(endpoint)
     ) {
       if (barrier === 'stock') {
         barrier = undefined;
@@ -357,7 +357,10 @@ async function dispatch(command, payload = {}) {
       return action.changeWarehouse(payload.warehouseId, payload.expected);
 
     case 'items':
-      return server.assertWarehouseItems([{ productEntityId: 9001, quantity: 1 }], state.cart.id);
+      return server.assertWarehouseItems(
+        [{ productEntityId: 9001, quantity: 1 }],
+        payload.newCart ? undefined : state.cart.id,
+      );
 
     case 'authorize':
       return server.authorizeWarehouseInitialization(state.cart.id);

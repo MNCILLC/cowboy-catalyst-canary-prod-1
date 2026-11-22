@@ -21,6 +21,7 @@ import {
 import { preparePickupOnlyHandoff } from './pickup-handoff';
 import {
   assertStock,
+  getShippingOriginWarehouse,
   StockDemand,
   Warehouse,
   WarehouseConsignment,
@@ -79,10 +80,10 @@ interface Inventory {
   available_to_sell: number;
 }
 
-async function cookieWarehouse() {
+async function cookieWarehouse(warehouses: Warehouse[]) {
   const selected = (await cookies()).get(COOKIE)?.value;
 
-  return (await getEnabledWarehouses()).find((w) => w.id === selected);
+  return warehouses.find((w) => w.id === selected);
 }
 
 export async function getWarehouseContext() {
@@ -94,11 +95,16 @@ export async function getWarehouseContext() {
   if (cart && !record && warehousePersistenceIsAtomic())
     return { warehouse: undefined, cartId: cart.id, revision: null };
 
+  const warehouses = await getEnabledWarehouses();
   const warehouse = record
-    ? (await getEnabledWarehouses()).find((w) => w.id === record.warehouseId)
-    : await cookieWarehouse();
+    ? warehouses.find((w) => w.id === record.warehouseId)
+    : await cookieWarehouse(warehouses);
 
-  return { warehouse, cartId: cart?.id ?? null, revision: record?.revision ?? null };
+  return {
+    warehouse: warehouse ?? (cart ? undefined : getShippingOriginWarehouse(warehouses)),
+    cartId: cart?.id ?? null,
+    revision: record?.revision ?? null,
+  };
 }
 
 export async function getWarehouseSelection() {
@@ -258,7 +264,7 @@ async function warehouseForCart(cart: Cart) {
         'WAREHOUSE_RECOVERY_REQUIRED',
       );
 
-    const selected = await cookieWarehouse();
+    const selected = await cookieWarehouse(await getEnabledWarehouses());
 
     if (!selected)
       throw new WarehouseError('Choose your warehouse before adding items or checking out.');

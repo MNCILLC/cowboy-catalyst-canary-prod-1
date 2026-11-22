@@ -6,6 +6,12 @@ export interface Warehouse {
   pickupMethodId: number;
   allowShipping: boolean;
 }
+
+export function getShippingOriginWarehouse(enabledWarehouses: Warehouse[]) {
+  // BigCommerce reserves inventory location 1 for the store's shipping origin.
+  return enabledWarehouses.find((warehouse) => warehouse.locationId === 1);
+}
+
 export interface StockDemand {
   key: string;
   name: string;

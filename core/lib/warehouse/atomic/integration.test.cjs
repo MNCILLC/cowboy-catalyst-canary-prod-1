@@ -217,6 +217,26 @@ test('new-cart initialization is visible across processes and repeated initializ
   assert.equal((await call(b, 'stats')).cookie, 'forney');
 });
 
+test('new shoppers use the enabled shipping origin for browsing and their first cart', async () => {
+  const { cartId } = await setup(false);
+
+  await call(a, 'patch', { sessionCartId: null, cookie: null });
+  assert.equal((await call(a, 'context')).warehouse.id, 'forney');
+
+  const firstAdd = await call(a, 'items', { newCart: true });
+
+  assert.equal(firstAdd.id, 'forney');
+  await call(a, 'initialize', { warehouseId: firstAdd.id });
+  assert.equal((await call(b, 'context')).warehouse.id, 'forney');
+  await call(a, 'patch', { forneyEnabled: false });
+  assert.deepEqual(await call(a, 'context'), { cartId: null, revision: null });
+  await call(a, 'patch', { forneyEnabled: true });
+  assert.deepEqual(await call(a, 'select', selection(null, null, 'powell')), {});
+  assert.equal((await call(a, 'items', { newCart: true })).id, 'powell');
+  await call(a, 'patch', { sessionCartId: cartId });
+  assert.equal((await call(a, 'context')).warehouse.id, 'forney');
+});
+
 test('two picker actions pass their stock checks then race at CAS: exactly one wins', async () => {
   for (let i = 0; i < 12; i += 1) {
     const { cartId, record } = await setup();

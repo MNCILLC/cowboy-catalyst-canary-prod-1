@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 
-import { Warehouse } from '~/lib/warehouse/policy';
+import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
 
 import { changeWarehouse } from './actions';
 import { createSelectionAttempt, runSelectionAttempt, SelectionAttempt } from './selection-attempt';
@@ -33,12 +33,16 @@ export function Picker({
       setRetry(result.retry);
     });
   };
+  const needsRecovery = Boolean(context.cartId && !context.revision && !selected);
+  const suggestedWarehouse = needsRecovery ? getShippingOriginWarehouse(warehouses) : undefined;
   let hint = selected
     ? 'Product availability reflects this warehouse. Stock is checked again when you add items.'
     : 'Choose a warehouse before adding items. You can browse first.';
 
-  if (context.cartId && !context.revision && !selected)
-    hint = 'Choose a warehouse to check availability for the items already in your cart.';
+  if (needsRecovery)
+    hint = suggestedWarehouse
+      ? 'Confirm this warehouse or choose another to check stock for the items in your cart.'
+      : 'Choose a warehouse to check availability for the items already in your cart.';
 
   return (
     <section
@@ -55,7 +59,7 @@ export function Picker({
           disabled={pending || !hydrated}
           id="warehouse-choice"
           onChange={(event) => submit(createSelectionAttempt(event.target.value, context))}
-          value={selected ?? ''}
+          value={selected ?? suggestedWarehouse?.id ?? ''}
         >
           <option disabled value="">
             Choose your warehouse
@@ -66,6 +70,16 @@ export function Picker({
             </option>
           ))}
         </select>
+        {suggestedWarehouse && !retry && (
+          <button
+            className="underline"
+            disabled={pending || !hydrated}
+            onClick={() => submit(createSelectionAttempt(suggestedWarehouse.id, context))}
+            type="button"
+          >
+            Confirm warehouse
+          </button>
+        )}
         <span aria-live="polite">{pending ? 'Checking cart availability…' : hint}</span>
       </div>
       {retry && (

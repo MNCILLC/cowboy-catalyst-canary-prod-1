@@ -8,11 +8,13 @@ const { hostedEnv, loadTestModule, warehouse } = require('./mode-test-support.cj
 const originalEnv = process.env;
 let locations;
 let locationReads;
+let pickerContext;
 
 beforeEach((t) => {
   process.env = { ...hostedEnv, BIGCOMMERCE_ACCESS_TOKEN: 'synthetic-token' };
   locations = [{ id: warehouse.locationId, enabled: true }];
   locationReads = 0;
+  pickerContext = { cartId: null, revision: null };
   t.mock.method(global, 'fetch', (url, options) => {
     const endpoint = new URL(url);
 
@@ -35,10 +37,11 @@ const config = loadTestModule('config.ts', {
   './configuration': loadTestModule('configuration.ts', { zod: require('zod') }),
 });
 const react = { react: require('react'), 'react/jsx-runtime': require('react/jsx-runtime') };
+const policy = loadTestModule('policy.ts', {});
 const authorization = loadTestModule('authorization.ts', {
   'node:crypto': require('node:crypto'),
   zod: require('zod'),
-  './policy': loadTestModule('policy.ts', {}),
+  './policy': policy,
 });
 const locationLookup = loadTestModule('locations.ts', {
   'server-only': {},
@@ -56,12 +59,13 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   '~/lib/warehouse/authorization': authorization,
   '~/lib/warehouse/locations': locationLookup,
   '~/lib/warehouse/server': {
-    getWarehouseContext: async () => ({ cartId: null, revision: null }),
+    getWarehouseContext: async () => pickerContext,
   },
   './actions': {},
   './availability-scope': loadTestModule(`${pickerPath}availability-scope.tsx`, react),
   './picker': loadTestModule(`${pickerPath}picker.tsx`, {
     ...react,
+    '~/lib/warehouse/policy': policy,
     './actions': {},
     './selection-attempt': {},
   }),
@@ -151,6 +155,33 @@ const run = (search = '') =>
   GET(new NextRequest(`https://store.invalid/checkout/${search}`), {
     params: Promise.resolve({ locale: 'en' }),
   });
+
+test('a recovered cart offers the enabled shipping origin for confirmation', async () => {
+  const origin = { ...warehouse, id: 'south', label: 'South', locationId: 1, pickupMethodId: 12 };
+  const render = async () =>
+    renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+
+  process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, origin]);
+  pickerContext = { cartId: 'cart', revision: null };
+  locations.push({ id: origin.locationId, enabled: true });
+
+  const recovery = await render();
+
+  assert.match(recovery, /<option value="south" selected="">South/);
+  assert.match(recovery, /Confirm warehouse/);
+  locations[1].enabled = false;
+
+  const disabled = await render();
+
+  assert.doesNotMatch(disabled, /value="south"|Confirm warehouse/);
+  locations[1].enabled = true;
+  pickerContext = { ...pickerContext, warehouse, revision: 'saved' };
+
+  const saved = await render();
+
+  assert.match(saved, /<option value="north" selected="">North/);
+  assert.doesNotMatch(saved, /Confirm warehouse/);
+});
 
 test('one running storefront reflects Powell being disabled and re-enabled on the next render', async () => {
   process.env.WAREHOUSE_CONFIG = JSON.stringify([
