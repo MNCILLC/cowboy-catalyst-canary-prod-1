@@ -50,9 +50,7 @@ export function Picker({
   }, [cartId, originId, submit]);
 
   const checking = pending || Boolean(originId && !error);
-  let hint = selected
-    ? 'Product availability reflects this warehouse. Stock is checked again when you add items.'
-    : 'Choose a warehouse before adding items. You can browse first.';
+  let hint = selected ? null : 'Choose a warehouse before adding items. You can browse first.';
 
   if (needsRecovery) hint = 'Choose a warehouse to check availability for the items in your cart.';
 
@@ -63,10 +61,8 @@ export function Picker({
       data-test="warehouse-picker"
     >
       <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-3">
-        <label className="font-semibold" htmlFor="warehouse-choice">
-          Shopping warehouse
-        </label>
         <select
+          aria-label="Shopping warehouse"
           className="max-w-full rounded border bg-white px-3 py-2"
           disabled={pending || !hydrated}
           id="warehouse-choice"
