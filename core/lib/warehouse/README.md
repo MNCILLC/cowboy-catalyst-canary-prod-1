@@ -246,13 +246,13 @@ server-only values explicitly for a future activation rehearsal:
 
 Do not put these values in browser/checkout configuration. There is no process-local
 record cache, cookie fallback for existing Redis carts, or metafield mirror. An
-unknown provider, invalid configuration, storage error, or missing authoritative
-record blocks the affected operation. Missing records return
-`WAREHOUSE_RECOVERY_REQUIRED`; recovery/migration tooling is not implemented here.
-Do not switch providers against existing carts without a separate migration plan.
+unknown provider, invalid configuration, or storage error blocks the affected operation.
+If an existing cart has no record, the picker asks the shopper to select a warehouse.
+Adding items and entering checkout still return `WAREHOUSE_RECOVERY_REQUIRED` until
+the picker validates stock and saves the first selection for that cart.
 
-Only the successful new-cart creation callback initializes a Redis record. The cart
-UUID is reserved as that initialization operation ID. Picker changes carry a new
+The new-cart creation callback initializes a Redis record using the cart UUID as
+its reserved operation ID. Existing-cart recovery and later picker changes carry a new
 UUID plus the rendered cart/revision; uncertain failures offer a Retry button that
 reuses the entire original request. New choices create new operation IDs. An
 accepted operation is looked up after session/channel authorization but before

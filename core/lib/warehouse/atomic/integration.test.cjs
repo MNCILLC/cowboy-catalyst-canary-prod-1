@@ -406,21 +406,51 @@ test('warehouse change during submit validation is rejected by the final authori
   assert.equal(result.body.code, 'STALE_WAREHOUSE');
 });
 
-test('missing Redis authority blocks existing carts everywhere despite a warehouse cookie', async () => {
-  const { cartId, record } = await setup();
+test('an existing cart requires an explicit stock-checked choice even with a warehouse cookie', async () => {
+  const { cartId } = await setup();
   const handoff = await call(b, 'handoff');
 
   await client.command('FLUSHDB'); // This private Unix-socket Redis contains synthetic records only.
-  for (const command of ['context', 'items', 'handoff'])
+  assert.deepEqual(await call(a, 'context'), { cartId, revision: null });
+  for (const command of ['items', 'handoff', 'authorize'])
     await expectError(a, command, {}, 'WAREHOUSE_RECOVERY_REQUIRED', 409);
 
-  const choice = await call(a, 'select', selection(cartId, null));
+  const choice = selection(cartId, null);
 
-  assert.equal(choice.code, 'WAREHOUSE_RECOVERY_REQUIRED');
-  assert.equal((await call(b, 'validate', { access: handoff.access })).status, 409);
+  await call(a, 'patch', { stock: 0 });
+  assert.equal((await call(a, 'select', choice)).code, 'INVENTORY_CONFLICT');
   assert.equal(await client.command('DBSIZE'), 0);
   assert.equal((await call(a, 'stats')).cookie, 'forney');
-  assert(record.revision);
+
+  await call(a, 'patch', { stock: 1 });
+  assert.deepEqual(await call(a, 'select', choice), {});
+
+  const recovered = await call(b, 'context');
+
+  assert.equal(recovered.cartId, cartId);
+  assert.equal(recovered.warehouse.id, 'powell');
+  assert(recovered.revision);
+  assert.deepEqual(await call(b, 'select', choice), {});
+  assert.deepEqual(await call(a, 'context'), recovered);
+  assert.equal((await call(b, 'validate', { access: handoff.access })).status, 409);
+});
+
+test('an edit during recovery leaves the cart unassigned and a second tab cannot overwrite a recovered cart', async () => {
+  const { cartId } = await setup(false);
+  const attempt = selection(cartId, null);
+
+  await call(a, 'arm', { ...attempt, operation: 'select', boundary: 'stock' });
+  await call(a, 'patch', {
+    cart: { id: cartId, channel_id: 37, line_items: { physical_items: [], digital_items: [] } },
+  });
+  assert.equal((await call(a, 'release')).code, 'CART_CHANGED');
+  assert.deepEqual(await call(b, 'context'), { cartId, revision: null });
+
+  await call(a, 'setup', { cartId });
+  await call(b, 'arm', { ...selection(cartId, null, 'forney'), boundary: 'cas' });
+  assert.deepEqual(await call(a, 'select', attempt), {});
+  assert.equal((await call(b, 'release')).code, 'STALE_WAREHOUSE');
+  assert.equal((await call(b, 'context')).warehouse.id, 'powell');
 });
 
 test('Redis outage blocks context, picker, handoff, and validator without metadata fallback', async () => {

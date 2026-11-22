@@ -175,6 +175,7 @@ function load(relative) {
     if (id === 'react') return require('react');
     if (id === 'next/navigation') return { unstable_rethrow() {} };
     if (id === 'node:crypto') return require('node:crypto');
+    if (id === 'node:util') return require('node:util');
     if (id === 'zod') return require('zod');
     if (id === 'next/server') return require('next/server');
     if (id === 'next/headers')
@@ -411,7 +412,7 @@ async function dispatch(command, payload = {}) {
         );
       else if (payload.operation === 'authorize')
         running = server.authorizeWarehouseInitialization(state.cart.id);
-      else if (payload.boundary === 'cas')
+      else if (payload.boundary === 'cas' || payload.operation === 'select')
         running = action.changeWarehouse(payload.warehouseId, payload.expected);
       else if (payload.boundary === 'read') running = server.prepareWarehousePreview(state.cart.id);
       else running = validate(payload);

@@ -33,9 +33,12 @@ export function Picker({
       setRetry(result.retry);
     });
   };
-  const hint = selected
+  let hint = selected
     ? 'Product availability reflects this warehouse. Stock is checked again when you add items.'
     : 'Choose a warehouse before adding items. You can browse first.';
+
+  if (context.cartId && !context.revision && !selected)
+    hint = 'Choose a warehouse to check availability for the items already in your cart.';
 
   return (
     <section

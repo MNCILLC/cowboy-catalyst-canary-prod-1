@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { getLocale } from 'next-intl/server';
+import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 
 import { getChannelIdFromLocale } from '~/channels.config';
@@ -28,15 +29,6 @@ import {
 } from './policy';
 
 const COOKIE = 'shopping-warehouse';
-
-function requireExistingRecord(record: unknown) {
-  if (!record && warehousePersistenceIsAtomic())
-    throw new WarehouseValidationError(
-      'This cart needs warehouse recovery. Please contact support or start a new cart.',
-      409,
-      'WAREHOUSE_RECOVERY_REQUIRED',
-    );
-}
 
 const selectionContextSchema = z
   .object({
@@ -98,7 +90,9 @@ export async function getWarehouseContext() {
   const cart = await sessionCart(cartId);
   const record = cart ? await readWarehouseRecord(cart.id, cart.channel_id) : undefined;
 
-  if (cart) requireExistingRecord(record);
+  // A cart created before activation needs its own explicit, stock-checked selection.
+  if (cart && !record && warehousePersistenceIsAtomic())
+    return { warehouse: undefined, cartId: cart.id, revision: null };
 
   const warehouse = record
     ? (await getEnabledWarehouses()).find((w) => w.id === record.warehouseId)
@@ -256,9 +250,14 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
 async function warehouseForCart(cart: Cart) {
   let record = await readWarehouseRecord(cart.id, cart.channel_id);
 
-  requireExistingRecord(record);
-
   if (!record) {
+    if (warehousePersistenceIsAtomic())
+      throw new WarehouseValidationError(
+        'Choose a warehouse to check availability for the items already in your cart.',
+        409,
+        'WAREHOUSE_RECOVERY_REQUIRED',
+      );
+
     const selected = await cookieWarehouse();
 
     if (!selected)
@@ -340,7 +339,6 @@ export async function selectWarehouse(
     } else {
       const current = await readWarehouseRecord(cart.id, cart.channel_id);
 
-      requireExistingRecord(current);
       if ((current?.revision ?? null) !== expected.revision)
         throw new WarehouseValidationError(
           'Your cart warehouse changed in another tab. Reload before choosing again.',
@@ -348,6 +346,17 @@ export async function selectWarehouse(
           'STALE_WAREHOUSE',
         );
       await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+
+      if (!current && warehousePersistenceIsAtomic()) {
+        const latest = await sessionCart(cart.id);
+
+        if (!isDeepStrictEqual(latest?.line_items, cart.line_items))
+          throw new WarehouseValidationError(
+            'Your cart changed while checking stock. Review your cart and choose a warehouse again.',
+            409,
+            'CART_CHANGED',
+          );
+      }
 
       const record = await saveWarehouseRecord(
         cart,

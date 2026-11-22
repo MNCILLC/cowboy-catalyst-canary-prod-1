@@ -18,7 +18,7 @@ Browse http://localhost:3000 in regular Chrome. Catalyst uses the root `.env.loc
 
 Choose Ship/Pickup in Forney, TX or Pickup in Powell, WY, add an in-stock item, and select Checkout in the cart. Sign in if requested. Checkout stays on the native BigCommerce checkout origin but loads your local code. Allow that sandbox checkout site's localhost access if Chrome requests it, then click Continue securely to authorize the cart against your local storefront session. The popup closes after authorization. Edit cart and Return to local cart lead back to localhost.
 
-Orders remain blocked. Development mode requires NODE_ENV=development and cannot be used in a production build. There is no preview runner or browser request interception. Warehouse updates use the dedicated hosted Redis database and namespace `warehouse-local-dev-1912525`. An older cart with no record in this namespace shows Start new local test cart; this detaches the browser from the old cart without deleting the sandbox cart.
+Orders remain blocked. Development mode requires NODE_ENV=development and cannot be used in a production build. There is no preview runner or browser request interception. Warehouse updates use the dedicated hosted Redis database and namespace `warehouse-local-dev-1912525`. An older cart with no warehouse record keeps its items. The shopper chooses a warehouse in the picker, and Catalyst checks the existing quantities at that location before saving the selection for the same cart.
 
 ## Sandbox activation and rollback
 
