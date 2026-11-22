@@ -247,7 +247,10 @@ server-only values explicitly for a future activation rehearsal:
 Do not put these values in browser/checkout configuration. There is no process-local
 record cache, cookie fallback for existing Redis carts, or metafield mirror. An
 unknown provider, invalid configuration, or storage error blocks the affected operation.
-If an existing cart has no record, the picker asks the shopper to select a warehouse.
+If an existing cart has no record, the picker automatically checks its physical items
+at the enabled, configured shipping origin. Sufficient stock assigns that warehouse.
+A shortage leaves the cart unassigned and lets the shopper choose another warehouse.
+If the origin is unavailable, the shopper chooses an enabled warehouse.
 Adding items and entering checkout still return `WAREHOUSE_RECOVERY_REQUIRED` until
 the picker validates stock and saves the first selection for that cart.
 

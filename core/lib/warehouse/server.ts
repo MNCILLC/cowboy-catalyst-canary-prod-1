@@ -58,6 +58,7 @@ interface Item {
 
 interface Cart {
   id: string;
+  version?: number;
   channel_id: number;
   line_items: { physical_items: Item[]; digital_items: Item[] };
 }
@@ -91,9 +92,14 @@ export async function getWarehouseContext() {
   const cart = await sessionCart(cartId);
   const record = cart ? await readWarehouseRecord(cart.id, cart.channel_id) : undefined;
 
-  // A cart created before activation needs its own explicit, stock-checked selection.
-  if (cart && !record && warehousePersistenceIsAtomic())
-    return { warehouse: undefined, cartId: cart.id, revision: null };
+  // Let the picker check the cart before assigning it. A browsing cookie is only a preference.
+  if (cart && !record)
+    return {
+      warehouse: undefined,
+      cartId: cart.id,
+      revision: null,
+      recoveryCartVersion: cart.version,
+    };
 
   const warehouses = await getEnabledWarehouses();
   const warehouse = record
@@ -254,23 +260,14 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
 }
 
 async function warehouseForCart(cart: Cart) {
-  let record = await readWarehouseRecord(cart.id, cart.channel_id);
+  const record = await readWarehouseRecord(cart.id, cart.channel_id);
 
-  if (!record) {
-    if (warehousePersistenceIsAtomic())
-      throw new WarehouseValidationError(
-        'Choose a warehouse to check availability for the items already in your cart.',
-        409,
-        'WAREHOUSE_RECOVERY_REQUIRED',
-      );
-
-    const selected = await cookieWarehouse(await getEnabledWarehouses());
-
-    if (!selected)
-      throw new WarehouseError('Choose your warehouse before adding items or checking out.');
-    await checkWarehouseStock(selected, cart.line_items.physical_items.map(input));
-    record = await saveWarehouseRecord(cart, selected.id, null, cart.id);
-  }
+  if (!record)
+    throw new WarehouseValidationError(
+      'Check warehouse availability for the items in your cart before continuing.',
+      409,
+      'WAREHOUSE_RECOVERY_REQUIRED',
+    );
 
   if (
     record.storeHash !== process.env.BIGCOMMERCE_STORE_HASH ||
@@ -353,7 +350,7 @@ export async function selectWarehouse(
         );
       await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
 
-      if (!current && warehousePersistenceIsAtomic()) {
+      if (!current) {
         const latest = await sessionCart(cart.id);
 
         if (!isDeepStrictEqual(latest?.line_items, cart.line_items))

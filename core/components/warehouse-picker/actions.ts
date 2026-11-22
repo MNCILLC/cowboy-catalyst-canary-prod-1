@@ -16,8 +16,12 @@ export async function changeWarehouse(
 
     return {};
   } catch (error) {
-    if (error instanceof WarehouseValidationError)
+    if (error instanceof WarehouseValidationError) {
+      if (error.code === 'STALE_WAREHOUSE') revalidatePath('/', 'layout');
+
       return { error: error.message, code: error.code, retryable: error.status === 503 };
+    }
+
     if (error instanceof WarehouseError)
       return { error: error.message, code: 'INVENTORY_CONFLICT', retryable: false };
 

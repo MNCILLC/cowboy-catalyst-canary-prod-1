@@ -426,7 +426,7 @@ test('warehouse change during submit validation is rejected by the final authori
   assert.equal(result.body.code, 'STALE_WAREHOUSE');
 });
 
-test('an existing cart requires an explicit stock-checked choice even with a warehouse cookie', async () => {
+test('an existing cart requires a stock-checked assignment even with a warehouse cookie', async () => {
   const { cartId } = await setup();
   const handoff = await call(b, 'handoff');
 
@@ -453,6 +453,52 @@ test('an existing cart requires an explicit stock-checked choice even with a war
   assert.deepEqual(await call(b, 'select', choice), {});
   assert.deepEqual(await call(a, 'context'), recovered);
   assert.equal((await call(b, 'validate', { access: handoff.access })).status, 409);
+});
+
+test('origin recovery checks every line and leaves a short cart available for another warehouse', async () => {
+  const { cartId } = await setup(false);
+  const cart = {
+    id: cartId,
+    channel_id: 37,
+    version: 2,
+    line_items: {
+      physical_items: [
+        { id: 'line-1', product_id: 9001, variant_id: 0, name: 'Synthetic product', quantity: 1 },
+        {
+          id: 'line-2',
+          product_id: 9002,
+          variant_id: 0,
+          name: 'Second synthetic product',
+          quantity: 2,
+        },
+      ],
+      digital_items: [],
+    },
+  };
+
+  await call(a, 'patch', { cart, cookie: 'powell', locationStock: { 1: { 9002: 1 } } });
+
+  const unassigned = { cartId, revision: null, recoveryCartVersion: 2 };
+
+  assert.deepEqual(await call(a, 'context'), unassigned);
+
+  const origin = selection(cartId, null, 'forney');
+  const shortage = await call(a, 'select', origin);
+
+  assert.equal(shortage.code, 'INVENTORY_CONFLICT');
+  assert.match(
+    shortage.error,
+    /Second synthetic product: 1 available at Ship\/Pickup Forney; 2 requested/,
+  );
+  assert.deepEqual(await call(a, 'context'), unassigned);
+  assert.deepEqual(await call(a, 'select', selection(cartId, null, 'powell')), {});
+  assert.equal((await call(b, 'context')).warehouse.id, 'powell');
+
+  const fresh = await setup(false);
+
+  await call(a, 'patch', { cart: { ...cart, id: fresh.cartId }, cookie: 'powell' });
+  assert.deepEqual(await call(a, 'select', selection(fresh.cartId, null, 'forney')), {});
+  assert.equal((await call(b, 'context')).warehouse.id, 'forney');
 });
 
 test('an edit during recovery leaves the cart unassigned and a second tab cannot overwrite a recovered cart', async () => {

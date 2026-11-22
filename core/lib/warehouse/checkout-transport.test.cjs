@@ -156,7 +156,7 @@ const run = (search = '') =>
     params: Promise.resolve({ locale: 'en' }),
   });
 
-test('a recovered cart offers the enabled shipping origin for confirmation', async () => {
+test('a recovered cart starts checking only an enabled shipping origin without a confirmation button', async () => {
   const origin = { ...warehouse, id: 'south', label: 'South', locationId: 1, pickupMethodId: 12 };
   const render = async () =>
     renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
@@ -168,7 +168,8 @@ test('a recovered cart offers the enabled shipping origin for confirmation', asy
   const recovery = await render();
 
   assert.match(recovery, /<option value="south" selected="">South/);
-  assert.match(recovery, /Confirm warehouse/);
+  assert.match(recovery, /Checking cart availability/);
+  assert.doesNotMatch(recovery, /Confirm warehouse/);
   locations[1].enabled = false;
 
   const disabled = await render();

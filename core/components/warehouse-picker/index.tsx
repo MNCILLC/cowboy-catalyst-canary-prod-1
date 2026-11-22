@@ -30,11 +30,16 @@ export async function WarehousePicker({ children }: PropsWithChildren) {
       </AvailabilityScope>
     );
 
-  const { warehouse, ...context } = await getWarehouseContext();
+  const { warehouse, recoveryCartVersion, ...context } = await getWarehouseContext();
 
   return (
     <AvailabilityScope value={`${warehouse?.id ?? 'unselected'}:${context.revision ?? ''}`}>
-      <Picker context={context} selected={warehouse?.id} warehouses={warehouses} />
+      <Picker
+        context={context}
+        key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
+        selected={warehouse?.id}
+        warehouses={warehouses}
+      />
       {children}
     </AvailabilityScope>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
 
@@ -19,30 +19,42 @@ export function Picker({
   const [error, setError] = useState('');
   const [retry, setRetry] = useState<SelectionAttempt>();
   const [hydrated, setHydrated] = useState(false);
+  const lastRecoveryOrigin = useRef<string>(undefined);
 
   useEffect(() => setHydrated(true), []);
 
   const [pending, startTransition] = useTransition();
-  const submit = (attempt: SelectionAttempt) => {
-    setError('');
-    setRetry(undefined);
-    startTransition(async () => {
-      const result = await runSelectionAttempt(attempt, changeWarehouse);
+  const submit = useCallback(
+    (attempt: SelectionAttempt) => {
+      setError('');
+      setRetry(undefined);
+      startTransition(async () => {
+        const result = await runSelectionAttempt(attempt, changeWarehouse);
 
-      setError(result.error);
-      setRetry(result.retry);
-    });
-  };
-  const needsRecovery = Boolean(context.cartId && !context.revision && !selected);
-  const suggestedWarehouse = needsRecovery ? getShippingOriginWarehouse(warehouses) : undefined;
+        setError(result.error);
+        setRetry(result.retry);
+      });
+    },
+    [startTransition],
+  );
+  const { cartId, revision } = context;
+  const needsRecovery = Boolean(cartId && !revision && !selected);
+  const originId = needsRecovery ? getShippingOriginWarehouse(warehouses)?.id : undefined;
+
+  useEffect(() => {
+    // The parent keys the picker by cart and recovery version. Rerenders (including
+    // Strict Mode's repeated effect) must not submit the same automatic check again.
+    if (lastRecoveryOrigin.current === originId) return;
+    lastRecoveryOrigin.current = originId;
+    if (cartId && originId) submit(createSelectionAttempt(originId, { cartId, revision: null }));
+  }, [cartId, originId, submit]);
+
+  const checking = pending || Boolean(originId && !error);
   let hint = selected
     ? 'Product availability reflects this warehouse. Stock is checked again when you add items.'
     : 'Choose a warehouse before adding items. You can browse first.';
 
-  if (needsRecovery)
-    hint = suggestedWarehouse
-      ? 'Confirm this warehouse or choose another to check stock for the items in your cart.'
-      : 'Choose a warehouse to check availability for the items already in your cart.';
+  if (needsRecovery) hint = 'Choose a warehouse to check availability for the items in your cart.';
 
   return (
     <section
@@ -59,7 +71,7 @@ export function Picker({
           disabled={pending || !hydrated}
           id="warehouse-choice"
           onChange={(event) => submit(createSelectionAttempt(event.target.value, context))}
-          value={selected ?? suggestedWarehouse?.id ?? ''}
+          value={selected ?? (error ? '' : originId) ?? ''}
         >
           <option disabled value="">
             Choose your warehouse
@@ -70,17 +82,7 @@ export function Picker({
             </option>
           ))}
         </select>
-        {suggestedWarehouse && !retry && (
-          <button
-            className="underline"
-            disabled={pending || !hydrated}
-            onClick={() => submit(createSelectionAttempt(suggestedWarehouse.id, context))}
-            type="button"
-          >
-            Confirm warehouse
-          </button>
-        )}
-        <span aria-live="polite">{pending ? 'Checking cart availability…' : hint}</span>
+        <span aria-live="polite">{checking ? 'Checking cart availability…' : hint}</span>
       </div>
       {retry && (
         <button

@@ -60,6 +60,23 @@ let unblock;
 const root = path.resolve(__dirname, '../../..');
 const modules = new Map();
 
+async function inventoryAt(locationId, productId) {
+  if (barrier === 'stock') {
+    barrier = undefined;
+    entered();
+    await new Promise((resolve) => {
+      unblock = resolve;
+    });
+  }
+
+  return [
+    {
+      identity: { product_id: Number(productId), variant_id: null },
+      available_to_sell: state.locationStock?.[locationId]?.[productId] ?? state.stock ?? 10,
+    },
+  ];
+}
+
 async function api(endpoint, method = 'GET', body = undefined) {
   if (endpoint.includes('metafields')) {
     stats.metafieldCalls += 1;
@@ -83,30 +100,24 @@ async function api(endpoint, method = 'GET', body = undefined) {
       ];
     if (endpoint === `carts/${state.cart.id}`) return structuredClone(state.cart);
     if (endpoint === `checkouts/${state.cart.id}`) return structuredClone(state.checkout);
-    if (endpoint === 'catalog/products/9001?include=variants')
+
+    const product = /^catalog\/products\/(9001|9002)\?include=variants$/.exec(endpoint);
+
+    if (product)
       return {
-        id: 9001,
-        name: 'Synthetic product',
+        id: Number(product[1]),
+        name: product[1] === '9001' ? 'Synthetic product' : 'Second synthetic product',
         type: 'physical',
         inventory_tracking: 'product',
         variants: [],
       };
 
-    if (
-      /^inventory\/locations\/(1|102)\/items\?product_id:in=9001&limit=250&page=1$/.test(endpoint)
-    ) {
-      if (barrier === 'stock') {
-        barrier = undefined;
-        entered();
-        await new Promise((resolve) => {
-          unblock = resolve;
-        });
-      }
+    const inventory =
+      /^inventory\/locations\/(1|102)\/items\?product_id:in=(9001|9002)&limit=250&page=1$/.exec(
+        endpoint,
+      );
 
-      return [
-        { identity: { product_id: 9001, variant_id: null }, available_to_sell: state.stock ?? 10 },
-      ];
-    }
+    if (inventory) return inventoryAt(inventory[1], inventory[2]);
   }
 
   if (
