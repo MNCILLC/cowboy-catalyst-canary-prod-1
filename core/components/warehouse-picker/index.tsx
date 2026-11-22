@@ -1,4 +1,4 @@
-import { type PropsWithChildren } from 'react';
+import { type PropsWithChildren, type ReactNode } from 'react';
 
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { warehousePreviewEnabled } from '~/lib/warehouse/config';
@@ -8,8 +8,17 @@ import { getWarehouseContext } from '~/lib/warehouse/server';
 import { AvailabilityScope } from './availability-scope';
 import { Picker } from './picker';
 
-export async function WarehousePicker({ children }: PropsWithChildren) {
-  if (!warehousePreviewEnabled()) return children;
+export async function WarehousePicker({
+  children,
+  renderHeader,
+}: PropsWithChildren<{ renderHeader: (picker: ReactNode) => ReactNode }>) {
+  if (!warehousePreviewEnabled())
+    return (
+      <>
+        {renderHeader(null)}
+        {children}
+      </>
+    );
 
   const warehouses = await getEnabledWarehouses().catch((error: unknown) => {
     if (
@@ -23,6 +32,7 @@ export async function WarehousePicker({ children }: PropsWithChildren) {
   if (!warehouses.length)
     return (
       <AvailabilityScope value="unavailable">
+        {renderHeader(null)}
         <p className="border-b bg-gray-50 px-4 py-3 text-sm" role="status">
           No shopping warehouses are available right now. Please check again later.
         </p>
@@ -34,12 +44,14 @@ export async function WarehousePicker({ children }: PropsWithChildren) {
 
   return (
     <AvailabilityScope value={`${warehouse?.id ?? 'unselected'}:${context.revision ?? ''}`}>
-      <Picker
-        context={context}
-        key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
-        selected={warehouse?.id}
-        warehouses={warehouses}
-      />
+      {renderHeader(
+        <Picker
+          context={context}
+          key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
+          selected={warehouse?.id}
+          warehouses={warehouses}
+        />,
+      )}
       {children}
     </AvailabilityScope>
   );

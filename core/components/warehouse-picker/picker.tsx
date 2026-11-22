@@ -57,44 +57,50 @@ export function Picker({
   return (
     <section
       aria-label="Shopping warehouse"
-      className="border-b bg-gray-50 px-4 py-3 text-sm"
+      className="relative mr-3 min-w-0 text-sm"
       data-test="warehouse-picker"
     >
-      <div className="mx-auto flex max-w-screen-2xl flex-wrap items-center gap-3">
-        <select
-          aria-label="Shopping warehouse"
-          className="max-w-full rounded border bg-white px-3 py-2"
-          disabled={pending || !hydrated}
-          id="warehouse-choice"
-          onChange={(event) => submit(createSelectionAttempt(event.target.value, context))}
-          value={selected ?? (error ? '' : originId) ?? ''}
-        >
-          <option disabled value="">
-            Choose your warehouse
+      <select
+        aria-label="Shopping warehouse"
+        className="block max-w-full truncate rounded border bg-white px-2 py-2 text-xs text-gray-900 @xs:text-sm"
+        disabled={pending || !hydrated}
+        id="warehouse-choice"
+        onChange={(event) => submit(createSelectionAttempt(event.target.value, context))}
+        value={selected ?? (error ? '' : originId) ?? ''}
+      >
+        <option disabled value="">
+          Choose your warehouse
+        </option>
+        {warehouses.map((w) => (
+          <option key={w.id} value={w.id}>
+            {w.label}
           </option>
-          {warehouses.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.label}
-            </option>
-          ))}
-        </select>
+        ))}
+      </select>
+      <div
+        className={
+          checking || hint || retry || error
+            ? 'absolute left-0 top-full z-10 mt-1 w-60 max-w-[calc(100vw-2rem)] rounded border bg-white p-3 text-gray-900 shadow-md @2xl:left-auto @2xl:right-0'
+            : undefined
+        }
+      >
         <span aria-live="polite">{checking ? 'Checking cart availability…' : hint}</span>
+        {retry && (
+          <button
+            className="mt-2 rounded border px-3 py-2"
+            disabled={pending}
+            onClick={() => submit(retry)}
+            type="button"
+          >
+            Retry warehouse selection
+          </button>
+        )}
+        {Boolean(error) && (
+          <p className="mt-2 text-red-700" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-      {retry && (
-        <button
-          className="mt-2 rounded border px-3 py-2"
-          disabled={pending}
-          onClick={() => submit(retry)}
-          type="button"
-        >
-          Retry warehouse selection
-        </button>
-      )}
-      {Boolean(error) && (
-        <p className="mx-auto mt-2 max-w-screen-2xl text-red-700" role="alert">
-          {error}
-        </p>
-      )}
     </section>
   );
 }

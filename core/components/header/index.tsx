@@ -1,5 +1,5 @@
 import { getLocale, getTranslations } from 'next-intl/server';
-import { cache } from 'react';
+import { cache, type ReactNode } from 'react';
 
 import { Streamable } from '@/vibes/soul/lib/streamable';
 import { GetLinksAndSectionsQuery, LayoutQuery } from '~/app/[locale]/(default)/page-data';
@@ -71,7 +71,7 @@ const getHeaderData = cache(async () => {
   return readFragment(HeaderFragment, response).site;
 });
 
-export const Header = async () => {
+export const Header = async ({ warehousePicker }: { warehousePicker?: ReactNode }) => {
   const t = await getTranslations('Components.Header');
   const locale = await getLocale();
 
@@ -165,6 +165,7 @@ export const Header = async () => {
         giftCertificatesHref: '/gift-certificates',
         giftCertificatesEnabled: streamableGiftCertificatesEnabled,
         searchHref: '/search',
+        warehousePicker,
         searchParamName: 'term',
         searchAction: search,
         searchInputPlaceholder: t('Search.inputPlaceholder'),

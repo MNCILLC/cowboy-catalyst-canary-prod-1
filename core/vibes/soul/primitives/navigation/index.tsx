@@ -122,6 +122,7 @@ interface Props<S extends SearchResult> {
   mobileLogoWidth?: number;
   mobileLogoHeight?: number;
   searchHref: string;
+  warehousePicker?: React.ReactNode;
   searchParamName?: string;
   searchAction?: SearchAction<S>;
   searchInputPlaceholder?: string;
@@ -293,6 +294,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
     activeCurrencyId: streamableActiveCurrencyId,
     currencyAction,
     searchHref,
+    warehousePicker,
     searchParamName = 'query',
     searchAction,
     searchInputPlaceholder,
@@ -340,6 +342,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
       <div
         className={clsx(
           'flex items-center justify-between gap-1 bg-[var(--nav-background,hsl(var(--background)))] py-2 pl-3 pr-2 transition-shadow @4xl:rounded-2xl @4xl:px-2 @4xl:pl-6 @4xl:pr-2.5',
+          warehousePicker && 'flex-wrap @xl:flex-nowrap',
           isFloating
             ? 'shadow-xl ring-1 ring-[var(--nav-floating-border,hsl(var(--foreground)/10%))]'
             : 'shadow-none ring-0',
@@ -351,7 +354,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
           <Popover.Trigger asChild>
             <MobileMenuButton
               aria-label={mobileMenuTriggerLabel}
-              className="mr-1 @4xl:hidden"
+              className={clsx('mr-1', warehousePicker ? '@6xl:hidden' : '@4xl:hidden')}
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               open={isMobileMenuOpen}
             />
@@ -475,7 +478,8 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         {/* Top Level Nav Links */}
         <ul
           className={clsx(
-            'hidden gap-1 @4xl:flex @4xl:flex-1',
+            'hidden flex-1 gap-1',
+            warehousePicker ? '@6xl:flex' : '@4xl:flex',
             {
               left: '@4xl:justify-start',
               center: '@4xl:justify-center',
@@ -557,9 +561,11 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         <div
           className={clsx(
             'flex items-center justify-end gap-0.5 transition-colors duration-300',
+            warehousePicker && 'min-w-full @xl:min-w-max',
             linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
           )}
         >
+          {warehousePicker}
           {searchAction ? (
             <Popover.Root onOpenChange={setIsSearchOpen} open={isSearchOpen}>
               <Popover.Anchor className="absolute left-0 right-0 top-full" />

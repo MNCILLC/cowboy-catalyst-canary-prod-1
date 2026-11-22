@@ -16,8 +16,7 @@ export default async function DefaultLayout({ params, children }: Props) {
 
   return (
     <>
-      <Header />
-      <WarehousePicker>
+      <WarehousePicker renderHeader={(picker) => <Header warehousePicker={picker} />}>
         <main>{children}</main>
       </WarehousePicker>
 

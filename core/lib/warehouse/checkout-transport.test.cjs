@@ -71,6 +71,15 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   }),
 });
 
+async function renderStorefront() {
+  const layout = await WarehousePicker({
+    renderHeader: (picker) => react.react.createElement('header', null, picker),
+    children: 'Storefront',
+  });
+
+  return renderToStaticMarkup(layout);
+}
+
 let prepared = 0;
 let signed = 0;
 let failStock = false;
@@ -158,27 +167,25 @@ const run = (search = '') =>
 
 test('a recovered cart starts checking only an enabled shipping origin without a confirmation button', async () => {
   const origin = { ...warehouse, id: 'south', label: 'South', locationId: 1, pickupMethodId: 12 };
-  const render = async () =>
-    renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
 
   process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, origin]);
   pickerContext = { cartId: 'cart', revision: null };
   locations.push({ id: origin.locationId, enabled: true });
 
-  const recovery = await render();
+  const recovery = await renderStorefront();
 
   assert.match(recovery, /<option value="south" selected="">South/);
   assert.match(recovery, /Checking cart availability/);
   assert.doesNotMatch(recovery, /Confirm warehouse/);
   locations[1].enabled = false;
 
-  const disabled = await render();
+  const disabled = await renderStorefront();
 
   assert.doesNotMatch(disabled, /value="south"|Confirm warehouse/);
   locations[1].enabled = true;
   pickerContext = { ...pickerContext, warehouse, revision: 'saved' };
 
-  const saved = await render();
+  const saved = await renderStorefront();
 
   assert.match(saved, /<option value="north" selected="">North/);
   assert.doesNotMatch(saved, /Confirm warehouse/);
@@ -202,7 +209,7 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
   locations = [{ id: 3, enabled: true }, powell, { id: 1, enabled: true }];
 
   const options = async () => {
-    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+    const html = await renderStorefront();
 
     return Array.from(html.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g), (match) => [
       match[1],
@@ -226,7 +233,7 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
   test(`unavailable locations (${JSON.stringify(response)}) show a message while the storefront still renders`, async () => {
     locations = response;
 
-    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+    const html = await renderStorefront();
 
     assert.doesNotMatch(html, /warehouse-choice/);
     assert.match(html, /No shopping warehouses are available/);
@@ -238,9 +245,9 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
   test(`${mode} renders the picker and redirects to the validated checkout URL`, async () => {
     process.env.WAREHOUSE_MODE = mode;
 
-    const html = renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' }));
+    const html = await renderStorefront();
 
-    assert.match(html, /<select[^>]+id="warehouse-choice"/);
+    assert.match(html, /<header>.*<select[^>]+id="warehouse-choice".*<\/header>Storefront$/);
     assert.match(html, /<option value="north">North<\/option>/);
 
     const before = prepared;
@@ -289,10 +296,7 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
     else process.env.WAREHOUSE_MODE = mode;
     process.env.NODE_ENV = 'development';
     process.env.WAREHOUSE_PREVIEW_ENABLED = 'true';
-    assert.equal(
-      renderToStaticMarkup(await WarehousePicker({ children: 'Storefront' })),
-      'Storefront',
-    );
+    assert.equal(await renderStorefront(), '<header></header>Storefront');
 
     const before = prepared;
     const signatures = signed;
