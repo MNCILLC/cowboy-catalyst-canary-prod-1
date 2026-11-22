@@ -315,6 +315,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
   const { isSearchOpen, setIsSearchOpen } = useSearch();
 
   const pathname = usePathname();
+  const sideFlex = linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none';
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -452,8 +453,10 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         <div
           className={clsx(
             'flex items-center justify-start self-stretch',
-            warehousePicker && 'min-w-0 gap-2 @sm:gap-4 @xl:min-w-max',
-            linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
+            warehousePicker &&
+              'min-w-0 gap-2 @sm:gap-4 @xl:min-w-max @6xl:gap-3.5 @6xl:[&>:last-child]:mx-auto',
+            sideFlex,
+            warehousePicker && linksPosition === 'right' && '@6xl:flex-1',
           )}
         >
           <Logo
@@ -481,7 +484,7 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         <ul
           className={clsx(
             'hidden flex-1 gap-1',
-            warehousePicker ? '@6xl:flex' : '@4xl:flex',
+            warehousePicker ? '@6xl:flex @6xl:flex-none' : '@4xl:flex',
             {
               left: '@4xl:justify-start',
               center: '@4xl:justify-center',
@@ -563,8 +566,8 @@ export const Navigation = forwardRef(function Navigation<S extends SearchResult>
         <div
           className={clsx(
             'flex items-center justify-end gap-0.5 transition-colors duration-300',
-            warehousePicker && 'min-w-full @xl:min-w-max',
-            linksPosition === 'center' ? 'flex-1' : 'flex-1 @4xl:flex-none',
+            warehousePicker && 'min-w-full @xl:min-w-max @6xl:ml-auto',
+            sideFlex,
           )}
         >
           {searchAction ? (
