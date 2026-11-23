@@ -453,7 +453,7 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
   });
 });
 
-test('only an opted-in local shopper handoff attaches the initialization reference', async (t) => {
+test('only opted-in local and hosted shopper handoffs attach the initialization reference', async (t) => {
   process.env = {
     ...hostedEnv,
     NODE_ENV: 'development',
@@ -491,4 +491,23 @@ test('only an opted-in local shopper handoff attaches the initialization referen
   assert.equal(new URL(res.headers.get('location')).hash, '#warehouseHandoff=some-public-id');
   assert.equal((await request('handoff=json')).status, 200);
   assert.equal(published, 1);
+
+  async function checkHosted(mode) {
+    process.env = { ...hostedEnv, WAREHOUSE_MODE: mode };
+
+    const handoff = () => request('displayedCartId=11111111-1111-4111-8111-111111111111');
+    const previous = published;
+
+    assert.equal(new URL((await handoff()).headers.get('location')).hash, '');
+    assert.equal(published, previous);
+    process.env.WAREHOUSE_ONE_CLICK_ENABLED = 'true';
+    assert.equal(
+      new URL((await handoff()).headers.get('location')).hash,
+      '#warehouseHandoff=some-public-id',
+    );
+    assert.equal(published, previous + 1);
+  }
+
+  await checkHosted('multi-location');
+  await checkHosted('staging');
 });

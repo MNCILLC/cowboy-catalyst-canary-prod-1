@@ -26,7 +26,7 @@ function settings() {
 
   if (
     !automaticInitializationEnabled() ||
-    config.mode !== 'development' ||
+    (config.mode !== 'development' && config.mode !== 'staging') ||
     !clientId ||
     !/^[a-zA-Z0-9_-]{1,128}$/.test(clientId) ||
     !secret

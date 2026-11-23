@@ -49,6 +49,9 @@ function harness(overrides: Record<string, string> = {}) {
   }
   const access = load('./preview-access.ts');
   dependencies['~/lib/preview-access'] = access;
+  dependencies.zod = require('zod');
+  dependencies['./configuration'] = load('./warehouse/configuration.ts');
+  dependencies['~/lib/warehouse/config'] = load('./warehouse/config.ts');
   const { withStorefrontPreview } = load('../proxies/with-storefront-preview.ts');
   const route = load('../app/api/storefront-preview/route.ts');
   let downstreamCalls = 0;
@@ -318,7 +321,7 @@ test('only signed warehouse API preflights and POSTs reach their handlers withou
   assert.equal(h.downstreamCalls, 0);
 });
 
-test('only the opted-in local handoff exchange can reach initialization without a preview cookie', async () => {
+test('only an opted-in handoff exchange can reach initialization without a preview cookie', async () => {
   const enabled = {
     NODE_ENV: 'development',
     WAREHOUSE_MODE: 'development',
@@ -328,6 +331,17 @@ test('only the opted-in local handoff exchange can reach initialization without 
   for (const method of ['POST', 'OPTIONS']) {
     const response = await harness(enabled).proxy(request(path, undefined, method), {});
     assert.equal(response.headers.get('x-middleware-next'), '1');
+    for (const mode of ['staging', 'multi-location']) {
+      const hosted = { NODE_ENV: 'production', WAREHOUSE_MODE: mode };
+      const on = harness({ ...hosted, WAREHOUSE_ONE_CLICK_ENABLED: 'true' });
+      assert.equal(
+        (await on.proxy(request(path, undefined, method), {})).headers.get('x-middleware-next'),
+        '1',
+      );
+      assert.equal((await harness(hosted).proxy(request(path, undefined, method), {})).status, 401);
+      assert.equal((await on.proxy(request(path), {})).status, 401);
+      assert.equal((await on.proxy(request(path + '/extra', undefined, method), {})).status, 401);
+    }
     for (const overrides of [
       { NODE_ENV: 'production' },
       { WAREHOUSE_MODE: 'staging' },

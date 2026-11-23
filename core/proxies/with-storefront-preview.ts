@@ -7,6 +7,7 @@ import {
   PREVIEW_PATH,
   safePreviewReturnPath,
 } from '~/lib/preview-access';
+import { automaticInitializationEnabled } from '~/lib/warehouse/config';
 
 import { type ProxyFactory } from './compose-proxies';
 
@@ -15,15 +16,6 @@ function privateResponse(response: NextResponse) {
   response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
 
   return response;
-}
-
-function isLocalInitialization(pathname: string) {
-  return (
-    process.env.NODE_ENV === 'development' &&
-    process.env.WAREHOUSE_MODE === 'development' &&
-    process.env.WAREHOUSE_ONE_CLICK_ENABLED === 'true' &&
-    /^\/api\/warehouse\/initialize\/?$/.test(pathname)
-  );
 }
 
 export const withStorefrontPreview: ProxyFactory = (next) => {
@@ -41,11 +33,11 @@ export const withStorefrontPreview: ProxyFactory = (next) => {
     // Checkout deliberately omits storefront cookies. Only these capability-authenticated
     // handlers may receive its preflight/POST requests; they enforce the allowed origin,
     // signed cart credential, expiry, warehouse revision and inventory themselves.
-    // Popup authorization uses its first-party storefront session. The local exchange verifies Current Customer.
+    // Popup authorization uses its storefront session. One-click verifies Current Customer.
     if (
       ['OPTIONS', 'POST'].includes(request.method) &&
       (/^\/api\/warehouse\/(?:validate|freight)\/?$/.test(pathname) ||
-        isLocalInitialization(pathname))
+        (/^\/api\/warehouse\/initialize\/?$/.test(pathname) && automaticInitializationEnabled()))
     ) {
       return privateResponse(NextResponse.next());
     }

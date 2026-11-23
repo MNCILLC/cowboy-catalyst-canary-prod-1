@@ -24,9 +24,11 @@ export function warehouseCheckoutOriginAllowed(origin: string) {
 }
 
 export function automaticInitializationEnabled() {
+  const mode = process.env.WAREHOUSE_MODE;
+
   return (
-    process.env.NODE_ENV === 'development' &&
-    process.env.WAREHOUSE_MODE === 'development' &&
-    process.env.WAREHOUSE_ONE_CLICK_ENABLED === 'true'
+    process.env.WAREHOUSE_ONE_CLICK_ENABLED === 'true' &&
+    ((mode === 'development' && process.env.NODE_ENV === 'development') ||
+      ((mode === 'staging' || mode === 'multi-location') && process.env.NODE_ENV === 'production'))
   );
 }
