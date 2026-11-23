@@ -258,7 +258,7 @@ export async function assertWarehouseItems(
 
   if (!cartId) {
     const channelId = Number(getChannelIdFromLocale(await getLocale()));
-    const carts = await getShopperWarehouseCarts(channelId);
+    const carts = await getShopperWarehouseCarts(channelId, initializeCreatedCart);
 
     await carts?.checkSlot(warehouse.id);
   }
@@ -305,28 +305,42 @@ async function warehouseForCart(cart: Cart) {
   return { record, warehouse };
 }
 
-// Called only by the successful new-cart creation callback; never adopt an existing cart here.
-export async function persistNewCartWarehouse(cartId: string, warehouseId: string) {
-  const cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+export async function reserveNewCartWarehouse(warehouseId: string) {
+  const channelId = Number(getChannelIdFromLocale(await getLocale()));
+  const carts = await getShopperWarehouseCarts(channelId, initializeCreatedCart);
+
+  return carts?.reserve(warehouseId);
+}
+
+async function initializeCreatedCart(cart: Cart, warehouseId: string) {
   const warehouse = (await getEnabledWarehouses()).find((w) => w.id === warehouseId);
 
-  if (
-    !warehouse ||
-    cart.id !== cartId ||
-    cart.channel_id !== Number(getChannelIdFromLocale(await getLocale()))
-  )
+  if (!warehouse || cart.channel_id !== Number(getChannelIdFromLocale(await getLocale())))
     throw new WarehouseError('Invalid new cart warehouse.');
 
-  // Reserve the cart UUID for initialization so a lost response can be retried safely.
-  const carts = await getShopperWarehouseCarts(cart.channel_id, cart);
   const accepted = await findWarehouseOperation(cart, warehouseId, null, cart.id);
 
-  if (!accepted) {
-    await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
-    await saveWarehouseRecord(cart, warehouseId, null, cart.id);
+  if (accepted) {
+    if (accepted.warehouseId !== warehouseId)
+      throw new WarehouseError('Invalid new cart warehouse.');
+
+    return;
   }
 
-  await carts?.remember(accepted?.warehouseId ?? warehouseId, cart);
+  await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+  await saveWarehouseRecord(cart, warehouseId, null, cart.id);
+}
+
+// Used when creating without a signed-in shopper reservation.
+export async function persistNewCartWarehouse(cartId: string, warehouseId: string) {
+  const cart = await api<Cart>(`carts/${encodeURIComponent(cartId)}`);
+
+  if (cart.id !== cartId) throw new WarehouseError('Invalid new cart warehouse.');
+
+  const carts = await getShopperWarehouseCarts(cart.channel_id, initializeCreatedCart, cart);
+
+  await initializeCreatedCart(cart, warehouseId);
+  await carts?.remember(warehouseId, cart);
 }
 
 type SelectionContext = z.infer<typeof selectionContextSchema>;
@@ -430,7 +444,7 @@ export async function selectWarehouse(id: string, expected: SelectionContext) {
     );
 
   const channelId = cart?.channel_id ?? Number(getChannelIdFromLocale(await getLocale()));
-  const carts = await getShopperWarehouseCarts(channelId, cart);
+  const carts = await getShopperWarehouseCarts(channelId, initializeCreatedCart, cart);
   const assigned = cart && carts ? await readWarehouseRecord(cart.id, channelId) : undefined;
   let selectedId = warehouse.id;
   let cartSwitched = false;

@@ -16,7 +16,11 @@ interface OwnedCart {
   channel_id: number;
 }
 
-export async function getShopperWarehouseCarts(channelId: number, active?: OwnedCart) {
+export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
+  channelId: number,
+  initializeCreated: (cart: Cart, warehouseId: string) => Promise<void>,
+  active?: Cart,
+) {
   if (!warehousePersistenceIsAtomic()) return;
 
   const customerId = await getSignedInWarehouseCustomerId();
@@ -37,27 +41,48 @@ export async function getShopperWarehouseCarts(channelId: number, active?: Owned
   const storage = await getAtomicWarehousePersistence();
 
   async function saved(warehouseId: string) {
-    const id = await storage.shopperCart(scope, warehouseId);
+    const slot = await storage.shopperCart(scope, warehouseId);
 
-    if (!id) return null;
+    if (!slot) return null;
+    if (typeof slot !== 'string' && 'creating' in slot)
+      throw new WarehouseValidationError(
+        'A cart is already being created for this warehouse. Reload your cart before adding again.',
+        409,
+        'CART_CHANGED',
+      );
 
-    let cart: OwnedCart;
+    const id = typeof slot === 'string' ? slot : slot.created;
+    let cart: Cart;
 
     try {
-      cart = await warehouseApi<OwnedCart>(`carts/${id}`);
+      cart = await warehouseApi<Cart>(`carts/${id}`);
     } catch (error) {
       if (!(error instanceof WarehouseValidationError && error.status === 404)) throw error;
 
       // BigCommerce deletes empty and converted carts. Only forget the ID we just checked.
-      return storage.shopperCart(scope, warehouseId, { expected: id, next: null });
+      await storage.shopperCart(scope, warehouseId, { expected: slot, next: null });
+
+      return null;
+    }
+
+    if (cart.id !== id || cart.customer_id !== customerId || cart.channel_id !== channelId)
+      throw new WarehouseValidationError(
+        'Unable to verify your saved warehouse cart.',
+        409,
+        'INVALID_RECORD',
+      );
+
+    // A previous request may have received the native ID but lost the initialization response.
+    if (typeof slot !== 'string') {
+      await initializeCreated(cart, warehouseId);
+      await storage.shopperCart(scope, warehouseId, { expected: slot, next: id });
+
+      return id;
     }
 
     const record = await readWarehouseRecord(id, channelId);
 
     if (
-      cart.id !== id ||
-      cart.customer_id !== customerId ||
-      cart.channel_id !== channelId ||
       record?.warehouseId !== warehouseId ||
       record.cartId !== id ||
       record.storeHash !== storeHash
@@ -75,7 +100,11 @@ export async function getShopperWarehouseCarts(channelId: number, active?: Owned
     const previous = await storage.shopperCart(scope, warehouseId);
 
     if (previous === cartId) return true;
-    if (previous && (await saved(warehouseId)))
+
+    const verified = previous && (await saved(warehouseId));
+
+    if (verified && verified === cartId) return true;
+    if (verified)
       throw new WarehouseValidationError(
         'You already have a saved cart at this warehouse. Select another warehouse to keep both carts.',
         409,
@@ -97,5 +126,30 @@ export async function getShopperWarehouseCarts(channelId: number, active?: Owned
     await storage.shopperCart(scope, warehouseId, { expected: null, next: cart.id });
   }
 
-  return { saved, remember, checkSlot };
+  async function reserve(warehouseId: string) {
+    const reservation = { creating: crypto.randomUUID() };
+
+    // A lost create response cannot safely be retried. Only the owning request can
+    // release a known rejection or record the ID BigCommerce returned.
+    await storage.shopperCart(scope, warehouseId, { expected: null, next: reservation });
+
+    return {
+      release: () => storage.shopperCart(scope, warehouseId, { expected: reservation, next: null }),
+      async complete(id: string) {
+        await storage.shopperCart(scope, warehouseId, {
+          expected: reservation,
+          next: { created: id },
+        });
+
+        if ((await saved(warehouseId)) !== id)
+          throw new WarehouseValidationError(
+            'Your saved cart changed. Reload the cart.',
+            409,
+            'CART_CHANGED',
+          );
+      },
+    };
+  }
+
+  return { saved, remember, checkSlot, reserve };
 }

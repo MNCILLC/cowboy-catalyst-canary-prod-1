@@ -75,6 +75,16 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
+// Existing saved carts stay plain UUIDs. Only the first add uses the two transient states.
+type ShopperCartSlot = string | null | { creating: string } | { created: string };
+
+function encodeShopperCart(slot: ShopperCartSlot) {
+  if (!slot || typeof slot === 'string') return slot ?? '';
+  if ('creating' in slot) return `creating:${slot.creating}`;
+
+  return `created:${slot.created}`;
+}
+
 /** Storage only: the caller must authenticate cart ownership and validate stock first. */
 export class AtomicWarehousePersistence {
   private readonly namespace: string;
@@ -100,8 +110,8 @@ export class AtomicWarehousePersistence {
   async shopperCart(
     scope: { storeHash: string; channelId: number; customerId: number },
     warehouseId: string,
-    change?: { expected: string | null; next: string | null },
-  ): Promise<string | null> {
+    change?: { expected: ShopperCartSlot; next: ShopperCartSlot },
+  ): Promise<ShopperCartSlot> {
     const hash = createHash('sha256')
       .update(JSON.stringify([scope.storeHash, scope.channelId, scope.customerId, warehouseId]))
       .digest('hex');
@@ -117,7 +127,7 @@ export class AtomicWarehousePersistence {
          else redis.call('SET', KEYS[1], ARGV[2]) end
          return ARGV[2]`,
         [key],
-        change ? [change.expected ?? '', change.next ?? ''] : [],
+        change ? [encodeShopperCart(change.expected), encodeShopperCart(change.next)] : [],
       );
     } catch {
       throw storageError();
@@ -130,6 +140,15 @@ export class AtomicWarehousePersistence {
         'CART_CHANGED',
       );
     if (reply === '') return null;
+
+    if (typeof reply === 'string') {
+      const [state, value, extra] = reply.split(':');
+
+      if (extra === undefined && value && z.string().uuid().safeParse(value).success) {
+        if (state === 'creating') return { creating: value };
+        if (state === 'created') return { created: value };
+      }
+    }
 
     const id = z.string().uuid().safeParse(reply);
 

@@ -75,3 +75,44 @@ test('the first add checks the selected warehouse even before the cart has an ID
 test('single-location mode permits an add form without warehouse fields', async () => {
   assert.equal(await fixture('cart-b', false)(null), undefined);
 });
+
+test('only a definite create rejection releases the first-add reservation', async () => {
+  const clientErrors = require('@bigcommerce/catalyst-client');
+  const noStock = new clientErrors.BigCommerceGQLError([
+    { message: 'Not enough stock: Test item' },
+  ]);
+  const lostResponse = new Error('Connection closed');
+  let nextError = noStock;
+  const calls = [];
+  const { createCart } = loadTestModule('../cart/create-cart.ts', {
+    '@bigcommerce/catalyst-client': clientErrors,
+    '~/auth': { getSessionCustomerAccessToken: async () => 'synthetic' },
+    '~/client': {
+      client: {
+        fetch: async () => {
+          calls.push('create');
+          throw nextError;
+        },
+      },
+    },
+    '~/client/graphql': { graphql: (query) => query },
+    '~/lib/currency': { getPreferredCurrencyCode: async () => 'USD' },
+    '~/lib/pro-use/server': { assertProUseLineItems: async () => {} },
+    '~/lib/wholesale-pricing': { assertPricingAccess: async () => {} },
+    '~/lib/warehouse/server': {
+      assertWarehouseItems: async () => ({ id: 'powell' }),
+      reserveNewCartWarehouse: async () => {
+        calls.push('reserve');
+
+        return { release: async () => calls.push('release') };
+      },
+    },
+  });
+
+  await assert.rejects(createCart({}, null), noStock);
+  assert.deepEqual(calls, ['reserve', 'create', 'release']);
+  nextError = lostResponse;
+  calls.length = 0;
+  await assert.rejects(createCart({}, null), lostResponse);
+  assert.deepEqual(calls, ['reserve', 'create']);
+});

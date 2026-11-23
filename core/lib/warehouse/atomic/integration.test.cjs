@@ -325,6 +325,45 @@ test('signed-in warehouse switches preserve both carts and their revisions acros
   assert.equal((await call(b, 'context')).cartId, null);
 });
 
+test('two first adds reserve one shopper cart and a second process can finish its initialization', async () => {
+  const { cartId } = await setup(false);
+  const customerId = 87;
+  const cart = {
+    id: cartId,
+    customer_id: customerId,
+    channel_id: 37,
+    line_items: {
+      physical_items: [{ id: 'line-1', product_id: 9001, variant_id: 0, quantity: 1 }],
+      digital_items: [],
+    },
+  };
+  const workers = [a, b];
+
+  await Promise.all(
+    workers.map((w) => call(w, 'patch', { customerId, cart, sessionCartId: null })),
+  );
+
+  const responses = await Promise.all(workers.map((w) => w.call('reserveFirstAdd')));
+
+  assert.equal(responses.filter((r) => r.ok && r.result).length, 1);
+  assert.equal(responses.find((r) => !r.ok).error.code, 'CART_CHANGED');
+
+  const winner = workers[responses.findIndex((r) => r.ok)];
+  const loser = winner === a ? b : a;
+
+  // BigCommerce returned an ID, but stock verification then failed on the winning process.
+  await call(winner, 'patch', { stock: 0 });
+  assert.equal((await winner.call('completeFirstAdd')).ok, false);
+  await expectError(loser, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
+  assert.deepEqual(await call(loser, 'select', selection(null, null)), { cartSwitched: true });
+
+  const recovered = await call(loser, 'context');
+
+  assert.equal(recovered.cartId, cartId);
+  assert.equal(recovered.warehouse.id, 'powell');
+  await expectError(winner, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
+});
+
 test('two picker actions pass their stock checks then race at CAS: exactly one wins', async () => {
   for (let i = 0; i < 12; i += 1) {
     const { cartId, record } = await setup();

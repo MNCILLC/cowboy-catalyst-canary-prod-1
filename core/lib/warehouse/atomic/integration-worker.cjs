@@ -383,6 +383,16 @@ async function dispatch(command, payload = {}) {
 
       return null;
 
+    case 'reserveFirstAdd':
+      state.firstAdd = await server.reserveNewCartWarehouse('powell');
+
+      return Boolean(state.firstAdd);
+
+    case 'completeFirstAdd':
+      await state.firstAdd.complete(state.cart.id);
+
+      return null;
+
     case 'initialize':
       await server.persistNewCartWarehouse(state.cart.id, payload.warehouseId ?? 'forney');
 
