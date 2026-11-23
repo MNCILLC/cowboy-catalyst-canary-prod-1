@@ -33,7 +33,10 @@ export function parseInitializationRequest(
 // No credential is placed in a URL, cookie, or persistent browser storage.
 export function initializationResponse(
   request: InitializationRequest,
-  warehouseCheckout?: unknown,
+  result:
+    | { warehouseCheckout: unknown }
+    | { error: 'INVENTORY_CONFLICT'; message: string }
+    | { error: 'AUTHORIZATION_FAILED' } = { error: 'AUTHORIZATION_FAILED' },
 ): Response {
   const nonce = randomBytes(24).toString('base64');
   const serialize = (value: unknown) => JSON.stringify(value).replace(/</g, '\\u003c');
@@ -41,14 +44,16 @@ export function initializationResponse(
     protocol: 'warehouse-initialization-v1',
     requestId: request.requestId,
     cartId: request.cartId,
-    ...(warehouseCheckout ? { warehouseCheckout } : { error: 'AUTHORIZATION_FAILED' }),
+    ...result,
   });
   const target = serialize(request.checkoutOrigin);
+
+  const errorStatus = { INVENTORY_CONFLICT: 409, AUTHORIZATION_FAILED: 403 };
 
   return new Response(
     `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Warehouse authorization</title><body><p>Return to checkout. If authorization failed, sign in to the storefront and reopen checkout from your cart.</p><script nonce="${nonce}">if(window.opener){window.opener.postMessage(${message},${target});window.close();}</script></body></html>`,
     {
-      status: warehouseCheckout ? 200 : 403,
+      status: 'warehouseCheckout' in result ? 200 : errorStatus[result.error],
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
         'Cache-Control': 'no-store',

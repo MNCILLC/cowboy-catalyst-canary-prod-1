@@ -17,7 +17,14 @@ export interface StockDemand {
   name: string;
   quantity: number;
 }
-export class WarehouseError extends Error {}
+export class WarehouseError extends Error {
+  readonly shortage?: string;
+
+  constructor(message: string, shortage?: string) {
+    super(message);
+    this.shortage = shortage;
+  }
+}
 
 // An empty warehouse has a selection before BigCommerce creates its first cart.
 export function warehouseCartKey(cartId: string | null, warehouseId: string) {
@@ -38,10 +45,14 @@ export function assertStock(demands: StockDemand[], available: Map<string, numbe
   totals.forEach((demand) => {
     const stock = available.get(demand.key);
 
-    if (stock === undefined || !Number.isFinite(stock) || demand.quantity > stock)
+    if (stock === undefined || !Number.isFinite(stock) || demand.quantity > stock) {
+      const shortage = `${demand.name}: ${Math.max(0, stock ?? 0)} available at ${label}; ${demand.quantity} requested.`;
+
       throw new WarehouseError(
-        `${demand.name}: ${Math.max(0, stock ?? 0)} available at ${label}; ${demand.quantity} requested. Your cart and warehouse have not been changed.`,
+        `${shortage} Your cart and warehouse have not been changed.`,
+        shortage,
       );
+    }
   });
 }
 

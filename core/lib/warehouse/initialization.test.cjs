@@ -56,7 +56,7 @@ test('accepts only exact allowed HTTPS origins, UUID carts and correlation nonce
 });
 test('bridge sends only to its exact opener target and safely serializes script markup', async () => {
   const payload = { label: '</script><script>evil()</script>', token: 'synthetic-only' };
-  const response = bridge.initializationResponse(request, payload);
+  const response = bridge.initializationResponse(request, { warehouseCheckout: payload });
   const html = await response.text();
 
   assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -94,11 +94,12 @@ test('bridge sends only to its exact opener target and safely serializes script 
   );
   assert.equal(closed, true);
 });
-test('route authenticates before signing and keeps all failures generic', async () => {
+test('route only discloses stock shortages after authentication and never signs a failed check', async () => {
+  const policy = compile(path.join(__dirname, 'policy.ts'), {});
   let signed = 0;
   let prepared = 0;
   let authenticated = true;
-  let failure = false;
+  let failure;
   const route = compile(
     path.resolve(__dirname, '../../app/[locale]/(default)/warehouse-initialize/route.ts'),
     {
@@ -114,11 +115,12 @@ test('route authenticates before signing and keeps all failures generic', async 
         }),
       },
       '~/lib/warehouse/initialization': bridge,
+      '~/lib/warehouse/policy': policy,
       '~/lib/warehouse/server': {
         authorizeWarehouseInitialization: async (id) => {
           prepared += 1;
           assert.equal(id, cartId);
-          if (failure) throw new Error('private upstream detail');
+          if (failure) throw failure;
 
           return { record: {}, warehouse: { id: 'powell' } };
         },
@@ -142,12 +144,28 @@ test('route authenticates before signing and keeps all failures generic', async 
   assert.equal(prepared, 1);
   assert.equal(signed, 1);
   authenticated = true;
-  failure = true;
+  failure = new Error('private upstream detail');
   response = await route.GET({ nextUrl: url() });
   assert.equal(response.status, 403);
   assert.equal(signed, 1);
   assert.equal((await response.text()).includes('private upstream detail'), false);
+
+  try {
+    policy.assertStock([{ key: 'p:1', name: 'Item', quantity: 1 }], new Map([['p:1', 0]]), 'North');
+  } catch (error) {
+    failure = error;
+  }
+
+  response = await route.GET({ nextUrl: url() });
+  assert.equal(response.status, 409);
+
+  const html = await response.text();
+
+  assert.match(html, /INVENTORY_CONFLICT/);
+  assert.match(html, /Item: 0 available at North; 1 requested. Return to your cart/);
+  assert.doesNotMatch(html, /warehouseCheckout|synthetic-only/);
+  assert.equal(signed, 1);
   response = await route.GET({ nextUrl: url({ checkoutOrigin: 'https://evil.example' }) });
   assert.equal(response.status, 400);
-  assert.equal(prepared, 2);
+  assert.equal(prepared, 3);
 });

@@ -4,6 +4,7 @@ import { getSessionCustomerAccessToken } from '~/auth';
 import { isCheckoutAuthenticationRequired } from '~/lib/checkout-authentication';
 import { getWarehouseConfiguration } from '~/lib/warehouse/config';
 import { initializationResponse, parseInitializationRequest } from '~/lib/warehouse/initialization';
+import { WarehouseError } from '~/lib/warehouse/policy';
 import { authorizeWarehouseInitialization } from '~/lib/warehouse/server';
 import { createValidationAccess } from '~/lib/warehouse/validation';
 
@@ -41,9 +42,16 @@ export async function GET(req: NextRequest) {
       validation: createValidationAccess(record, request.checkoutOrigin, req.nextUrl.origin),
     };
 
-    return initializationResponse(request, warehouseCheckout);
-  } catch {
-    // Never render a raw exception, cart details, or upstream credentials.
+    return initializationResponse(request, { warehouseCheckout });
+  } catch (error) {
+    if (error instanceof WarehouseError && error.shortage) {
+      return initializationResponse(request, {
+        error: 'INVENTORY_CONFLICT',
+        message: `${error.shortage} Return to your cart to update these items.`,
+      });
+    }
+
+    // Other failures may contain private cart or upstream details.
     return initializationResponse(request);
   }
 }
