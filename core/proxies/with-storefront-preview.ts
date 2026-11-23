@@ -17,6 +17,15 @@ function privateResponse(response: NextResponse) {
   return response;
 }
 
+function isLocalInitialization(pathname: string) {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.WAREHOUSE_MODE === 'development' &&
+    process.env.WAREHOUSE_ONE_CLICK_ENABLED === 'true' &&
+    /^\/api\/warehouse\/initialize\/?$/.test(pathname)
+  );
+}
+
 export const withStorefrontPreview: ProxyFactory = (next) => {
   return async (request, event) => {
     const config = getPreviewConfig();
@@ -32,10 +41,11 @@ export const withStorefrontPreview: ProxyFactory = (next) => {
     // Checkout deliberately omits storefront cookies. Only these capability-authenticated
     // handlers may receive its preflight/POST requests; they enforce the allowed origin,
     // signed cart credential, expiry, warehouse revision and inventory themselves.
-    // Initialization and every other storefront/API route still require preview access.
+    // Popup authorization uses its first-party storefront session. The local exchange verifies Current Customer.
     if (
       ['OPTIONS', 'POST'].includes(request.method) &&
-      /^\/api\/warehouse\/(?:validate|freight)\/?$/.test(pathname)
+      (/^\/api\/warehouse\/(?:validate|freight)\/?$/.test(pathname) ||
+        isLocalInitialization(pathname))
     ) {
       return privateResponse(NextResponse.next());
     }

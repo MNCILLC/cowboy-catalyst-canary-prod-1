@@ -3,7 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { warehouseApi } from './api';
-import { getWarehouseConfiguration } from './config';
+import { automaticInitializationEnabled, getWarehouseConfiguration } from './config';
 import { WarehouseError } from './policy';
 
 interface CheckoutSettings {
@@ -59,6 +59,7 @@ export async function assertWarehouseCheckoutReady(rehearsal: boolean) {
       redirect: 'error',
       signal: AbortSignal.timeout(3000),
     });
+    const handoffEndpoint = `http://localhost:3000/api/warehouse/initialize${process.env.TRAILING_SLASH === 'false' ? '' : '/'}`;
     const manifest = z
       .object({
         mode: z.string(),
@@ -67,6 +68,8 @@ export async function assertWarehouseCheckoutReady(rehearsal: boolean) {
             checkoutOrigin: z.string(),
             validationEndpoint: z.string(),
             initializationEndpoint: z.string().optional(),
+            currentCustomerClientId: z.string().optional(),
+            handoffEndpoint: z.string().optional(),
           }),
         ),
       })
@@ -80,7 +83,12 @@ export async function assertWarehouseCheckoutReady(rehearsal: boolean) {
           (store) =>
             store.checkoutOrigin === origin &&
             store.validationEndpoint === 'http://localhost:3000/api/warehouse/validate' &&
-            store.initializationEndpoint === 'http://localhost:3000/warehouse-initialize/',
+            store.initializationEndpoint === 'http://localhost:3000/warehouse-initialize/' &&
+            (!automaticInitializationEnabled() ||
+              (store.handoffEndpoint === handoffEndpoint &&
+                Boolean(store.currentCustomerClientId) &&
+                store.currentCustomerClientId ===
+                  process.env.WAREHOUSE_CURRENT_CUSTOMER_CLIENT_ID)),
         ),
       )
     )

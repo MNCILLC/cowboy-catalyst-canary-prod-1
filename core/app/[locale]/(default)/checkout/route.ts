@@ -21,7 +21,11 @@ import { preparePickupCheckout } from '~/lib/pickup-checkout/server';
 import { ProUseRequiredError } from '~/lib/pro-use/policy';
 import { assertProUseCart } from '~/lib/pro-use/server';
 import { serverToast } from '~/lib/server-toast';
-import { warehouseCheckoutOriginAllowed, warehousePreviewEnabled } from '~/lib/warehouse/config';
+import {
+  automaticInitializationEnabled,
+  warehouseCheckoutOriginAllowed,
+  warehousePreviewEnabled,
+} from '~/lib/warehouse/config';
 import { assertWarehouseCheckoutReady } from '~/lib/warehouse/local-checkout';
 import { WarehouseError } from '~/lib/warehouse/policy';
 import { prepareWarehousePreview } from '~/lib/warehouse/server';
@@ -120,11 +124,12 @@ async function getWarehouseHandoff(cartId: string, rehearsal: boolean) {
   return prepareWarehousePreview(cartId);
 }
 
-function warehouseCheckoutResponse(
+async function warehouseCheckoutResponse(
   warehouseHandoff: Awaited<ReturnType<typeof prepareWarehousePreview>>,
   checkoutUrl: string,
   storefrontOrigin: string,
   rehearsal: boolean,
+  publish?: Awaited<ReturnType<typeof import('~/lib/warehouse/one-click').beginCheckoutHandoff>>,
 ) {
   const destination = new URL(checkoutUrl);
 
@@ -133,7 +138,11 @@ function warehouseCheckoutResponse(
 
   const headers = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' };
 
-  if (!rehearsal) return NextResponse.redirect(destination, { status: 303, headers });
+  if (!rehearsal) {
+    await publish?.(warehouseHandoff, destination);
+
+    return NextResponse.redirect(destination, { status: 303, headers });
+  }
 
   return NextResponse.json(
     {
@@ -206,6 +215,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   }
 
   try {
+    const rehearsal = req.nextUrl.searchParams.get('handoff') === 'json';
+    const publish =
+      !rehearsal && automaticInitializationEnabled()
+        ? await (await import('~/lib/warehouse/one-click')).beginCheckoutHandoff()
+        : undefined;
+
     await assertProUseCart(cartId);
     await assertLoyaltyCheckout(cartId);
 
@@ -234,7 +249,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       return redirect({ href: '/cart', locale });
     }
 
-    const rehearsal = req.nextUrl.searchParams.get('handoff') === 'json';
     const warehouseHandoff = await getWarehouseHandoff(cartId, rehearsal);
 
     const { data } = await client.fetch({
@@ -260,11 +274,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     const checkoutUrl = data.cart.createCartRedirectUrls.redirectUrls.redirectedCheckoutUrl;
 
     if (warehouseHandoff)
-      return warehouseCheckoutResponse(
+      return await warehouseCheckoutResponse(
         warehouseHandoff,
         checkoutUrl,
         req.nextUrl.origin,
         rehearsal,
+        publish,
       );
 
     return redirect({ href: checkoutUrl, locale });

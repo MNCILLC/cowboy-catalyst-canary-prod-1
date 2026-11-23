@@ -981,3 +981,69 @@ test('initialization authorizes the session and latest Redis state without mutat
   assert.equal((await call(a, 'stats')).externalRequests, 0);
   assert.equal((await call(b, 'stats')).externalRequests, 0);
 });
+
+test('a real picker switch to an empty warehouse revokes the outstanding checkout handoff', async () => {
+  const { AtomicWarehousePersistence } = require('./test-support.cjs').loadAdapter();
+  const storage = new AtomicWarehousePersistence(client, { namespace: 'synthetic-integration' });
+  const shopper = { storeHash: 'synthetic-store', channelId: 37, customerId: 7100 };
+  const { cartId } = await setup(false);
+
+  await call(a, 'env', {
+    NODE_ENV: 'development',
+    WAREHOUSE_MODE: 'development',
+    WAREHOUSE_ONE_CLICK_ENABLED: 'true',
+    BIGCOMMERCE_CHANNEL_ID: '37',
+    WAREHOUSE_VALIDATION_BASE_URL: 'http://localhost:3000',
+    WAREHOUSE_CHECKOUT_ORIGINS: '["https://checkout.invalid"]',
+  });
+
+  try {
+    await call(a, 'patch', {
+      customerId: shopper.customerId,
+      cart: {
+        id: cartId,
+        channel_id: 37,
+        customer_id: shopper.customerId,
+        line_items: {
+          digital_items: [],
+          physical_items: [
+            { id: 'line-1', product_id: 9001, variant_id: 0, quantity: 1, name: 'Test item' },
+          ],
+        },
+      },
+    });
+
+    const record = await call(a, 'initialize');
+    const id = randomUUID();
+
+    await storage.initializationHandoff(shopper, { type: 'begin', id });
+
+    const context = JSON.stringify([cartId, 'https://checkout.invalid']);
+
+    assert.equal(
+      await storage.initializationHandoff(shopper, {
+        type: 'publish',
+        id,
+        warehouseId: 'forney',
+        context,
+        binding: 'fixture',
+      }),
+      true,
+    );
+    assert.deepEqual(await call(a, 'select', selection(cartId, record.revision, 'powell')), {
+      cartSwitched: true,
+    });
+    assert.equal(
+      await storage.initializationHandoff(shopper, { type: 'consume', id, binding: 'fixture' }),
+      false,
+    );
+  } finally {
+    await call(a, 'env', {
+      WAREHOUSE_MODE: 'preview',
+      WAREHOUSE_ONE_CLICK_ENABLED: null,
+      BIGCOMMERCE_CHANNEL_ID: null,
+      WAREHOUSE_VALIDATION_BASE_URL: null,
+      WAREHOUSE_CHECKOUT_ORIGINS: null,
+    });
+  }
+});

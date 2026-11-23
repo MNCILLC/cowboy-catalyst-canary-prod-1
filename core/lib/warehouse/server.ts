@@ -14,7 +14,7 @@ import {
   type WarehouseRecord,
   WarehouseValidationError,
 } from './authorization';
-import { getWarehouses, warehousePreviewEnabled } from './config';
+import { automaticInitializationEnabled, getWarehouses, warehousePreviewEnabled } from './config';
 import { getEnabledWarehouses } from './locations';
 import {
   findWarehouseOperation,
@@ -347,6 +347,7 @@ export async function recoverLoginWarehouseCart(
     await initializeCreatedCart(cart, match.warehouseId);
     await storage.shopperCart(scope, match.warehouseId, { expected: match.slot, next: cart.id });
 
+    await selectHandoffWarehouse(scope, match.warehouseId);
     await setWarehouseCookie(match.warehouseId);
 
     return { cartId: cart.id };
@@ -367,6 +368,7 @@ export async function recoverLoginWarehouseCart(
     match ?? pending.find(({ warehouseId }) => warehouseId === selected) ?? pending[0];
 
   if (unresolved) {
+    await selectHandoffWarehouse(scope, unresolved.warehouseId);
     await setWarehouseCookie(unresolved.warehouseId);
 
     return { cartId: null };
@@ -481,11 +483,20 @@ async function switchShopperCart(
 
   const target = await carts.saved(id);
 
+  await selectHandoffWarehouse(carts.scope, id);
   if (target === ((await getCartId()) ?? null)) return false;
   if (target) await setCartId(target);
   else await clearCartId();
 
   return true;
+}
+
+async function selectHandoffWarehouse(scope: ReturnType<typeof shopperScope>, warehouseId: string) {
+  if (!automaticInitializationEnabled()) return;
+
+  const storage = await getAtomicWarehousePersistence();
+
+  await storage.initializationHandoff(scope, { type: 'switch', warehouseId });
 }
 
 async function setWarehouseCookie(id: string) {
@@ -533,6 +544,7 @@ export async function selectWarehouse(id: string, expected: SelectionContext) {
     await carts?.checkSlot(id, cart.id);
     selectedId = await assignWarehouse(cart, warehouse, expected);
     await carts?.remember(selectedId, cart);
+    if (carts) await selectHandoffWarehouse(carts.scope, selectedId);
   }
 
   if (!warehouses.some((w) => w.id === selectedId))
@@ -546,7 +558,20 @@ export async function selectWarehouse(id: string, expected: SelectionContext) {
 export async function authorizeWarehouseInitialization(cartId: string) {
   const cart = await sessionCart(cartId);
 
-  if (!cart?.line_items.physical_items.length)
+  if (!cart) throw new WarehouseError('Add a physical item first.');
+
+  return verifyWarehouseCart(cart);
+}
+
+export async function authorizeOwnedWarehouseCart(
+  cartId: string,
+  scope: ReturnType<typeof shopperScope>,
+) {
+  return verifyWarehouseCart(await readOwnedCart<Cart>(cartId, scope));
+}
+
+async function verifyWarehouseCart(cart: Cart) {
+  if (!cart.line_items.physical_items.length)
     throw new WarehouseError('Add a physical item first.');
 
   // Resolve both from the same read: a concurrent selection must not mix revisions and warehouses.
@@ -588,5 +613,5 @@ export async function prepareWarehousePreview(cartId: string) {
   });
   assertCurrentRecord(await readWarehouseRecord(cart.id, cart.channel_id), record);
 
-  return { record, warehouse };
+  return { cart, record, warehouse };
 }

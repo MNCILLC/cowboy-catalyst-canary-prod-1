@@ -219,5 +219,5 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
     };
   }
 
-  return { saved, remember, checkSlot, reserve };
+  return { scope, saved, remember, checkSlot, reserve };
 }

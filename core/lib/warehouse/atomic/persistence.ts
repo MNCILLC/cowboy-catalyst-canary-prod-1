@@ -112,6 +112,71 @@ export class AtomicWarehousePersistence {
       .parse(options.maxOperations ?? 1024);
   }
 
+  // Only the latest storefront handoff may initialize checkout. Checking and
+  // consuming it is a single Redis operation, including across server instances.
+  async initializationHandoff(
+    scope: { storeHash: string; channelId: number; customerId: number },
+    action:
+      | { type: 'begin'; id: string }
+      | { type: 'switch'; warehouseId: string }
+      | { type: 'publish'; id: string; warehouseId: string; binding: string; context: string }
+      | { type: 'pending'; id: string; context: string }
+      | { type: 'consume'; id: string; binding: string },
+  ): Promise<boolean> {
+    const key = createHash('sha256')
+      .update(JSON.stringify([scope.storeHash, scope.channelId, scope.customerId]))
+      .digest('hex');
+    const script = `
+      local key = KEYS[1]
+      if ARGV[1] == 'switch' then
+        redis.call('DEL', key)
+        redis.call('HSET', key, 'warehouse', ARGV[3])
+        redis.call('EXPIRE', key, 120)
+        return 1
+      end
+      if ARGV[1] == 'begin' then
+        redis.call('HSET', key, 'id', ARGV[2])
+        redis.call('HDEL', key, 'binding')
+        redis.call('EXPIRE', key, 120)
+        return 1
+      end
+      if redis.call('HGET', key, 'id') ~= ARGV[2] then return 0 end
+      if ARGV[1] == 'publish' then
+        local selected = redis.call('HGET', key, 'warehouse')
+        if selected and selected ~= ARGV[3] then return 0 end
+        redis.call('HSET', key, 'binding', ARGV[4], 'context', ARGV[5])
+        return 1
+      end
+      if ARGV[1] == 'pending' then
+        if redis.call('HGET', key, 'context') ~= ARGV[5] then return 0 end
+        return redis.call('HEXISTS', key, 'binding')
+      end
+      if ARGV[1] ~= 'consume' or redis.call('HGET', key, 'binding') ~= ARGV[4] then return 0 end
+      redis.call('HDEL', key, 'binding', 'id')
+      return 1
+    `;
+
+    try {
+      const result = await this.redis.eval(
+        script,
+        [`${this.namespace}:initialization:${key}`],
+        [
+          action.type,
+          'id' in action ? action.id : '',
+          'warehouseId' in action ? action.warehouseId : '',
+          'binding' in action ? action.binding : '',
+          'context' in action ? action.context : '',
+        ],
+      );
+
+      if (result === 0 || result === 1) return result === 1;
+    } catch {
+      throw storageError();
+    }
+
+    throw storageError();
+  }
+
   // Read, or conditionally replace, the cart pointer for one shopper and warehouse.
   async shopperCart(
     scope: { storeHash: string; channelId: number; customerId: number },

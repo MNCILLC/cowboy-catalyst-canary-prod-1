@@ -22,3 +22,11 @@ export function warehouseCheckoutOriginAllowed(origin: string) {
     config.mode === 'off' || config.mode === 'preview' || config.checkoutOrigins.includes(origin)
   );
 }
+
+export function automaticInitializationEnabled() {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.WAREHOUSE_MODE === 'development' &&
+    process.env.WAREHOUSE_ONE_CLICK_ENABLED === 'true'
+  );
+}

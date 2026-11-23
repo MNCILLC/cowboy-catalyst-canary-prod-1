@@ -452,3 +452,43 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
     }
   });
 });
+
+test('only an opted-in local shopper handoff attaches the initialization reference', async (t) => {
+  process.env = {
+    ...hostedEnv,
+    NODE_ENV: 'development',
+    WAREHOUSE_MODE: 'development',
+    WAREHOUSE_ONE_CLICK_ENABLED: 'true',
+    WAREHOUSE_VALIDATION_BASE_URL: 'http://localhost:3000',
+  };
+
+  let published = 0;
+  const deps = {
+    ...dependencies,
+    '~/lib/warehouse/one-click': {
+      beginCheckoutHandoff: async () => async (state, dest) => {
+        published += 1;
+        assert.equal(state.record.cartId, '11111111-1111-4111-8111-111111111111');
+        dest.hash = 'warehouseHandoff=some-public-id';
+      },
+    },
+  };
+
+  t.mock.method(
+    deps['~/lib/cart'],
+    'getCartId',
+    async () => '11111111-1111-4111-8111-111111111111',
+  );
+
+  const route = loadTestModule('../../app/[locale]/(default)/checkout/route.ts', deps);
+  const request = async (q) =>
+    route.GET(new NextRequest(`http://localhost:3000/checkout/?${q}`), {
+      params: Promise.resolve({ locale: 'en' }),
+    });
+  const res = await request('displayedCartId=11111111-1111-4111-8111-111111111111');
+
+  assert.equal(res.status, 303);
+  assert.equal(new URL(res.headers.get('location')).hash, '#warehouseHandoff=some-public-id');
+  assert.equal((await request('handoff=json')).status, 200);
+  assert.equal(published, 1);
+});

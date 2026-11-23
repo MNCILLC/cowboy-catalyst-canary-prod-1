@@ -498,3 +498,160 @@ test('invalid requests and malformed transport responses cannot write or fall ba
   await assert.rejects(guarded.read(scope()), { code: 'WAREHOUSE_STORAGE_UNAVAILABLE' });
   assert.equal(calls, 1);
 });
+
+test('one-click initialization binds a verified shopper to the current cart and selection', async (t) => {
+  const { SignJWT } = require('jose');
+  const { loadTestModule } = require('../mode-test-support.cjs');
+  const { WarehouseError } = loadTestModule('policy.ts', {});
+  const { WarehouseValidationError } = loadTestModule('authorization.ts', {
+    './policy': { WarehouseError },
+    'node:crypto': require('node:crypto'),
+    zod: require('zod'),
+  });
+  const appSecret = 'synthetic-current-customer-secret'.repeat(3);
+  const appId = 'synthetic-client';
+
+  t.mock.method(global, 'fetch', () => {
+    throw new Error('Unexpected network request');
+  });
+
+  const original = process.env;
+
+  process.env = {
+    ...original,
+    WAREHOUSE_CURRENT_CUSTOMER_CLIENT_ID: appId,
+    WAREHOUSE_CURRENT_CUSTOMER_CLIENT_SECRET: appSecret,
+  };
+  t.after(() => {
+    process.env = original;
+  });
+
+  const signedIn = { storeHash: 'synthetic-store', channelId: 37, customerId: 7 };
+  const cartId = randomUUID();
+  const origin = 'https://checkout.invalid';
+  const state = {
+    cart: {
+      id: cartId,
+      customer_id: 7,
+      line_items: {
+        physical_items: [{ id: 'line', product_id: 45, variant_id: 12, quantity: 2 }],
+        digital_items: [],
+      },
+    },
+    record: { ...signedIn, cartId, warehouseId: 'forney', revision: randomUUID() },
+    warehouse: { id: 'forney', locationId: 1, pickupMethodId: 3, allowShipping: true },
+  };
+  let stock = 2;
+  const config = {
+    automaticInitializationEnabled: () => true,
+    getWarehouseConfiguration: () => ({
+      ...signedIn,
+      mode: 'development',
+      checkoutOrigins: [origin],
+      validationOrigin: 'http://localhost:3000',
+    }),
+    warehouseCheckoutOriginAllowed: (o) => o === origin,
+  };
+  const flow = loadTestModule('one-click.ts', {
+    'server-only': {},
+    jose: require('jose'),
+    'node:crypto': require('node:crypto'),
+    '~/client/queries/get-customer': { getSignedInWarehouseCustomerId: async () => 7 },
+    './authorization': { WarehouseValidationError },
+    './config': config,
+    './persistence': { getAtomicWarehousePersistence: async () => adapter },
+    './server': {
+      authorizeOwnedWarehouseCart: async (requestedCart, shopper) => {
+        assert.equal(requestedCart, cartId);
+        assert.deepEqual(shopper, signedIn);
+        if (stock < 2) throw new WarehouseError('Shortage', 'Insufficient stock.');
+
+        return state;
+      },
+    },
+    './validation': { createValidationAccess: () => ({ token: 'local-validation-only' }) },
+  });
+  const route = loadTestModule('../../app/api/warehouse/initialize/route.ts', {
+    zod: require('zod'),
+    '~/lib/warehouse/authorization': { WarehouseValidationError },
+    '~/lib/warehouse/config': config,
+    '~/lib/warehouse/one-click': flow,
+    '~/lib/warehouse/policy': { WarehouseError },
+  });
+
+  async function ticket() {
+    const dest = new URL(`${origin}/session-sync?synthetic=1`);
+
+    await (
+      await flow.beginCheckoutHandoff()
+    )(state, dest);
+    assert.equal(dest.search, '?synthetic=1');
+
+    return new URLSearchParams(dest.hash.slice(1)).get('warehouseHandoff');
+  }
+
+  const sign = (user, secret = appSecret) =>
+    new SignJWT({
+      operation: 'current_customer',
+      store_hash: signedIn.storeHash,
+      customer: { id: user },
+    })
+      .setProtectedHeader({ alg: 'HS512' })
+      .setIssuer('bc/apps')
+      .setAudience(appId)
+      .setIssuedAt()
+      .setExpirationTime('15m')
+      .sign(Buffer.from(secret));
+  const proof = await sign(7);
+
+  function exchange(handoffId, { jwt = proof, cart = cartId, from = origin } = {}) {
+    return route.POST(
+      new Request('http://localhost:3000/api/warehouse/initialize', {
+        method: 'POST',
+        headers: {
+          Origin: from,
+          Authorization: `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cartId: cart, handoffId }),
+      }),
+    );
+  }
+
+  const id = await ticket();
+
+  assert.equal((await exchange(id, { jwt: await sign(3) })).status, 409);
+  assert.equal((await exchange(id, { jwt: await sign(7, 'wrong-secret'.repeat(8)) })).status, 401);
+  assert.equal((await exchange(id, { cart: randomUUID() })).status, 409);
+  assert.equal((await exchange(id, { from: 'https://different.invalid' })).status, 403);
+  stock = 0;
+  assert.equal((await (await exchange(id)).json()).code, 'INVENTORY_CONFLICT');
+  stock = 2;
+
+  const attempts = await Promise.all([exchange(id), exchange(id)]);
+
+  assert.deepEqual(attempts.map((r) => r.status).sort(), [200, 409]);
+
+  const accepted = await attempts.find((r) => r.ok).json();
+
+  assert.equal(accepted.cartId, cartId);
+  assert.equal(accepted.warehouse.id, 'forney');
+
+  const staleQuantity = await ticket();
+
+  state.cart.line_items.physical_items[0].quantity = 3;
+  assert.equal((await exchange(staleQuantity)).status, 409);
+
+  const staleWarehouse = await ticket();
+
+  state.record.revision = randomUUID();
+  assert.equal((await exchange(staleWarehouse)).status, 409);
+
+  const earlier = await ticket();
+  const later = await ticket();
+
+  assert.equal((await exchange(earlier)).status, 409);
+  await adapter.initializationHandoff(signedIn, { type: 'switch', warehouseId: 'powell' });
+  assert.equal((await exchange(later)).status, 409);
+  await assert.rejects(ticket(), { code: 'STALE_HANDOFF' });
+});

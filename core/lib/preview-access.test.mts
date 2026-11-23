@@ -317,3 +317,25 @@ test('only signed warehouse API preflights and POSTs reach their handlers withou
   assert.equal((await h.proxy(request('/en/warehouse-initialize'), {})).status, 303);
   assert.equal(h.downstreamCalls, 0);
 });
+
+test('only the opted-in local handoff exchange can reach initialization without a preview cookie', async () => {
+  const enabled = {
+    NODE_ENV: 'development',
+    WAREHOUSE_MODE: 'development',
+    WAREHOUSE_ONE_CLICK_ENABLED: 'true',
+  };
+  const path = '/api/warehouse/initialize';
+  for (const method of ['POST', 'OPTIONS']) {
+    const response = await harness(enabled).proxy(request(path, undefined, method), {});
+    assert.equal(response.headers.get('x-middleware-next'), '1');
+    for (const overrides of [
+      { NODE_ENV: 'production' },
+      { WAREHOUSE_MODE: 'staging' },
+      { WAREHOUSE_ONE_CLICK_ENABLED: 'false' },
+    ]) {
+      const h = harness({ ...enabled, ...overrides });
+      assert.equal((await h.proxy(request(path, undefined, method), {})).status, 401);
+    }
+  }
+  assert.equal((await harness(enabled).proxy(request(path), {})).status, 401);
+});

@@ -23,6 +23,7 @@ const developmentManifest = {
 };
 
 let mode;
+let automatic;
 let settings;
 let storeSettings;
 let manifest;
@@ -30,6 +31,7 @@ let reads;
 
 beforeEach(() => {
   mode = 'development';
+  automatic = false;
   settings = loopbackSettings;
   storeSettings = { checkout_type: 'optimized', custom_checkout_script_url: '' };
   manifest = developmentManifest;
@@ -50,6 +52,7 @@ compiled.require = (id) => {
     };
   if (id === './config')
     return {
+      automaticInitializationEnabled: () => automatic,
       getWarehouseConfiguration: () => ({
         mode,
         channelId: 37,
@@ -163,4 +166,41 @@ test('legacy preview requires its explicit rehearsal transport', async () => {
   mode = 'preview';
   await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
   await compiled.exports.assertWarehouseCheckoutReady(true);
+});
+
+test('one-click requires the local checkout build to use the same public app ID', async (t) => {
+  automatic = true;
+
+  const original = process.env;
+
+  process.env = {
+    ...original,
+    TRAILING_SLASH: 'false',
+    WAREHOUSE_CURRENT_CUSTOMER_CLIENT_ID: 'synthetic-app',
+  };
+  t.after(() => {
+    process.env = original;
+  });
+  t.mock.method(global, 'fetch', async () => ({ ok: true, json: async () => manifest }));
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+
+  const withApp = (currentCustomerClientId) => ({
+    ...developmentManifest,
+    stores: [
+      {
+        ...developmentManifest.stores[0],
+        handoffEndpoint: 'http://localhost:3000/api/warehouse/initialize',
+        currentCustomerClientId,
+      },
+    ],
+  });
+
+  manifest = withApp('other-app');
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+  manifest = withApp('synthetic-app');
+  await compiled.exports.assertWarehouseCheckoutReady(false);
+  process.env.TRAILING_SLASH = 'true';
+  await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+  manifest.stores[0].handoffEndpoint += '/';
+  await compiled.exports.assertWarehouseCheckoutReady(false);
 });
