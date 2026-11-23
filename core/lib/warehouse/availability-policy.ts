@@ -28,16 +28,19 @@ export const unknownAvailability = (): WarehouseAvailability => ({
 export function describeWarehouseAvailability(
   product: AvailabilityProduct | undefined,
   items: AvailabilityItem[],
-  label: string,
+  cityState: string | undefined,
   variantId?: number,
   useInStockMessage = false,
 ): WarehouseAvailability {
   if (!product) return unknownAvailability();
   if (product.type === 'digital')
     return { message: 'Digital product — no warehouse stock required.', canPurchase: true };
+
+  const locationSuffix = cityState ? ` · ${cityState}` : '';
+
   if (!['product', 'variant'].includes(product.inventory_tracking))
     return {
-      message: `Warehouse availability is not configured for this product (${label}).`,
+      message: `Warehouse availability is not configured for this product${locationSuffix}.`,
       canPurchase: false,
     };
 
@@ -58,8 +61,8 @@ export function describeWarehouseAvailability(
 
     return {
       message: optionsAvailable
-        ? `Options available · ${label}. Choose options to check stock.`
-        : `Out of stock · ${label}`,
+        ? `Options available${locationSuffix}. Choose options to check stock.`
+        : `Out of stock${locationSuffix}`,
       status: optionsAvailable ? undefined : 'error',
       canPurchase: false,
       selectionRequired: optionsAvailable ? 'options' : undefined,
@@ -81,7 +84,7 @@ export function describeWarehouseAvailability(
   const inStockMessage = useInStockMessage ? 'IN STOCK' : `${available} available`;
 
   return {
-    message: `${available > 0 ? inStockMessage : 'Out of stock'} · ${label}`,
+    message: `${available > 0 ? inStockMessage : 'Out of stock'}${locationSuffix}`,
     status: available > 0 ? 'success' : 'error',
     canPurchase: available > 0,
     quantity: available,

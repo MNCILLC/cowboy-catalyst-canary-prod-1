@@ -50,7 +50,10 @@ export async function WarehousePicker({
           key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
           mapAddress={warehouse && locations.mapAddresses.get(warehouse.locationId)}
           selected={warehouse?.id}
-          warehouses={locations.warehouses}
+          warehouses={locations.warehouses.map((option) => ({
+            ...option,
+            cityState: locations.mapAddresses.get(option.locationId)?.cityState,
+          }))}
         />,
       )}
       {children}

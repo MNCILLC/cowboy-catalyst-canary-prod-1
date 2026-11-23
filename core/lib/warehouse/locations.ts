@@ -30,7 +30,9 @@ const mapAddress = z
       countryCode,
     });
 
-    return formatted ? { formatted, cityState: [city, state].filter(Boolean).join(', ') } : null;
+    const cityState = [city, state].filter(Boolean).join(', ');
+
+    return formatted || cityState ? { formatted, cityState } : null;
   })
   .catch(null);
 

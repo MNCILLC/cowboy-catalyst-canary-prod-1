@@ -10,16 +10,27 @@ import {
   type WarehouseAvailability,
 } from './availability-policy';
 import { warehousePreviewEnabled } from './config';
+import { getWarehouseLocations } from './locations';
 import { type Warehouse } from './policy';
 import { getWarehouseContext } from './server';
 
 // Memoization lasts only for the render/request; nothing is shared between shoppers.
 export const getAvailabilityContext = cache(
-  async (): Promise<{ enabled: boolean; warehouse?: Warehouse; unavailable?: boolean }> => {
+  async (): Promise<{
+    enabled: boolean;
+    warehouse?: Warehouse;
+    cityState?: string;
+    unavailable?: boolean;
+  }> => {
     if (!warehousePreviewEnabled()) return { enabled: false };
 
     try {
-      return { enabled: true, ...(await getWarehouseContext()) };
+      const context = await getWarehouseContext();
+      const cityState = context.warehouse
+        ? (await getWarehouseLocations()).mapAddresses.get(context.warehouse.locationId)?.cityState
+        : undefined;
+
+      return { enabled: true, ...context, cityState };
     } catch {
       return { enabled: true, unavailable: true };
     }
@@ -102,7 +113,7 @@ export async function getWarehouseAvailability(productIds: number[]) {
     return describeWarehouseAvailability(
       batch.products?.find((p) => p.id === productId),
       batch.items ?? [],
-      warehouse.label,
+      batch.context.cityState,
       variantId,
       process.env.ENABLE_IN_STOCK_MESSAGE === 'true',
     );

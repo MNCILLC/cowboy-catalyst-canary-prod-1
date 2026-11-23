@@ -11,7 +11,8 @@ let requests;
 let fail;
 let malformed;
 let paginated;
-const warehouse = { id: 'north', label: 'North', locationId: 11 };
+const warehouse = { id: 'forney', label: 'Ship/Pickup from Forney, TX', locationId: 11 };
+const pickupWarehouse = { id: 'powell', label: 'Pickup from Powell, WY', locationId: 22 };
 
 function compile(name, dependencies) {
   const file = path.join(__dirname, name);
@@ -40,6 +41,14 @@ const { getWarehouseAvailability } = compile('availability.ts', {
   react: { cache: (fn) => fn },
   './availability-policy': policy,
   './config': { warehousePreviewEnabled: () => enabled },
+  './locations': {
+    getWarehouseLocations: async () => ({
+      mapAddresses: new Map([
+        [11, { cityState: 'Forney, TX' }],
+        [22, { cityState: 'Powell, WY' }],
+      ]),
+    }),
+  },
   './server': {
     getWarehouseContext: async () => {
       if (context instanceof Error) throw context;
@@ -120,18 +129,18 @@ test('no selection prompts for a warehouse without fetching catalog inventory', 
     else process.env.ENABLE_IN_STOCK_MESSAGE = flag;
 
     const north = (await getWarehouseAvailability([1]))(1);
-    const expected = flag === 'true' ? 'IN STOCK · North' : '4 available · North';
+    const expected = flag === 'true' ? 'IN STOCK · Forney, TX' : '4 available · Forney, TX';
 
     assert.equal(north.message, expected);
     assert.equal(policy.warehouseCardDisplay(north).stockDisplayData.stockLevelMessage, expected);
     assert.equal(north.quantity, 4);
     assert.equal(north.canPurchase, true);
 
-    context = { warehouse: { ...warehouse, locationId: 22, label: 'South' } };
+    context = { warehouse: pickupWarehouse };
 
     const south = (await getWarehouseAvailability([1]))(1);
 
-    assert.equal(south.message, 'Out of stock · South');
+    assert.equal(south.message, 'Out of stock · Powell, WY');
     assert.equal(south.canPurchase, false);
   });
 });
@@ -141,12 +150,24 @@ test('batches cards and reads the authoritative location again on a new request'
   assert.equal(requests.length, 2);
   assert.equal(first(1).quantity, 4);
   assert.match(requests[1], /locations\/11\/items.*product_id:in=1,2/);
-  context = { warehouse: { ...warehouse, locationId: 22, label: 'South' } };
+  context = { warehouse: pickupWarehouse };
 
   const second = await getWarehouseAvailability([1]);
 
   assert.equal(second(1).quantity, 0);
-  assert.match(second(1).message, /South/);
+  assert.equal(second(1).message, 'Out of stock · Powell, WY');
+});
+test('stock messages omit the location suffix when no public city or state is available', async () => {
+  context = { warehouse: { ...warehouse, locationId: 33 } };
+
+  const availability = await getWarehouseAvailability([1]);
+
+  assert.equal(availability(1).message, 'Out of stock');
+  paginated = true;
+
+  const variants = await getWarehouseAvailability([1]);
+
+  assert.equal(variants(1).message, 'Options available. Choose options to check stock.');
 });
 test('pagination reaches a selected variant beyond the first inventory page', async () => {
   paginated = true;

@@ -172,7 +172,7 @@ test('a recovered cart starts checking only an enabled shipping origin without a
     ...warehouse,
     id: 'south',
     label: 'South',
-    pickupLabel: 'Pickup in South',
+    pickupLabel: 'Pickup from Forney, TX',
     allowShipping: true,
     locationId: 1,
     pickupMethodId: 12,
@@ -180,12 +180,19 @@ test('a recovered cart starts checking only an enabled shipping origin without a
 
   process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, origin]);
   pickerContext = { cartId: 'cart', revision: null };
-  locations.push({ id: origin.locationId, enabled: true });
+  locations[0].storefront_visibility = true;
+  locations[0].address = { city: 'Powell', state: 'WY' };
+  locations.push({
+    id: origin.locationId,
+    enabled: true,
+    storefront_visibility: true,
+    address: { city: 'Forney', state: 'TX' },
+  });
 
   const recovery = await renderStorefront();
 
   assert.match(recovery, /<option value="south" selected="">South/);
-  assert.match(recovery, />Ship or pick up<\/span><span[^>]*>South<\/span>/);
+  assert.match(recovery, />Ship or pick up<\/span><span[^>]*>Forney, TX<\/span>/);
   assert.match(recovery, /Checking cart availability/);
   assert.doesNotMatch(recovery, /Confirm warehouse/);
   locations[1].enabled = false;
@@ -200,13 +207,15 @@ test('a recovered cart starts checking only an enabled shipping origin without a
   const saved = await renderStorefront();
 
   assert.match(saved, /<option value="north" selected="">North/);
-  assert.match(saved, />Pick up at<\/span><span[^>]*>Collect North<\/span>/);
+  assert.match(saved, />Pick up at<\/span><span[^>]*>Powell, WY<\/span>/);
   assert.doesNotMatch(saved, /Confirm warehouse/);
 });
 
 test('the map link uses only the selected warehouse’s public street address', async () => {
   const second = { ...warehouse, id: 'south', locationId: 72, pickupMethodId: 93 };
+
   process.env.WAREHOUSE_CONFIG = JSON.stringify([warehouse, second]);
+
   const address = {
     address1: '12 North & West St',
     address2: 'Unit #4',
@@ -215,6 +224,7 @@ test('the map link uses only the selected warehouse’s public street address', 
     zip: '75000',
     country_code: 'US',
   };
+
   locations = [
     {
       id: second.locationId,
@@ -224,6 +234,7 @@ test('the map link uses only the selected warehouse’s public street address', 
     },
     { id: warehouse.locationId, enabled: true, storefront_visibility: true, address },
   ];
+
   const mapUrl = async () => {
     const html = await renderStorefront();
     const href = /href="(https:\/\/www\.google\.com\/maps\/search\/[^"]+)"/.exec(html)?.[1];
@@ -233,7 +244,9 @@ test('the map link uses only the selected warehouse’s public street address', 
 
   assert.equal(await mapUrl(), null);
   pickerContext.warehouse = warehouse;
+
   const north = await mapUrl();
+
   assert.equal(north.searchParams.get('api'), '1');
   assert.equal(north.searchParams.get('query'), '12 North & West St, Unit #4, North, TX 75000, US');
   assert.match(await renderStorefront(), /title="North, TX Warehouse"/);
@@ -242,9 +255,11 @@ test('the map link uses only the selected warehouse’s public street address', 
   assert.match(await renderStorefront(), /title="South, TX Warehouse"/);
   locations[0].storefront_visibility = false;
   assert.equal(await mapUrl(), null);
+  assert.doesNotMatch(await renderStorefront(), /South, TX|Collect North/);
   locations[0].storefront_visibility = true;
   locations[0].address.address1 = ' ';
   assert.equal(await mapUrl(), null);
+  assert.match(await renderStorefront(), />South, TX<\/span>/);
   delete locations[0].address;
   assert.equal(await mapUrl(), null);
   assert.match(await renderStorefront(), /<option value="south" selected=""/);

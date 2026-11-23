@@ -9,7 +9,9 @@ import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
 import { changeWarehouse } from './actions';
 import { createSelectionAttempt, runSelectionAttempt, SelectionAttempt } from './selection-attempt';
 
-function WarehouseLabel({ warehouse }: { warehouse?: Warehouse }) {
+type PickerWarehouse = Warehouse & { cityState?: string };
+
+function WarehouseLabel({ warehouse }: { warehouse?: PickerWarehouse }) {
   if (!warehouse)
     return <span className="block text-xs font-semibold @md:text-sm">Choose warehouse</span>;
 
@@ -18,15 +20,17 @@ function WarehouseLabel({ warehouse }: { warehouse?: Warehouse }) {
       <span className="block whitespace-nowrap text-xs font-semibold leading-tight @md:text-sm">
         {warehouse.allowShipping ? 'Ship or pick up' : 'Pick up at'}
       </span>
-      <span className="block truncate text-xs leading-tight @md:text-sm">
-        {warehouse.pickupLabel.replace(/^pick\s?up (?:at|in) /i, '')}
-      </span>
+      {!!warehouse.cityState && (
+        <span className="block truncate text-xs leading-tight @md:text-sm">
+          {warehouse.cityState}
+        </span>
+      )}
     </>
   );
 }
 
 function WarehouseMapLink({ address }: { address?: WarehouseMapAddress | null }) {
-  if (!address) return null;
+  if (!address?.formatted) return null;
 
   return (
     <a
@@ -48,7 +52,7 @@ export function Picker({
   context,
   mapAddress,
 }: {
-  warehouses: Warehouse[];
+  warehouses: PickerWarehouse[];
   selected?: string;
   mapAddress?: WarehouseMapAddress | null;
   context: { cartId: string | null; revision: string | null };
