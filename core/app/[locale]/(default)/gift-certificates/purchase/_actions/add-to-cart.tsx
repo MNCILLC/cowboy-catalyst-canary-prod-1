@@ -127,7 +127,7 @@ export async function addGiftCertificateToCart<F extends Field>(
   });
 
   try {
-    await addToOrCreateCart({
+    await addToOrCreateCart(formData, {
       giftCertificates: [
         {
           name: `${amountFormatted} Gift Certificate`,

@@ -10,6 +10,7 @@ import { NumberInput } from '@/vibes/soul/form/number-input';
 import { Button } from '@/vibes/soul/primitives/button';
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
+import { DisplayedWarehouseCartField } from '~/components/warehouse-picker/availability-scope';
 import { useRouter } from '~/i18n/routing';
 
 import { compareAddToCartFormDataSchema } from './schema';
@@ -117,6 +118,7 @@ export function AddToCartForm({
       action={formAction}
       className={clsx(showQuantity && 'flex items-start', size === 'x-small' ? 'gap-1.5' : 'gap-2')}
     >
+      <DisplayedWarehouseCartField />
       <input name="id" type="hidden" value={productId} />
       {showQuantity ? (
         <NumberInput

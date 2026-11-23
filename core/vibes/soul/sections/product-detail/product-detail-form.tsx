@@ -34,6 +34,7 @@ import { EnhancedStockLevel } from '@/vibes/soul/primitives/enhanced-stock-level
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
 import { Link } from '~/components/link';
+import { DisplayedWarehouseCartField } from '~/components/warehouse-picker/availability-scope';
 import { usePathname, useRouter } from '~/i18n/routing';
 
 import { revalidateCart } from './actions/revalidate-cart';
@@ -243,6 +244,7 @@ export function ProductDetailForm<F extends Field>({
     <FormProvider context={form.context}>
       <FormStateInput />
       <form {...getFormProps(form)} action={formAction}>
+        <DisplayedWarehouseCartField />
         <input name="id" type="hidden" value={productId} />
         <div className="space-y-6 pb-8">
           {fields.map((field) => {

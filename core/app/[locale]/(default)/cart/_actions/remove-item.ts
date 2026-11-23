@@ -26,21 +26,22 @@ type Variables = VariablesOf<typeof DeleteCartLineItemMutation>;
 type DeleteCartLineItemInput = Variables['input'];
 
 export async function removeItem({
+  displayedCartId,
   lineItemEntityId,
-}: Omit<DeleteCartLineItemInput, 'cartEntityId'>) {
+}: Omit<DeleteCartLineItemInput, 'cartEntityId'> & { displayedCartId: string }) {
   const t = await getTranslations('Cart.Errors');
-
-  const customerAccessToken = await getSessionCustomerAccessToken();
 
   const cartId = await getCartId();
 
-  if (!cartId) {
-    throw new Error(t('cartNotFound'));
+  if (!cartId || cartId !== displayedCartId) {
+    throw new Error(t('activeCartChanged'));
   }
 
   if (!lineItemEntityId) {
     throw new Error(t('lineItemNotFound'));
   }
+
+  const customerAccessToken = await getSessionCustomerAccessToken();
 
   try {
     const version = await prepareLoyaltyForItemRemoval(cartId, lineItemEntityId);

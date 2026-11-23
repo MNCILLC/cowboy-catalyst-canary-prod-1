@@ -36,7 +36,7 @@ export const addToCart = async (
   const { quantity } = submission.value;
 
   try {
-    await addToOrCreateCart({
+    await addToOrCreateCart(payload, {
       lineItems: [
         {
           productEntityId,

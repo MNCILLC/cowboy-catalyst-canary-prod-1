@@ -12,6 +12,7 @@ import { GiftCertificateCard } from '@/vibes/soul/primitives/gift-certificate-ca
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { Breadcrumb, Breadcrumbs } from '@/vibes/soul/sections/breadcrumbs';
 import { SectionLayout } from '@/vibes/soul/sections/section-layout';
+import { DisplayedWarehouseCartField } from '~/components/warehouse-picker/availability-scope';
 
 interface Props {
   action: DynamicFormAction<Field>;
@@ -190,7 +191,9 @@ export function GiftCertificatePurchaseSection({
             onChange={handleFormChange}
             onSuccess={handleSuccess}
             submitLabel={ctaLabel}
-          />
+          >
+            <DisplayedWarehouseCartField />
+          </DynamicForm>
         </div>
       </div>
     </SectionLayout>

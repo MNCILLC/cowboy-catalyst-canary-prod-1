@@ -7,6 +7,7 @@ import { requestFormReset, useFormStatus } from 'react-dom';
 import { Button } from '@/vibes/soul/primitives/button';
 import { toast } from '@/vibes/soul/primitives/toaster';
 import { useEvents } from '~/components/analytics/events';
+import { DisplayedWarehouseCartField } from '~/components/warehouse-picker/availability-scope';
 import { useRouter } from '~/i18n/routing';
 
 import { WishlistItem } from '.';
@@ -67,6 +68,7 @@ export const WishlistItemAddToCart = ({
 
   return (
     <form {...getFormProps(form)} action={formAction} className="flex">
+      <DisplayedWarehouseCartField />
       <input name="productId" type="hidden" value={productId} />
       <input name="variantId" type="hidden" value={variantId} />
       <SubmitButton ctaLabel={callToAction.label} disabled={callToAction.disabled} />

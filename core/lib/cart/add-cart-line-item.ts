@@ -23,10 +23,11 @@ export type AddCartLineItemsInput = Variables['input'];
 export const addCartLineItem = async (
   cartEntityId: AddCartLineItemsInput['cartEntityId'],
   data: AddCartLineItemsInput['data'],
+  displayedCart: string | null,
 ) => {
   await assertPricingAccess();
   await assertProUseLineItems(data.lineItems ?? []);
-  await assertWarehouseItems(data.lineItems ?? [], cartEntityId);
+  await assertWarehouseItems(data.lineItems ?? [], cartEntityId, { displayedCart });
 
   const customerAccessToken = await getSessionCustomerAccessToken();
 

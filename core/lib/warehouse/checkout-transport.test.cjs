@@ -59,6 +59,7 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   '~/lib/warehouse/config': config,
   '~/lib/warehouse/authorization': authorization,
   '~/lib/warehouse/locations': locationLookup,
+  '~/lib/warehouse/policy': policy,
   '~/lib/warehouse/server': {
     getWarehouseContext: async () => pickerContext,
   },

@@ -34,10 +34,12 @@ type Variables = VariablesOf<typeof UpdateCartLineItemMutation>;
 type UpdateCartLineItemInput = Variables['input'];
 
 interface UpdateProductQuantityParams extends CartLineItemInput {
+  displayedCartId: string;
   lineItemEntityId: UpdateCartLineItemInput['lineItemEntityId'];
 }
 
 export const updateQuantity = async ({
+  displayedCartId,
   lineItemEntityId,
   productEntityId,
   quantity,
@@ -46,12 +48,10 @@ export const updateQuantity = async ({
 }: UpdateProductQuantityParams) => {
   const t = await getTranslations('Cart.Errors');
 
-  const customerAccessToken = await getSessionCustomerAccessToken();
-
   const cartId = await getCartId();
 
-  if (!cartId) {
-    throw new Error(t('cartNotFound'));
+  if (!cartId || cartId !== displayedCartId) {
+    throw new Error(t('activeCartChanged'));
   }
 
   if (!lineItemEntityId) {
@@ -59,7 +59,7 @@ export const updateQuantity = async ({
   }
 
   if (quantity === 0) {
-    const result = await removeItem({ lineItemEntityId });
+    const result = await removeItem({ displayedCartId, lineItemEntityId });
 
     return result;
   }
@@ -72,8 +72,10 @@ export const updateQuantity = async ({
   await assertWarehouseItems(
     [{ productEntityId, variantEntityId, selectedOptions, quantity }],
     cartId,
-    lineItemEntityId,
+    { replaceId: lineItemEntityId },
   );
+
+  const customerAccessToken = await getSessionCustomerAccessToken();
 
   const cartLineItemData = Object.assign(
     { quantity, productEntityId },

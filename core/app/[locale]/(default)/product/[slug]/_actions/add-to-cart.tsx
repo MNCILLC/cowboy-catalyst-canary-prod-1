@@ -150,7 +150,7 @@ export const addToCart = async (
   }, {});
 
   try {
-    await addToOrCreateCart({
+    await addToOrCreateCart(payload, {
       lineItems: [
         {
           productEntityId,

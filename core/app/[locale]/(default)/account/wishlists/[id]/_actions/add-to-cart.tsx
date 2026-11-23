@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { Link } from '~/components/link';
 import { addToOrCreateCart } from '~/lib/cart';
 import { MissingCartError } from '~/lib/cart/error';
+import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 
 interface State {
   lastResult: SubmissionResult | null;
@@ -33,7 +34,7 @@ export async function addWishlistItemToCart(prevState: State, formData: FormData
     const { productId, variantId } = schema.parse(submission.value);
     const quantity = 1;
 
-    await addToOrCreateCart({
+    await addToOrCreateCart(formData, {
       lineItems: [
         {
           productEntityId: productId,
@@ -57,6 +58,10 @@ export async function addWishlistItemToCart(prevState: State, formData: FormData
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error(error);
+
+    if (error instanceof WarehouseValidationError && error.code === 'STALE_WAREHOUSE') {
+      return { ...prevState, lastResult: { status: 'error' }, errorMessage: error.message };
+    }
 
     if (error instanceof MissingCartError) {
       return {

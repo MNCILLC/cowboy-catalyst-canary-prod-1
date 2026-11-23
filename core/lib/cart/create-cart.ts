@@ -21,11 +21,11 @@ const CreateCartMutation = graphql(`
 type Variables = VariablesOf<typeof CreateCartMutation>;
 export type CreateCartInput = Variables['createCartInput'];
 
-export const createCart = async (data: CreateCartInput) => {
+export const createCart = async (data: CreateCartInput, displayedCart: string | null) => {
   await assertPricingAccess();
   await assertProUseLineItems(data.lineItems ?? []);
 
-  const warehouse = await assertWarehouseItems(data.lineItems ?? []);
+  const warehouse = await assertWarehouseItems(data.lineItems ?? [], undefined, { displayedCart });
 
   const customerAccessToken = await getSessionCustomerAccessToken();
   const currencyCode = await getPreferredCurrencyCode();

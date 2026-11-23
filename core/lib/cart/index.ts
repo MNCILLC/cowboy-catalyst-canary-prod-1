@@ -48,15 +48,18 @@ export async function clearCartId(): Promise<void> {
 }
 
 export async function addToOrCreateCart(
+  formData: FormData,
   data: CreateCartInput | AddCartLineItemsInput['data'],
 ): Promise<void> {
+  const field = formData.get('displayedWarehouseCart');
+  const displayedCart = typeof field === 'string' ? field : null;
   const cartId = await getCartId();
   // An empty warehouse has no native cart until its first item. A query without an ID
   // can resolve BigCommerce's persistent cart for a different warehouse.
   const cart = !cartId && warehousePreviewEnabled() ? null : await validateCartId(cartId);
 
   if (cart) {
-    const response = await addCartLineItem(cart.entityId, data);
+    const response = await addCartLineItem(cart.entityId, data, displayedCart);
 
     if (!response.data.cart.addCartLineItems?.cart?.entityId) {
       throw new MissingCartError();
@@ -67,7 +70,7 @@ export async function addToOrCreateCart(
     return;
   }
 
-  const createResponse = await createCart(data);
+  const createResponse = await createCart(data, displayedCart);
 
   if (!createResponse.data.cart.createCart?.cart?.entityId) {
     throw new MissingCartError();

@@ -67,6 +67,8 @@ function harness({
     '~/client': { client },
     '~/client/graphql': { graphql: (document: string) => document },
     '~/lib/currency': { getPreferredCurrencyCode: async () => 'USD' },
+    '~/lib/warehouse/server': { assertWarehouseItems: async () => undefined },
+    '~/lib/wholesale-pricing': { assertPricingAccess: async () => undefined },
     './policy': policy,
   };
   function load(path: string) {

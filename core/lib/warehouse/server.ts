@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 
@@ -23,6 +23,7 @@ import {
   getShippingOriginWarehouse,
   StockDemand,
   Warehouse,
+  warehouseCartKey,
   WarehouseConsignment,
   WarehouseError,
   warehouseFulfillmentCompatible,
@@ -235,12 +236,25 @@ const input = (i: Item): Input => ({
   quantity: i.quantity,
 });
 
-export async function assertWarehouseItems(items: Input[], cartId?: string, replaceId?: string) {
+export async function assertWarehouseItems(
+  items: Input[],
+  cartId?: string,
+  { replaceId, displayedCart }: { replaceId?: string; displayedCart?: string | null } = {},
+) {
   if (!warehousePreviewEnabled()) return;
 
   const cart = await sessionCart(cartId);
   const persisted = cart ? await warehouseForCart(cart) : undefined;
   const warehouse = persisted?.warehouse ?? (await requireWarehouse());
+
+  if (
+    displayedCart !== undefined &&
+    displayedCart !== warehouseCartKey(cart?.id ?? null, warehouse.id)
+  ) {
+    const t = await getTranslations('Cart.Errors');
+
+    throw new WarehouseValidationError(t('activeCartChanged'), 409, 'STALE_WAREHOUSE');
+  }
 
   if (!cartId) {
     const channelId = Number(getChannelIdFromLocale(await getLocale()));

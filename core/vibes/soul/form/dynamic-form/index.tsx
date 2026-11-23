@@ -69,6 +69,7 @@ interface State {
 export type DynamicFormAction<F extends Field> = Action<F, State, FormData>;
 
 export interface DynamicFormProps<F extends Field> {
+  children?: ReactNode;
   fields: Array<F | FieldGroup<F>>;
   action: DynamicFormAction<F>;
   buttonSize?: ButtonProps['size'];
@@ -87,6 +88,7 @@ export interface DynamicFormProps<F extends Field> {
 
 export function DynamicForm<F extends Field>({
   action,
+  children,
   fields,
   buttonSize = 'medium',
   cancelLabel = 'Cancel',
@@ -179,6 +181,7 @@ export function DynamicForm<F extends Field>({
   return (
     <FormProvider context={form.context}>
       <form {...getFormProps(form)} action={formAction} onChange={onChange}>
+        {children}
         <div className="space-y-6">
           {fields.map((field, index) => {
             if (Array.isArray(field)) {

@@ -19,6 +19,11 @@ export interface StockDemand {
 }
 export class WarehouseError extends Error {}
 
+// An empty warehouse has a selection before BigCommerce creates its first cart.
+export function warehouseCartKey(cartId: string | null, warehouseId: string) {
+  return JSON.stringify([cartId, warehouseId]);
+}
+
 export function assertStock(demands: StockDemand[], available: Map<string, number>, label: string) {
   const totals = new Map<string, StockDemand>();
 

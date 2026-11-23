@@ -3,6 +3,7 @@ import { type PropsWithChildren, type ReactNode } from 'react';
 import { WarehouseValidationError } from '~/lib/warehouse/authorization';
 import { warehousePreviewEnabled } from '~/lib/warehouse/config';
 import { getWarehouseLocations } from '~/lib/warehouse/locations';
+import { warehouseCartKey } from '~/lib/warehouse/policy';
 import { getWarehouseContext } from '~/lib/warehouse/server';
 
 import { AvailabilityScope } from './availability-scope';
@@ -43,7 +44,10 @@ export async function WarehousePicker({
   const { warehouse, recoveryCartVersion, ...context } = await getWarehouseContext();
 
   return (
-    <AvailabilityScope value={`${warehouse?.id ?? 'unselected'}:${context.revision ?? ''}`}>
+    <AvailabilityScope
+      displayedCart={warehouse && warehouseCartKey(context.cartId, warehouse.id)}
+      value={`${warehouse?.id ?? 'unselected'}:${context.revision ?? ''}`}
+    >
       {renderHeader(
         <Picker
           context={context}

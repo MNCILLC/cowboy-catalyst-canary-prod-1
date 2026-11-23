@@ -456,7 +456,8 @@ export default async function Cart({ params }: Props) {
           incrementLineItemLabel={t('increment')}
           isAuthenticated={isAuthenticated}
           key={cart.entityId}
-          lineItemAction={updateLineItem}
+          // eslint-disable-next-line react/jsx-no-bind -- Capture the rendered cart ID in the Server Action.
+          lineItemAction={updateLineItem.bind(null, cart.entityId)}
           lineItemActionPendingLabel={t('cartUpdateInProgress')}
           loyalty={
             <LoyaltyCart currency={cart.currencyCode} subtotal={checkout?.subtotal?.value ?? 0} />

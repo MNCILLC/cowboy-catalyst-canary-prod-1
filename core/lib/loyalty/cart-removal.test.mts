@@ -62,6 +62,7 @@ function harness({ configured = true, signedIn = true, enabled = true } = {}) {
     'next/cache': { revalidateTag: (tag: string) => events.push(`invalidate:${tag}`) },
     'next-intl/server': { getTranslations: async () => (key: string) => key },
     '~/lib/pro-use/server': {},
+    '~/lib/warehouse/server': {},
     '~/lib/wholesale-pricing': {},
     '~/client': {
       client: {
@@ -146,8 +147,10 @@ function harness({ configured = true, signedIn = true, enabled = true } = {}) {
   dependencies['./remove-item'] = actions;
   const quantity = load('../../app/[locale]/(default)/cart/_actions/update-quantity.ts');
   return {
-    remove: (id = 'mob-madness') => actions.removeItem({ lineItemEntityId: id }),
-    zeroQuantity: () => quantity.updateQuantity({ lineItemEntityId: 'mob-madness', quantity: 0 }),
+    remove: (id = 'mob-madness', displayedCartId = 'cart-1') =>
+      actions.removeItem({ displayedCartId, lineItemEntityId: id }),
+    setQuantity: (displayedCartId: string, count: number) =>
+      quantity.updateQuantity({ displayedCartId, lineItemEntityId: 'mob-madness', quantity: count }),
     get cart() {
       return cart;
     },
@@ -208,9 +211,34 @@ test('1000 → apply 100 → empty cart → new cart restores all 1000 points', 
 
 test('setting quantity to zero uses the same release-before-delete flow', async () => {
   const h = harness();
-  await h.zeroQuantity();
+  await h.setQuantity('cart-1', 0);
   assert.equal(h.points, 1000);
   assert.equal(h.cart, null);
+});
+
+test('a stale quantity request cannot update or remove a line in the active cart', async () => {
+  const h = harness();
+
+  h.newCart();
+  const before = structuredClone(h.cart);
+
+  await assert.rejects(h.setQuantity('cart-1', 3), { message: 'activeCartChanged' });
+  await assert.rejects(h.setQuantity('cart-1', 0), { message: 'activeCartChanged' });
+  assert.deepEqual(h.cart, before);
+  assert.deepEqual(h.events, []);
+});
+
+test('stale removal stops before loyalty processing or deletion, even for a matching line ID', async () => {
+  const h = harness();
+  h.newCart();
+  const before = structuredClone(h.cart);
+  const points = h.points;
+
+  await assert.rejects(h.remove('mob-madness', 'cart-1'), { message: 'activeCartChanged' });
+  assert.deepEqual(h.events, []);
+  assert.equal(h.points, points);
+  assert.equal(h.cookie, 'cart-2');
+  assert.deepEqual(h.cart, before);
 });
 
 test('a last line with multiple units, digital items, and bundle children is released', async () => {

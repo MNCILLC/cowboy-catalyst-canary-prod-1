@@ -23,6 +23,7 @@ type LineItem = {
 } & CartLineItem;
 
 export const updateLineItem = async (
+  displayedCartId: string,
   prevState: Awaited<{
     lineItems: LineItem[];
     lastResult: SubmissionResult | null;
@@ -173,6 +174,7 @@ export const updateLineItem = async (
 
       try {
         await updateQuantity({
+          displayedCartId,
           lineItemEntityId: cartLineItem.id,
           productEntityId: cartLineItem.productEntityId,
           variantEntityId: cartLineItem.variantEntityId,
@@ -209,7 +211,7 @@ export const updateLineItem = async (
 
     case 'delete': {
       try {
-        await removeItem({ lineItemEntityId: submission.value.id });
+        await removeItem({ displayedCartId, lineItemEntityId: submission.value.id });
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error(error);
