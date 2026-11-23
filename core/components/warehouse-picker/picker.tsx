@@ -1,8 +1,10 @@
 'use client';
 
-import { ChevronDown, MapPin, Warehouse as WarehouseIcon } from 'lucide-react';
+import * as Select from '@radix-ui/react-select';
+import { Check, ChevronDown, MapPin, Warehouse as WarehouseIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
+import { Badge } from '@/vibes/soul/primitives/badge';
 import { useRouter } from '~/i18n/routing';
 import type { WarehouseMapAddress } from '~/lib/warehouse/locations';
 import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
@@ -10,7 +12,7 @@ import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
 import { changeWarehouse } from './actions';
 import { createSelectionAttempt, runSelectionAttempt, SelectionAttempt } from './selection-attempt';
 
-type PickerWarehouse = Warehouse & { cityState?: string };
+type PickerWarehouse = Warehouse & { name: string; address?: WarehouseMapAddress | null };
 
 function WarehouseLabel({ warehouse }: { warehouse?: PickerWarehouse }) {
   if (!warehouse)
@@ -19,14 +21,60 @@ function WarehouseLabel({ warehouse }: { warehouse?: PickerWarehouse }) {
   return (
     <>
       <span className="block whitespace-nowrap text-xs font-semibold leading-tight @md:text-sm">
-        {warehouse.allowShipping ? 'Ship or pick up' : 'Pick up at'}
+        {warehouse.allowShipping ? 'Ship or Pickup' : 'Pickup at'}
       </span>
-      {!!warehouse.cityState && (
+      {!!warehouse.address?.cityState && (
         <span className="block truncate text-xs leading-tight @md:text-sm">
-          {warehouse.cityState}
+          {warehouse.address.cityState}
         </span>
       )}
     </>
+  );
+}
+
+function WarehouseOption({ warehouse }: { warehouse: PickerWarehouse }) {
+  const { id, name, address } = warehouse;
+  const addressLine = address?.formatted || address?.cityState;
+
+  return (
+    <Select.Item
+      className="flex cursor-pointer select-none items-start gap-3 rounded-lg border border-transparent px-3 py-3 outline-none data-[state=checked]:border-contrast-200 data-[highlighted]:bg-contrast-100 data-[highlighted]:ring-1 data-[highlighted]:ring-inset data-[highlighted]:ring-foreground"
+      textValue={name}
+      value={id}
+    >
+      <WarehouseIcon aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={1.75} />
+      <span className="min-w-0 flex-1">
+        <Select.ItemText>
+          <span className="block break-words text-sm font-semibold leading-5">{name}</span>
+          {Boolean(addressLine) && (
+            <span className="mt-0.5 block text-pretty break-words text-sm leading-5 text-contrast-500">
+              {addressLine}
+            </span>
+          )}
+          <span className="mt-2 flex flex-wrap gap-1.5 [&>span]:border [&>span]:normal-case">
+            {warehouse.allowShipping && (
+              <Badge
+                className="border-blue-200 [--badge-info-background:theme(colors.blue.100)] [--badge-text:theme(colors.blue.900)]"
+                shape="pill"
+                variant="info"
+              >
+                Ship
+              </Badge>
+            )}
+            <Badge
+              className="border-emerald-200 [--badge-success-background:theme(colors.emerald.100)] [--badge-text:theme(colors.emerald.900)]"
+              shape="pill"
+              variant="success"
+            >
+              {warehouse.allowShipping ? 'Pickup' : 'Pickup only'}
+            </Badge>
+          </span>
+        </Select.ItemText>
+      </span>
+      <Select.ItemIndicator className="ml-auto mt-0.5 shrink-0">
+        <Check aria-hidden="true" className="size-4" />
+      </Select.ItemIndicator>
+    </Select.Item>
   );
 }
 
@@ -47,15 +95,65 @@ function WarehouseMapLink({ address }: { address?: WarehouseMapAddress | null })
   );
 }
 
+function WarehouseDropdown({
+  current,
+  disabled,
+  onChange,
+  warehouses,
+}: {
+  current?: PickerWarehouse;
+  disabled: boolean;
+  onChange: (id: string) => void;
+  warehouses: PickerWarehouse[];
+}) {
+  return (
+    <Select.Root disabled={disabled} onValueChange={onChange} value={current?.id ?? ''}>
+      <Select.Trigger
+        aria-label={current ? `Shopping warehouse, ${current.name}` : 'Shopping warehouse'}
+        className="group flex min-h-11 w-32 items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1.5 text-slate-950 transition-colors hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait @xs:w-[9.75rem] @md:w-48 @md:gap-2.5 @md:px-3"
+        id="warehouse-choice"
+      >
+        <WarehouseIcon
+          aria-hidden="true"
+          className="hidden size-4 shrink-0 @xs:block @md:size-5"
+          strokeWidth={1.75}
+        />
+        <span className="min-w-0 flex-1 text-left">
+          <WarehouseLabel warehouse={current} />
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180 @md:size-4"
+          strokeWidth={1.75}
+        />
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Content
+          align="start"
+          aria-label="Shopping warehouse"
+          className="z-50 max-h-[var(--radix-select-content-available-height)] w-[22rem] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl border border-contrast-200 bg-background text-foreground shadow-xl"
+          collisionPadding={12}
+          position="popper"
+          sideOffset={8}
+        >
+          <Select.Viewport className="space-y-1 p-1.5">
+            {warehouses.map((warehouse) => (
+              <WarehouseOption key={warehouse.id} warehouse={warehouse} />
+            ))}
+          </Select.Viewport>
+        </Select.Content>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
+
 export function Picker({
   warehouses,
   selected,
   context,
-  mapAddress,
 }: {
   warehouses: PickerWarehouse[];
   selected?: string;
-  mapAddress?: WarehouseMapAddress | null;
   context: { cartId: string | null; revision: string | null };
 }) {
   const router = useRouter();
@@ -108,39 +206,13 @@ export function Picker({
       className="relative flex max-w-full shrink-0 items-center gap-1 text-sm @6xl:has-[a]:pl-11"
       data-test="warehouse-picker"
     >
-      <div className="relative w-32 @xs:w-[9.75rem] @md:w-48">
-        <select
-          aria-label="Shopping warehouse"
-          className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-wait"
-          disabled={pending || !hydrated}
-          id="warehouse-choice"
-          onChange={(event) => submit(createSelectionAttempt(event.target.value, context))}
-          value={choice ?? ''}
-        >
-          <option disabled value="">
-            Choose your warehouse
-          </option>
-          {warehouses.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.label}
-            </option>
-          ))}
-        </select>
-        <div
-          aria-hidden="true"
-          className="flex min-h-11 items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1.5 text-slate-950 transition-colors peer-hover:bg-slate-200 peer-focus-visible:ring-2 peer-focus-visible:ring-foreground peer-focus-visible:ring-offset-2 @md:gap-2.5 @md:px-3"
-        >
-          <WarehouseIcon
-            className="hidden size-4 shrink-0 @xs:block @md:size-5"
-            strokeWidth={1.75}
-          />
-          <div className="min-w-0 flex-1 text-left">
-            <WarehouseLabel warehouse={current} />
-          </div>
-          <ChevronDown className="size-3.5 shrink-0 @md:size-4" strokeWidth={1.75} />
-        </div>
-      </div>
-      <WarehouseMapLink address={mapAddress} />
+      <WarehouseDropdown
+        current={current}
+        disabled={pending || !hydrated}
+        onChange={(id) => submit(createSelectionAttempt(id, context))}
+        warehouses={warehouses}
+      />
+      <WarehouseMapLink address={selected ? current?.address : undefined} />
       <div
         className={
           checking || hint || retry || error

@@ -52,12 +52,12 @@ export async function WarehousePicker({
         <Picker
           context={context}
           key={`${context.cartId ?? ''}:${recoveryCartVersion ?? ''}`}
-          mapAddress={warehouse && locations.mapAddresses.get(warehouse.locationId)}
           selected={warehouse?.id}
-          warehouses={locations.warehouses.map((option) => ({
-            ...option,
-            cityState: locations.mapAddresses.get(option.locationId)?.cityState,
-          }))}
+          warehouses={locations.warehouses.map((option) => {
+            const location = locations.publicLocations.get(option.locationId);
+
+            return { ...option, name: location?.name || option.label, address: location?.address };
+          })}
         />,
       )}
       {children}

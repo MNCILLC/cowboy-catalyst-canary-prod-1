@@ -41,6 +41,7 @@ export type WarehouseMapAddress = NonNullable<z.infer<typeof mapAddress>>;
 const locationsSchema = z.array(
   z.object({
     id: z.number().int().positive(),
+    label: z.string().trim().catch(''),
     enabled: z.boolean(),
     storefront_visibility: z.boolean().catch(false),
     address: mapAddress,
@@ -64,14 +65,20 @@ export const getWarehouseLocations = cache(async () => {
         return locationsSchema.parse(locations);
       }),
     );
-    const mapAddresses = new Map(
+    const publicLocations = new Map(
       batches
         .flat()
         .filter((location) => location.enabled)
-        .map((location) => [location.id, location.storefront_visibility ? location.address : null]),
+        .map(({ id, storefront_visibility, label, address }) => [
+          id,
+          storefront_visibility ? { name: label, address } : null,
+        ]),
     );
 
-    return { warehouses: configured.filter((w) => mapAddresses.has(w.locationId)), mapAddresses };
+    return {
+      warehouses: configured.filter((w) => publicLocations.has(w.locationId)),
+      publicLocations,
+    };
   } catch (error) {
     rethrow(error);
     throw new WarehouseValidationError(

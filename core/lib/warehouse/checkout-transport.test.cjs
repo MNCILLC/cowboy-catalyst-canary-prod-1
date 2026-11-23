@@ -67,7 +67,17 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   './availability-scope': loadTestModule(`${pickerPath}availability-scope.tsx`, react),
   './picker': loadTestModule(`${pickerPath}picker.tsx`, {
     ...react,
-    'lucide-react': { Warehouse: () => null, ChevronDown: () => null, MapPin: () => null },
+    '@radix-ui/react-select': require('@radix-ui/react-select'),
+    '@/vibes/soul/primitives/badge': loadTestModule('../../vibes/soul/primitives/badge/index.tsx', {
+      ...react,
+      clsx: require('clsx'),
+    }),
+    'lucide-react': {
+      Warehouse: () => null,
+      ChevronDown: () => null,
+      MapPin: () => null,
+      Check: () => null,
+    },
     '~/i18n/routing': { useRouter: () => ({ refresh() {} }) },
     '~/lib/warehouse/policy': policy,
     './actions': {},
@@ -82,6 +92,20 @@ async function renderStorefront() {
   });
 
   return renderToStaticMarkup(layout);
+}
+
+async function pickerOptions() {
+  let options;
+
+  await WarehousePicker({
+    renderHeader(picker) {
+      options = picker?.props.warehouses;
+
+      return null;
+    },
+  });
+
+  return options;
 }
 
 let prepared = 0;
@@ -241,23 +265,23 @@ test('a recovered cart starts checking only an enabled shipping origin without a
 
   const recovery = await renderStorefront();
 
-  assert.match(recovery, /<option value="south" selected="">South/);
-  assert.match(recovery, />Ship or pick up<\/span><span[^>]*>Forney, TX<\/span>/);
+  assert.match(recovery, /aria-label="Shopping warehouse, South"/);
+  assert.match(recovery, />Ship or Pickup<\/span><span[^>]*>Forney, TX<\/span>/);
   assert.match(recovery, /Checking cart availability/);
   assert.doesNotMatch(recovery, /Confirm warehouse/);
   locations[1].enabled = false;
 
   const disabled = await renderStorefront();
 
-  assert.doesNotMatch(disabled, /value="south"|Confirm warehouse/);
+  assert.doesNotMatch(disabled, /Shopping warehouse, South|Confirm warehouse/);
   assert.match(disabled, />Choose warehouse<\/span>/);
   locations[1].enabled = true;
   pickerContext = { ...pickerContext, warehouse, revision: 'saved' };
 
   const saved = await renderStorefront();
 
-  assert.match(saved, /<option value="north" selected="">North/);
-  assert.match(saved, />Pick up at<\/span><span[^>]*>Powell, WY<\/span>/);
+  assert.match(saved, /aria-label="Shopping warehouse, North"/);
+  assert.match(saved, />Pickup at<\/span><span[^>]*>Powell, WY<\/span>/);
   assert.doesNotMatch(saved, /Confirm warehouse/);
 });
 
@@ -278,11 +302,18 @@ test('the map link uses only the selected warehouse’s public street address', 
   locations = [
     {
       id: second.locationId,
+      label: 'South Warehouse',
       enabled: true,
       storefront_visibility: true,
       address: { ...address, address1: '42 South St', address2: null, city: 'South' },
     },
-    { id: warehouse.locationId, enabled: true, storefront_visibility: true, address },
+    {
+      id: warehouse.locationId,
+      label: 'North Warehouse',
+      enabled: true,
+      storefront_visibility: true,
+      address,
+    },
   ];
 
   const mapUrl = async () => {
@@ -292,6 +323,16 @@ test('the map link uses only the selected warehouse’s public street address', 
     return href ? new URL(href.replaceAll('&amp;', '&')) : null;
   };
 
+  assert.deepEqual(
+    (await pickerOptions()).map(({ name, address: publicAddress }) => [
+      name,
+      publicAddress?.formatted,
+    ]),
+    [
+      ['North Warehouse', '12 North & West St, Unit #4, North, TX 75000, US'],
+      ['South Warehouse', '42 South St, South, TX 75000, US'],
+    ],
+  );
   assert.equal(await mapUrl(), null);
   pickerContext.warehouse = warehouse;
 
@@ -304,6 +345,11 @@ test('the map link uses only the selected warehouse’s public street address', 
   assert.equal((await mapUrl()).searchParams.get('query'), '42 South St, South, TX 75000, US');
   assert.match(await renderStorefront(), /title="South, TX Warehouse"/);
   locations[0].storefront_visibility = false;
+
+  const hidden = (await pickerOptions()).find(({ id }) => id === second.id);
+
+  assert.equal(hidden.name, second.label);
+  assert.equal(hidden.address, undefined);
   assert.equal(await mapUrl(), null);
   assert.doesNotMatch(await renderStorefront(), /South, TX|Collect North/);
   locations[0].storefront_visibility = true;
@@ -312,7 +358,7 @@ test('the map link uses only the selected warehouse’s public street address', 
   assert.match(await renderStorefront(), />South, TX<\/span>/);
   delete locations[0].address;
   assert.equal(await mapUrl(), null);
-  assert.match(await renderStorefront(), /<option value="south" selected=""/);
+  assert.match(await renderStorefront(), /aria-label="Shopping warehouse, South Warehouse"/);
 });
 
 test('one running storefront reflects Powell being disabled and re-enabled on the next render', async () => {
@@ -332,14 +378,7 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
   // An enabled but unconfigured location may never add an option or change the configured order.
   locations = [{ id: 3, enabled: true }, powell, { id: 1, enabled: true }];
 
-  const options = async () => {
-    const html = await renderStorefront();
-
-    return Array.from(html.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g), (match) => [
-      match[1],
-      match[2],
-    ]);
-  };
+  const options = async () => (await pickerOptions()).map(({ id, name }) => [id, name]);
   const forneyOption = ['forney', 'Ship/Pickup in Forney, TX'];
   const powellOption = ['powell', 'Pickup in Powell, WY'];
 
@@ -371,8 +410,10 @@ test('one running storefront reflects Powell being disabled and re-enabled on th
 
     const html = await renderStorefront();
 
-    assert.match(html, /<header>.*<select[^>]+id="warehouse-choice".*<\/header>Storefront$/);
-    assert.match(html, /<option value="north">North<\/option>/);
+    assert.match(
+      html,
+      /<header>.*<button[^>]+role="combobox"[^>]+id="warehouse-choice".*<\/header>Storefront$/,
+    );
 
     const before = prepared;
     const signatures = signed;

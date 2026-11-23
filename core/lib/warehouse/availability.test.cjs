@@ -43,9 +43,9 @@ const { getWarehouseAvailability } = compile('availability.ts', {
   './config': { warehousePreviewEnabled: () => enabled },
   './locations': {
     getWarehouseLocations: async () => ({
-      mapAddresses: new Map([
-        [11, { cityState: 'Forney, TX' }],
-        [22, { cityState: 'Powell, WY' }],
+      publicLocations: new Map([
+        [11, { address: { cityState: 'Forney, TX' } }],
+        [22, { address: { cityState: 'Powell, WY' } }],
       ]),
     }),
   },

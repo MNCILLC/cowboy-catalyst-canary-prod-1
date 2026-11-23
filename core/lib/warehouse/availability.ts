@@ -27,7 +27,8 @@ export const getAvailabilityContext = cache(
     try {
       const context = await getWarehouseContext();
       const cityState = context.warehouse
-        ? (await getWarehouseLocations()).mapAddresses.get(context.warehouse.locationId)?.cityState
+        ? (await getWarehouseLocations()).publicLocations.get(context.warehouse.locationId)?.address
+            ?.cityState
         : undefined;
 
       return { enabled: true, ...context, cityState };
