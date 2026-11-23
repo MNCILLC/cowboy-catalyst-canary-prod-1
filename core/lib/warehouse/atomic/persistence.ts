@@ -75,12 +75,18 @@ function parseInput<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
-// Existing saved carts stay plain UUIDs. Only the first add uses the two transient states.
-type ShopperCartSlot = string | null | { creating: string } | { created: string };
+// Existing saved carts stay plain UUIDs. First-add states retain their operation or cart ID.
+export type ShopperCartSlot =
+  | string
+  | null
+  | { creating: string }
+  | { uncertain: string }
+  | { created: string };
 
 function encodeShopperCart(slot: ShopperCartSlot) {
   if (!slot || typeof slot === 'string') return slot ?? '';
   if ('creating' in slot) return `creating:${slot.creating}`;
+  if ('uncertain' in slot) return `uncertain:${slot.uncertain}`;
 
   return `created:${slot.created}`;
 }
@@ -146,6 +152,7 @@ export class AtomicWarehousePersistence {
 
       if (extra === undefined && value && z.string().uuid().safeParse(value).success) {
         if (state === 'creating') return { creating: value };
+        if (state === 'uncertain') return { uncertain: value };
         if (state === 'created') return { created: value };
       }
     }

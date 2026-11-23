@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidateTag } from 'next/cache';
+import { getLocale } from 'next-intl/server';
 
 import { auth, getAnonymousSession, updateAnonymousSession, updateSession } from '~/auth';
 import { TAGS } from '~/client/tags';
+import { redirect } from '~/i18n/routing';
 import { addCartLineItem, AddCartLineItemsInput } from '~/lib/cart/add-cart-line-item';
 import { createCart, CreateCartInput } from '~/lib/cart/create-cart';
 import { validateCartId } from '~/lib/cart/validate-cart';
@@ -70,13 +72,12 @@ export async function addToOrCreateCart(
     return;
   }
 
-  const createResponse = await createCart(data, displayedCart);
+  const { cartId: newCartId, recovered } = await createCart(data, displayedCart);
 
-  if (!createResponse.data.cart.createCart?.cart?.entityId) {
-    throw new MissingCartError();
-  }
+  if (!newCartId) throw new MissingCartError();
 
-  await setCartId(createResponse.data.cart.createCart.cart.entityId);
-
+  await setCartId(newCartId);
   revalidateTag(TAGS.cart, { expire: 0 });
+
+  if (recovered) redirect({ href: '/cart', locale: await getLocale() });
 }

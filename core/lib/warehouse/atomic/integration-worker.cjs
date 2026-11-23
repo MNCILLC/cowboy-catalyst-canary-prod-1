@@ -183,7 +183,11 @@ const files = [
 ];
 
 const shopperSession = {
-  '~/client/queries/get-customer': { getSignedInWarehouseCustomerId: async () => state.customerId },
+  '~/client/queries/get-customer': {
+    getSignedInWarehouseCustomerId: async () => state.customerId,
+    findFirstAddCart: async (id, source) =>
+      state.customerId === id && state.source === source ? state.cart.id : null,
+  },
   '~/lib/cart': {
     getCartId: async () => state.sessionCartId,
     setCartId: async (cartId) => {
@@ -386,7 +390,12 @@ async function dispatch(command, payload = {}) {
     case 'reserveFirstAdd':
       state.firstAdd = await server.reserveNewCartWarehouse('powell');
 
-      return Boolean(state.firstAdd);
+      return state.firstAdd?.recoveredCartId ?? Boolean(state.firstAdd);
+
+    case 'loseFirstAdd':
+      await state.firstAdd.markUncertain();
+
+      return state.firstAdd.source;
 
     case 'completeFirstAdd':
       await state.firstAdd.complete(state.cart.id);

@@ -89,7 +89,8 @@ test('only a definite create rejection releases the first-add reservation', asyn
     '~/auth': { getSessionCustomerAccessToken: async () => 'synthetic' },
     '~/client': {
       client: {
-        fetch: async () => {
+        fetch: async ({ variables }) => {
+          assert.equal(variables.createCartInput.externalSource, 'reservation-id');
           calls.push('create');
           throw nextError;
         },
@@ -104,7 +105,11 @@ test('only a definite create rejection releases the first-add reservation', asyn
       reserveNewCartWarehouse: async () => {
         calls.push('reserve');
 
-        return { release: async () => calls.push('release') };
+        return {
+          source: 'reservation-id',
+          release: async () => calls.push('release'),
+          markUncertain: async () => calls.push('uncertain'),
+        };
       },
     },
   });
@@ -113,6 +118,37 @@ test('only a definite create rejection releases the first-add reservation', asyn
   assert.deepEqual(calls, ['reserve', 'create', 'release']);
   nextError = lostResponse;
   calls.length = 0;
-  await assert.rejects(createCart({}, null), lostResponse);
-  assert.deepEqual(calls, ['reserve', 'create']);
+  await assert.rejects(createCart({}, null), { cause: lostResponse });
+  assert.deepEqual(calls, ['reserve', 'create', 'uncertain']);
+});
+
+test('a persistent cart is a recovery candidate only for the same shopper and first-add source', async () => {
+  let token = 'synthetic-token';
+  const data = {
+    customer: { entityId: 17 },
+    site: { cart: { entityId: 'candidate', externalSource: 'first-add' } },
+  };
+  const { findFirstAddCart } = loadTestModule('../../client/queries/get-customer.ts', {
+    '~/auth': { getSessionCustomerAccessToken: async () => token },
+    '~/client/graphql': { graphql: (query) => query },
+    '~/client': {
+      client: {
+        fetch: async (request) => {
+          assert.equal(request.customerAccessToken, 'synthetic-token');
+          assert.equal(request.fetchOptions.cache, 'no-store');
+
+          return { data };
+        },
+      },
+    },
+  });
+
+  assert.equal(await findFirstAddCart(17, 'first-add'), 'candidate');
+  assert.equal(await findFirstAddCart(18, 'first-add'), null);
+  assert.equal(await findFirstAddCart(17, 'previous-add'), null);
+  token = null;
+  assert.equal(await findFirstAddCart(17, 'first-add'), null);
+  token = 'synthetic-token';
+  data.site.cart = null;
+  assert.equal(await findFirstAddCart(17, 'first-add'), null);
 });

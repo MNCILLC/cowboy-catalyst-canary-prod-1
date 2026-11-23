@@ -26,6 +26,37 @@ export async function getSignedInWarehouseCustomerId() {
   return data.customer.entityId;
 }
 
+const FirstAddCart = graphql(`
+  query WarehouseFirstAddCart {
+    customer {
+      entityId
+    }
+    site {
+      cart {
+        entityId
+        externalSource
+      }
+    }
+  }
+`);
+
+export async function findFirstAddCart(customerId: number, source: string) {
+  const customerAccessToken = await getSessionCustomerAccessToken();
+
+  if (!customerAccessToken) return null;
+
+  const { data } = await client.fetch({
+    document: FirstAddCart,
+    customerAccessToken,
+    fetchOptions: { cache: 'no-store' },
+  });
+  const cart = data.site.cart;
+
+  return data.customer?.entityId === customerId && cart?.externalSource === source
+    ? cart.entityId
+    : null;
+}
+
 export const GetCustomerGroup = graphql(`
   query CustomerGroup {
     customer {

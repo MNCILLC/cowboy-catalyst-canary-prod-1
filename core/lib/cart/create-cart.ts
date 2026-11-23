@@ -52,6 +52,9 @@ export const createCart = async (data: CreateCartInput, displayedCart: string | 
   const currencyCode = await getPreferredCurrencyCode();
 
   const reservation = warehouse ? await reserveNewCartWarehouse(warehouse.id) : undefined;
+
+  if (reservation?.recoveredCartId) return { cartId: reservation.recoveredCartId, recovered: true };
+
   const response = await client
     .fetch({
       document: CreateCartMutation,
@@ -59,6 +62,7 @@ export const createCart = async (data: CreateCartInput, displayedCart: string | 
         createCartInput: {
           ...data,
           currencyCode,
+          ...(reservation?.source && { externalSource: reservation.source }),
         },
       },
       customerAccessToken,
@@ -66,18 +70,29 @@ export const createCart = async (data: CreateCartInput, displayedCart: string | 
     })
     .catch(async (error: unknown) => {
       // A timeout or internal error can arrive after BigCommerce created the cart.
-      if (reservation && createWasRejected(error)) await reservation.release();
+      if (reservation?.source) {
+        if (createWasRejected(error)) {
+          await reservation.release();
+        } else {
+          await reservation.markUncertain();
+
+          throw new Error(
+            'We could not confirm your earlier add. Choose Add to cart again to reopen your cart.',
+            { cause: error },
+          );
+        }
+      }
 
       throw error;
     });
   const cartId = response.data.cart.createCart?.cart?.entityId;
 
-  if (reservation) {
+  if (reservation?.source) {
     if (cartId) await reservation.complete(cartId);
     else await reservation.release();
   } else if (warehouse && cartId) {
     await persistNewCartWarehouse(cartId, warehouse.id);
   }
 
-  return response;
+  return { cartId, recovered: false };
 };

@@ -256,13 +256,6 @@ export async function assertWarehouseItems(
     throw new WarehouseValidationError(t('activeCartChanged'), 409, 'STALE_WAREHOUSE');
   }
 
-  if (!cartId) {
-    const channelId = Number(getChannelIdFromLocale(await getLocale()));
-    const carts = await getShopperWarehouseCarts(channelId, initializeCreatedCart);
-
-    await carts?.checkSlot(warehouse.id);
-  }
-
   if (
     replaceId &&
     ![...(cart?.line_items.physical_items ?? []), ...(cart?.line_items.digital_items ?? [])].some(

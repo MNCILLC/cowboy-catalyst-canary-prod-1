@@ -1,8 +1,9 @@
 import 'server-only';
 
-import { getSignedInWarehouseCustomerId } from '~/client/queries/get-customer';
+import { findFirstAddCart, getSignedInWarehouseCustomerId } from '~/client/queries/get-customer';
 
 import { warehouseApi } from './api';
+import type { ShopperCartSlot } from './atomic/persistence';
 import { WarehouseValidationError } from './authorization';
 import {
   getAtomicWarehousePersistence,
@@ -40,24 +41,44 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
   const scope = { storeHash, channelId, customerId };
   const storage = await getAtomicWarehousePersistence();
 
-  async function saved(warehouseId: string) {
-    const slot = await storage.shopperCart(scope, warehouseId);
+  async function resolveCartId(slot: NonNullable<ShopperCartSlot>) {
+    if (typeof slot === 'string') return slot;
+    if ('created' in slot) return slot.created;
 
-    if (!slot) return null;
-    if (typeof slot !== 'string' && 'creating' in slot)
+    if ('uncertain' in slot) {
+      const id = await findFirstAddCart(scope.customerId, slot.uncertain);
+
+      if (id) return id;
+
       throw new WarehouseValidationError(
-        'A cart is already being created for this warehouse. Reload your cart before adding again.',
+        'We could not verify the cart from your earlier add. Your warehouse cart is still reserved.',
         409,
         'CART_CHANGED',
       );
+    }
 
-    const id = typeof slot === 'string' ? slot : slot.created;
+    throw new WarehouseValidationError(
+      'A cart is already being created for this warehouse. Reload your cart before adding again.',
+      409,
+      'CART_CHANGED',
+    );
+  }
+
+  async function saved(warehouseId: string, observed?: ShopperCartSlot) {
+    const slot = observed === undefined ? await storage.shopperCart(scope, warehouseId) : observed;
+
+    if (!slot) return null;
+
+    const id = await resolveCartId(slot);
     let cart: Cart;
 
     try {
-      cart = await warehouseApi<Cart>(`carts/${id}`);
+      cart = await warehouseApi<Cart>(`carts/${encodeURIComponent(id)}`);
     } catch (error) {
       if (!(error instanceof WarehouseValidationError && error.status === 404)) throw error;
+
+      // A missing recovery candidate cannot establish what happened to the original add.
+      if (typeof slot === 'object' && 'uncertain' in slot) throw error;
 
       // BigCommerce deletes empty and converted carts. Only forget the ID we just checked.
       await storage.shopperCart(scope, warehouseId, { expected: slot, next: null });
@@ -101,7 +122,7 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
 
     if (previous === cartId) return true;
 
-    const verified = previous && (await saved(warehouseId));
+    const verified = previous && (await saved(warehouseId, previous));
 
     if (verified && verified === cartId) return true;
     if (verified)
@@ -127,6 +148,19 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
   }
 
   async function reserve(warehouseId: string) {
+    const previous = await storage.shopperCart(scope, warehouseId);
+
+    if (previous && typeof previous !== 'string' && 'uncertain' in previous) {
+      const recoveredCartId = await saved(warehouseId, previous);
+
+      if (!recoveredCartId) throw new Error('Unable to reopen your warehouse cart.');
+
+      return { recoveredCartId };
+    }
+
+    // Check an existing pointer for expiry before trying to reserve the empty slot.
+    if (typeof previous === 'string') await checkSlot(warehouseId);
+
     const reservation = { creating: crypto.randomUUID() };
 
     // A lost create response cannot safely be retried. Only the owning request can
@@ -134,6 +168,12 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
     await storage.shopperCart(scope, warehouseId, { expected: null, next: reservation });
 
     return {
+      source: reservation.creating,
+      markUncertain: () =>
+        storage.shopperCart(scope, warehouseId, {
+          expected: reservation,
+          next: { uncertain: reservation.creating },
+        }),
       release: () => storage.shopperCart(scope, warehouseId, { expected: reservation, next: null }),
       async complete(id: string) {
         await storage.shopperCart(scope, warehouseId, {

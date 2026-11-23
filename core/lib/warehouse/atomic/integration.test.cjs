@@ -364,6 +364,34 @@ test('two first adds reserve one shopper cart and a second process can finish it
   await expectError(winner, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
 });
 
+test('a lost first-add response can recover only a matching cart with verified owner and channel', async () => {
+  const { cartId } = await setup(false);
+  const customerId = 88;
+  const cart = {
+    id: cartId,
+    customer_id: customerId,
+    channel_id: 37,
+    line_items: {
+      physical_items: [{ id: 'line-1', product_id: 9001, variant_id: 0, quantity: 1 }],
+      digital_items: [],
+    },
+  };
+
+  await Promise.all([a, b].map((w) => call(w, 'patch', { customerId, cart, sessionCartId: null })));
+  assert.equal(await call(a, 'reserveFirstAdd'), true);
+
+  const source = await call(a, 'loseFirstAdd');
+
+  await expectError(b, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
+  await call(b, 'patch', { source, cart: { ...cart, customer_id: customerId + 1 } });
+  await expectError(b, 'reserveFirstAdd', {}, 'INVALID_RECORD', 409);
+  await call(b, 'patch', { cart: { ...cart, channel_id: 99 } });
+  await expectError(b, 'reserveFirstAdd', {}, 'INVALID_RECORD', 409);
+  await call(b, 'patch', { cart });
+  assert.equal(await call(b, 'reserveFirstAdd'), cart.id);
+  await expectError(a, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
+});
+
 test('two picker actions pass their stock checks then race at CAS: exactly one wins', async () => {
   for (let i = 0; i < 12; i += 1) {
     const { cartId, record } = await setup();
