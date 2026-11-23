@@ -396,7 +396,7 @@ export default async function Cart({ params }: Props) {
                 : null,
             ].filter(exists),
           }}
-          checkoutAction={CHECKOUT_URL}
+          checkoutAction={`${CHECKOUT_URL}?displayedCartId=${encodeURIComponent(cart.entityId)}`}
           checkoutAuthenticationRequired={isCheckoutAuthenticationRequired}
           checkoutLabel={warehousePreview ? 'Checkout' : t('proceedToCheckout')}
           checkoutMessage={SHOW_SHIPPING_QUOTE_MESSAGE ? SHIPPING_QUOTE_MESSAGE : undefined}

@@ -159,9 +159,30 @@ async function checkoutCartId(req: NextRequest) {
   return req.nextUrl.searchParams.get('cartId') ?? (await getCartId());
 }
 
+async function getCheckoutAnalytics(req: NextRequest) {
+  const [visitId, visitorId, consent] = await Promise.all([
+    getVisitIdCookie(),
+    getVisitorIdCookie(),
+    getConsentCookie(),
+  ]);
+
+  return {
+    visitId: visitId ?? '',
+    visitorId: visitorId ?? '',
+    analyticsConsent: consent?.['c.measurement'] ?? false,
+    functionalConsent: consent?.['c.functionality'] ?? false,
+    targetingConsent: consent?.['c.marketing'] ?? false,
+    referer: req.headers.get('referer') ?? '',
+    userAgent: req.headers.get('user-agent') ?? '',
+  };
+}
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const cartId = await checkoutCartId(req);
+  const displayedCartId = req.nextUrl.searchParams.get('displayedCartId');
+  // The storefront cart must match the session. Direct B2B checkout links can supply cartId.
+  const cartId = displayedCartId === null ? await checkoutCartId(req) : await getCartId();
+  const returnAfterAuth = displayedCartId === null ? '/checkout/' : '/cart/';
   const customerAccessToken = await getSessionCustomerAccessToken();
   const channelId = getChannelIdFromLocale(locale);
   const t = await getTranslations('Cart.Errors');
@@ -169,7 +190,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
   if (isCheckoutAuthenticationRequired && !customerAccessToken) {
     await serverToast.error(t('authenticationRequired'));
 
-    return redirect({ href: '/login?redirectTo=/checkout/', locale });
+    return redirect({ href: `/login?redirectTo=${returnAfterAuth}`, locale });
+  }
+
+  if (displayedCartId !== null && displayedCartId !== cartId) {
+    await serverToast.warning(t('activeCartChanged'));
+
+    return redirect({ href: '/cart', locale });
   }
 
   if (!cartId) {
@@ -177,10 +204,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
 
     return redirect({ href: '/cart', locale });
   }
-
-  const visitId = await getVisitIdCookie();
-  const visitorId = await getVisitorIdCookie();
-  const consent = await getConsentCookie();
 
   try {
     await assertProUseCart(cartId);
@@ -218,13 +241,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
       document: CheckoutRedirectMutation,
       variables: {
         cartId,
-        visitId: visitId ?? '',
-        visitorId: visitorId ?? '',
-        analyticsConsent: consent?.['c.measurement'] ?? false,
-        functionalConsent: consent?.['c.functionality'] ?? false,
-        targetingConsent: consent?.['c.marketing'] ?? false,
-        referer: req.headers.get('referer') ?? '',
-        userAgent: req.headers.get('user-agent') ?? '',
+        ...(await getCheckoutAnalytics(req)),
       },
       fetchOptions: { cache: 'no-store' },
       customerAccessToken,
@@ -261,7 +278,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ loca
     }
 
     if (error instanceof BigCommerceAuthError) {
-      return redirect({ href: '/logout?redirectTo=/checkout/', locale });
+      return redirect({ href: `/logout?redirectTo=${returnAfterAuth}`, locale });
     }
 
     // eslint-disable-next-line no-console

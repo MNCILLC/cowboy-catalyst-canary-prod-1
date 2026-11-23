@@ -67,6 +67,7 @@ const { WarehousePicker } = loadTestModule(`${pickerPath}index.tsx`, {
   './picker': loadTestModule(`${pickerPath}picker.tsx`, {
     ...react,
     'lucide-react': { Warehouse: () => null, ChevronDown: () => null, MapPin: () => null },
+    '~/i18n/routing': { useRouter: () => ({ refresh() {} }) },
     '~/lib/warehouse/policy': policy,
     './actions': {},
     './selection-attempt': {},
@@ -94,7 +95,7 @@ const dependencies = {
   '@bigcommerce/catalyst-client': { BigCommerceAuthError: TypeError },
   'next/navigation': { unstable_rethrow() {} },
   'next/server': { NextResponse },
-  'next-intl/server': { getTranslations: async () => () => 'Synthetic message' },
+  'next-intl/server': { getTranslations: async () => (key) => key },
   '~/auth': { getSessionCustomerAccessToken: async () => 'synthetic-session' },
   '~/channels.config': { getChannelIdFromLocale: () => 37 },
   '~/client': {
@@ -140,7 +141,7 @@ const dependencies = {
   '~/lib/pickup-checkout/server': { preparePickupCheckout: async () => {} },
   '~/lib/pro-use/policy': { ProUseRequiredError: PolicyError },
   '~/lib/pro-use/server': { assertProUseCart: async () => {} },
-  '~/lib/server-toast': { serverToast: { error: async () => {} } },
+  '~/lib/server-toast': { serverToast: { error: async () => {}, warning: async () => {} } },
   '~/lib/warehouse/config': config,
   '~/lib/warehouse/policy': { WarehouseError: PolicyError },
   '~/lib/warehouse/server': {
@@ -166,6 +167,54 @@ const run = (search = '') =>
   GET(new NextRequest(`https://store.invalid/checkout/${search}`), {
     params: Promise.resolve({ locale: 'en' }),
   });
+
+['new-cart', undefined].forEach((activeCart) => {
+  test(`Checkout rejects a stale displayed cart when the active cart is ${activeCart ?? 'empty'}`, async (t) => {
+    t.mock.method(dependencies['~/lib/cart'], 'getCartId', async () => activeCart);
+
+    const warning = t.mock.method(dependencies['~/lib/server-toast'].serverToast, 'warning');
+    const fetch = t.mock.method(dependencies['~/client'].client, 'fetch');
+    const prepare = t.mock.method(dependencies['~/lib/pro-use/server'], 'assertProUseCart');
+    const before = prepared;
+    const query = '?displayedCartId=old-cart&cartId=old-cart';
+
+    const response = await run(query);
+
+    assert.equal(response.headers.get('location'), '/cart');
+    assert.deepEqual(
+      warning.mock.calls.map((call) => call.arguments),
+      [['activeCartChanged']],
+    );
+    assert.equal(prepare.mock.callCount(), 0);
+    assert.equal(fetch.mock.callCount(), 0);
+    assert.equal(prepared, before);
+  });
+});
+
+test('Checkout uses the matching displayed cart even when a different cartId is supplied', async (t) => {
+  const cart = '11111111-1111-4111-8111-111111111111';
+  const fetch = t.mock.method(dependencies['~/client'].client, 'fetch');
+  const response = await run(`?displayedCartId=${cart}&cartId=other-cart`);
+
+  assert.equal(response.status, 303);
+  assert.deepEqual(
+    fetch.mock.calls.map((call) => call.arguments[0].variables.cartId),
+    [cart, cart],
+  );
+});
+
+test('a direct B2B checkout link still uses its requested cart', async (t) => {
+  process.env.WAREHOUSE_MODE = 'off';
+
+  const fetch = t.mock.method(dependencies['~/client'].client, 'fetch');
+  const response = await run('?cartId=b2b-cart');
+
+  assert.equal(response.headers.get('location'), destination);
+  assert.deepEqual(
+    fetch.mock.calls.map((call) => call.arguments[0].variables.cartId),
+    ['b2b-cart', 'b2b-cart'],
+  );
+});
 
 test('a recovered cart starts checking only an enabled shipping origin without a confirmation button', async () => {
   const origin = {

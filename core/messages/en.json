@@ -547,6 +547,7 @@
     },
     "Errors": {
       "cartNotFound": "An error occurred when retrieving your cart",
+      "activeCartChanged": "Your cart changed in another tab. Review the items in this cart before checking out.",
       "lineItemNotFound": "Line item not found.",
       "failedToUpdateQuantity": "Failed to update quantity.",
       "somethingWentWrong": "Something went wrong. Please try again later.",
