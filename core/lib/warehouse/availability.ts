@@ -104,6 +104,7 @@ export async function getWarehouseAvailability(productIds: number[]) {
       batch.items ?? [],
       warehouse.label,
       variantId,
+      process.env.ENABLE_IN_STOCK_MESSAGE === 'true',
     );
   };
 }

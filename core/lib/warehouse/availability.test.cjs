@@ -108,6 +108,33 @@ test('no selection prompts for a warehouse without fetching catalog inventory', 
   assert.equal(result.canPurchase, false);
   assert.equal(requests.length, 0);
 });
+['true', 'false', undefined].forEach((flag) => {
+  test(`warehouse page and card stock messages with ENABLE_IN_STOCK_MESSAGE=${flag ?? 'unset'}`, async (t) => {
+    const original = process.env.ENABLE_IN_STOCK_MESSAGE;
+
+    t.after(() => {
+      if (original === undefined) delete process.env.ENABLE_IN_STOCK_MESSAGE;
+      else process.env.ENABLE_IN_STOCK_MESSAGE = original;
+    });
+    if (flag === undefined) delete process.env.ENABLE_IN_STOCK_MESSAGE;
+    else process.env.ENABLE_IN_STOCK_MESSAGE = flag;
+
+    const north = (await getWarehouseAvailability([1]))(1);
+    const expected = flag === 'true' ? 'IN STOCK · North' : '4 available · North';
+
+    assert.equal(north.message, expected);
+    assert.equal(policy.warehouseCardDisplay(north).stockDisplayData.stockLevelMessage, expected);
+    assert.equal(north.quantity, 4);
+    assert.equal(north.canPurchase, true);
+
+    context = { warehouse: { ...warehouse, locationId: 22, label: 'South' } };
+
+    const south = (await getWarehouseAvailability([1]))(1);
+
+    assert.equal(south.message, 'Out of stock · South');
+    assert.equal(south.canPurchase, false);
+  });
+});
 test('batches cards and reads the authoritative location again on a new request', async () => {
   const first = await getWarehouseAvailability([2, 1, 2]);
 

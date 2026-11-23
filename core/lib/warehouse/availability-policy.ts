@@ -30,6 +30,7 @@ export function describeWarehouseAvailability(
   items: AvailabilityItem[],
   label: string,
   variantId?: number,
+  useInStockMessage = false,
 ): WarehouseAvailability {
   if (!product) return unknownAvailability();
   if (product.type === 'digital')
@@ -77,8 +78,10 @@ export function describeWarehouseAvailability(
 
   if (available === undefined) return unknownAvailability();
 
+  const inStockMessage = useInStockMessage ? 'IN STOCK' : `${available} available`;
+
   return {
-    message: available > 0 ? `${available} available · ${label}` : `Out of stock · ${label}`,
+    message: `${available > 0 ? inStockMessage : 'Out of stock'} · ${label}`,
     status: available > 0 ? 'success' : 'error',
     canPurchase: available > 0,
     quantity: available,
