@@ -12,13 +12,13 @@ import { redirect } from '~/i18n/routing';
 import { getCartId } from '~/lib/cart';
 
 export const login = async (
-  { redirectTo }: { redirectTo: string },
+  { redirectTo, recoverCart }: { redirectTo: string; recoverCart?: boolean },
   _lastResult: SubmissionResult | null,
   formData: FormData,
 ) => {
   const locale = await getLocale();
   const t = await getTranslations('Auth.Login');
-  const cartId = await getCartId();
+  const cartId = recoverCart ? undefined : await getCartId();
 
   const submission = parseWithZod(formData, { schema });
 

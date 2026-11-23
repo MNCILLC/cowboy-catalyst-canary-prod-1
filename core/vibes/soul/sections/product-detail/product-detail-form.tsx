@@ -46,6 +46,7 @@ interface State<F extends Field> {
   fields: F[];
   lastResult: SubmissionResult | null;
   successMessage?: ReactNode;
+  recoveryLink?: ReactNode;
 }
 
 export type ProductDetailFormAction<F extends Field> = Action<State<F>, FormData>;
@@ -159,7 +160,7 @@ export function ProductDetailForm<F extends Field>({
     { quantity: minQuantity ?? 1 },
   );
 
-  const [{ lastResult, successMessage }, formAction] = useActionState(action, {
+  const [{ lastResult, successMessage, recoveryLink }, formAction] = useActionState(action, {
     fields,
     lastResult: null,
   });
@@ -265,6 +266,8 @@ export function ProductDetailForm<F extends Field>({
               {error}
             </FormStatus>
           ))}
+
+          {form.errors?.length ? recoveryLink : null}
 
           <div className={stockDisplayData?.warehouse ? 'min-h-10' : 'h-[3.2rem] sm:h-[2.6rem]'}>
             {!!stockDisplayData?.stockLevelMessage && (

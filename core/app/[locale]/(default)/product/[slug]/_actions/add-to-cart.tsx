@@ -12,6 +12,7 @@ import { graphql } from '~/client/graphql';
 import { Link } from '~/components/link';
 import { addToOrCreateCart } from '~/lib/cart';
 import { MissingCartError } from '~/lib/cart/error';
+import { WarehouseCartSignInRequired } from '~/lib/warehouse/shopper-carts';
 
 type CartSelectedOptionsInput = ReturnType<typeof graphql.scalar<'CartSelectedOptionsInput'>>;
 
@@ -19,16 +20,10 @@ interface State {
   fields: Field[];
   lastResult: SubmissionResult | null;
   successMessage?: ReactNode;
+  recoveryLink?: ReactNode;
 }
 
-export const addToCart = async (
-  prevState: State,
-  payload: FormData,
-): Promise<{
-  fields: Field[];
-  lastResult: SubmissionResult | null;
-  successMessage?: ReactNode;
-}> => {
+export const addToCart = async (prevState: State, payload: FormData): Promise<State> => {
   const t = await getTranslations('Product.ProductDetails');
 
   const submission = parseWithZod(payload, { schema: schema(prevState.fields) });
@@ -193,6 +188,20 @@ export const addToCart = async (
           }),
         }),
         fields: prevState.fields,
+      };
+    }
+
+    if (error instanceof WarehouseCartSignInRequired) {
+      const cart = await getTranslations('Cart');
+
+      return {
+        lastResult: submission.reply({ formErrors: [error.message] }),
+        fields: prevState.fields,
+        recoveryLink: (
+          <Link className="underline" href="/cart/recover">
+            {cart('signInToRecover')}
+          </Link>
+        ),
       };
     }
 

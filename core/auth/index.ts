@@ -11,6 +11,8 @@ import { client } from '~/client';
 import { graphql } from '~/client/graphql';
 import { clearCartId, setCartId } from '~/lib/cart';
 import { serverToast } from '~/lib/server-toast';
+import { WarehouseError } from '~/lib/warehouse/policy';
+import type { LoginCart } from '~/lib/warehouse/shopper-carts';
 
 const LoginMutation = graphql(`
   mutation LoginMutation($email: String!, $password: String!, $cartEntityId: String) {
@@ -26,6 +28,7 @@ const LoginMutation = graphql(`
       }
       cart {
         entityId
+        externalSource
       }
     }
   }
@@ -45,6 +48,7 @@ const LoginWithTokenMutation = graphql(`
       }
       cart {
         entityId
+        externalSource
       }
     }
   }
@@ -87,8 +91,35 @@ const SessionUpdate = z.object({
   }),
 });
 
-async function handleLoginCart(guestCartId?: string, loginResultCartId?: string) {
+async function handleLoginCart(
+  customerId: number,
+  candidate: LoginCart | null | undefined,
+  guestCartId?: string,
+  channelId?: string,
+) {
   const t = await getTranslations('Cart');
+
+  const { recoverLoginWarehouseCart } = await import('~/lib/warehouse/server');
+  let recovery;
+
+  try {
+    recovery = await recoverLoginWarehouseCart(customerId, candidate, channelId);
+  } catch (error) {
+    await serverToast.warning(
+      error instanceof WarehouseError ? error.message : t('warehouseRecoveryUnavailable'),
+    );
+
+    return null;
+  }
+
+  if (recovery) {
+    if (recovery.cartId) await serverToast.info(t('warehouseCartRecovered'));
+    else await serverToast.warning(t('warehouseCartStillReserved'));
+
+    return recovery.cartId;
+  }
+
+  const loginResultCartId = candidate?.entityId;
 
   if (guestCartId === undefined && loginResultCartId !== undefined) {
     await serverToast.info(t('cartRestored'), { position: 'top-center' });
@@ -101,6 +132,8 @@ async function handleLoginCart(guestCartId?: string, loginResultCartId?: string)
   if (loginResultCartId) {
     await setCartId(loginResultCartId);
   }
+
+  return loginResultCartId;
 }
 
 async function loginWithPassword(credentials: unknown): Promise<User | null> {
@@ -124,7 +157,8 @@ async function loginWithPassword(credentials: unknown): Promise<User | null> {
     return null;
   }
 
-  await handleLoginCart(cartId, result.cart?.entityId);
+  const activeCartId = await handleLoginCart(result.customer.entityId, result.cart, cartId);
+
   await clearAnonymousSession();
 
   return {
@@ -132,7 +166,7 @@ async function loginWithPassword(credentials: unknown): Promise<User | null> {
     lastName: result.customer.lastName,
     email: result.customer.email,
     customerAccessToken: result.customerAccessToken.value,
-    cartId: result.cart?.entityId,
+    cartId: activeCartId,
   };
 }
 
@@ -161,7 +195,13 @@ async function loginWithJwt(credentials: unknown): Promise<User | null> {
     return null;
   }
 
-  await handleLoginCart(cartId, result.cart?.entityId);
+  const activeCartId = await handleLoginCart(
+    result.customer.entityId,
+    result.cart,
+    cartId,
+    channelId,
+  );
+
   await clearAnonymousSession();
 
   return {
@@ -170,7 +210,7 @@ async function loginWithJwt(credentials: unknown): Promise<User | null> {
     email: result.customer.email,
     customerAccessToken: result.customerAccessToken.value,
     impersonatorId,
-    cartId: result.cart?.entityId,
+    cartId: activeCartId,
   };
 }
 
@@ -212,7 +252,7 @@ const config = {
 
       // user can actually be undefined
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      if (user?.cartId) {
+      if (user?.cartId !== undefined) {
         token.user = {
           ...token.user,
           cartId: user.cartId,

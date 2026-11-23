@@ -392,6 +392,85 @@ test('a lost first-add response can recover only a matching cart with verified o
   await expectError(a, 'reserveFirstAdd', {}, 'CART_CHANGED', 409);
 });
 
+test('sign-in restores only the original first add across password and JWT logins', async () => {
+  for (const [index, provider] of ['password', 'jwt'].entries()) {
+    const { cartId: forneyId } = await setup(false);
+    const customerId = 901 + index;
+    const powellId = randomUUID();
+    const forney = {
+      id: forneyId,
+      customer_id: customerId,
+      channel_id: 37,
+      line_items: {
+        digital_items: [],
+        physical_items: [
+          { id: 'dust-line', name: 'Dust Devil', product_id: 9002, variant_id: 0, quantity: 2 },
+        ],
+      },
+    };
+
+    await call(a, 'patch', { customerId, cart: forney });
+
+    const assigned = await call(a, 'initialize');
+
+    await call(a, 'select', selection(forneyId, assigned.revision));
+
+    const lost = await a.call('dropFirstAdd', { cartId: powellId });
+
+    assert.equal(lost.ok, false);
+    assert.match(lost.error.message, /could not confirm your earlier add/);
+
+    const initial = await call(a, 'loginReservation');
+
+    assert.equal(initial.creates, 1);
+    assert.deepEqual(initial.slot, { uncertain: initial.source });
+
+    assert.match(initial.source, /^[a-f0-9-]{36}$/);
+
+    const candidate = { entityId: powellId, externalSource: initial.source };
+
+    for (const other of [null, { entityId: forneyId, externalSource: randomUUID() }]) {
+      const blocked = await call(a, 'loginFirstAdd', { candidate: other, provider });
+
+      assert.equal(blocked.cartId, null);
+      assert.equal(blocked.notice, 'warehouseCartStillReserved');
+      assert.deepEqual(await call(a, 'loginReservation'), initial);
+    }
+
+    await call(a, 'patch', { stock: 0 });
+    assert.equal((await call(a, 'loginFirstAdd', { candidate, provider })).cartId, null);
+    assert.deepEqual(await call(a, 'loginReservation'), initial);
+    // Fresh browser without a warehouse cookie: match the server reservation.
+    await call(a, 'patch', { stock: 1, cookie: null });
+
+    const login = await call(a, 'loginFirstAdd', { candidate, provider });
+
+    assert.equal(login.cartId, powellId);
+    assert.equal(login.notice, 'warehouseCartRecovered');
+    assert.deepEqual(
+      login.lines.map(({ name, quantity }) => [name, quantity]),
+      [['Neon Nukes', 1]],
+    );
+
+    const recovered = await call(a, 'context');
+
+    assert.equal(recovered.cartId, powellId);
+    assert.equal(recovered.warehouse.id, 'powell');
+    assert.deepEqual(await call(a, 'loginReservation'), { ...initial, slot: powellId });
+    await call(a, 'select', selection(powellId, recovered.revision, 'forney'));
+    assert.equal((await call(a, 'context')).cartId, forneyId);
+
+    const ordinary = await call(a, 'loginFirstAdd', {
+      candidate: { entityId: forneyId, externalSource: randomUUID() },
+      provider,
+    });
+
+    assert.deepEqual(ordinary.lines, forney.line_items.physical_items);
+    assert.deepEqual(await call(a, 'loginReservation'), { ...initial, slot: powellId });
+    assert.equal(initial.unexpectedMutations, 0);
+  }
+});
+
 test('two picker actions pass their stock checks then race at CAS: exactly one wins', async () => {
   for (let i = 0; i < 12; i += 1) {
     const { cartId, record } = await setup();

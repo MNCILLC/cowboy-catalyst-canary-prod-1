@@ -152,3 +152,39 @@ test('a persistent cart is a recovery candidate only for the same shopper and fi
   data.site.cart = null;
   assert.equal(await findFirstAddCart(17, 'first-add'), null);
 });
+
+test('the recovery sign-in form omits any active cart from login and opens the cart page', async () => {
+  const authDir = '../../app/[locale]/(default)/';
+  const translations = { getTranslations: async () => (key) => key, getLocale: async () => 'en' };
+  const logins = [];
+  const { login } = loadTestModule(`${authDir}(auth)/login/_actions/login.ts`, {
+    '@bigcommerce/catalyst-client': require('@bigcommerce/catalyst-client'),
+    '@conform-to/zod': require('@conform-to/zod'),
+    'next-auth': {},
+    'next-intl/server': translations,
+    '@/vibes/soul/sections/sign-in-section/schema': {
+      schema: zod.z.object({ email: zod.z.string().email(), password: zod.z.string() }),
+    },
+    '~/auth': { signIn: async (_provider, options) => logins.push(options.cartId) },
+    '~/lib/cart': { getCartId: async () => 'existing-forney-id' },
+    '~/i18n/routing': { redirect: ({ href }) => href },
+  });
+  const page = loadTestModule(`${authDir}cart/recover/page.tsx`, {
+    'react/jsx-runtime': require('react/jsx-runtime'),
+    'next/navigation': {},
+    'next-intl/server': translations,
+    '@/vibes/soul/sections/sign-in-section': { SignInSection: () => null },
+    '~/lib/warehouse/config': { warehousePreviewEnabled: () => true },
+    '../../(auth)/login/_actions/login': { login },
+  });
+  const form = new FormData();
+
+  form.set('email', 'shopper@example.invalid');
+  form.set('password', 'fixture');
+
+  const { props } = await page.default();
+
+  assert.equal(await props.action(null, form), '/cart');
+  assert.equal(await login({ redirectTo: '/account' }, null, form), '/account');
+  assert.deepEqual(logins, [undefined, 'existing-forney-id']);
+});

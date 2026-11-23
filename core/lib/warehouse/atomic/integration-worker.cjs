@@ -4,6 +4,8 @@ const Module = require('node:module');
 const path = require('node:path');
 const ts = require('typescript');
 
+const { loadTestModule } = require('../mode-test-support.cjs');
+
 const { redisClient } = require('./test-support.cjs');
 
 // Synthetic environment only: the parent passes no store credentials or env files.
@@ -314,6 +316,129 @@ const submission = load('lib/warehouse/submission.ts');
 const persistence = load('lib/warehouse/persistence.ts');
 const { getWarehouseConfiguration } = load('lib/warehouse/config.ts');
 
+// Run the production first-add and sign-in entry points against the same cart service and Redis.
+async function runLoginFixture(command, payload) {
+  const graphqlClient = {
+    fetch: async ({ document, variables }) => {
+      if (document.includes('mutation CreateCartMutation')) {
+        state.creates = (state.creates ?? 0) + 1;
+
+        const input = variables.createCartInput;
+
+        state.createdSource = input.externalSource;
+        state.otherCarts = [
+          ...(state.otherCarts ?? []),
+          {
+            id: payload.cartId,
+            customer_id: state.customerId,
+            channel_id: 37,
+            line_items: {
+              digital_items: [],
+              physical_items: input.lineItems.map((item) => ({
+                id: 'neon-line',
+                name: 'Neon Nukes',
+                product_id: item.productEntityId,
+                variant_id: 0,
+                quantity: item.quantity,
+              })),
+            },
+          },
+        ];
+        throw new Error('Response lost after native cart creation');
+      }
+
+      if (!document.includes('login(') && !document.includes('loginWithCustomerLoginJwt(')) {
+        state.unexpectedMutations = (state.unexpectedMutations ?? 0) + 1;
+        throw new Error('Unexpected native operation');
+      }
+
+      if (variables.cartEntityId || !/cart\s*\{\s*entityId\s+externalSource/.test(document))
+        throw new Error(
+          'Recovery sign-in must request the original source without a cart to merge',
+        );
+
+      const login = {
+        customer: { entityId: state.customerId },
+        customerAccessToken: { value: 'fixture' },
+        cart: payload.candidate,
+      };
+
+      return { data: { login, loginWithCustomerLoginJwt: login } };
+    },
+  };
+  const deps = {
+    '~/client': { client: graphqlClient },
+    '~/client/graphql': { graphql: (doc) => doc },
+  };
+
+  if (command === 'dropFirstAdd') {
+    const { createCart } = loadTestModule('../cart/create-cart.ts', {
+      ...deps,
+      '@bigcommerce/catalyst-client': require('@bigcommerce/catalyst-client'),
+      '~/auth': { getSessionCustomerAccessToken: async () => 'fixture' },
+      '~/lib/currency': { getPreferredCurrencyCode: async () => 'USD' },
+      '~/lib/pro-use/server': { assertProUseLineItems: async () => {} },
+      '~/lib/wholesale-pricing': { assertPricingAccess: async () => {} },
+      '~/lib/warehouse/server': server,
+    });
+
+    return createCart(
+      { lineItems: [{ productEntityId: 9001, quantity: 1 }] },
+      load('lib/warehouse/policy.ts').warehouseCartKey(null, 'powell'),
+    );
+  }
+
+  let config;
+  let notice;
+
+  loadTestModule('../../auth/index.ts', {
+    ...deps,
+    jose: { decodeJwt: () => ({ channel_id: 37 }) },
+    'next/headers': {},
+    'next-auth': {
+      default: (value) => {
+        config = value;
+
+        return {};
+      },
+    },
+    'next-auth/jwt': {},
+    'next-auth/providers/credentials': { default: (options) => options },
+    'next-intl/server': { getTranslations: async () => (key) => key },
+    zod: require('zod'),
+    '~/auth/anonymous-session': { clearAnonymousSession: async () => {} },
+    './anonymous-session': {},
+    '~/lib/cart': shopperSession['~/lib/cart'],
+    '~/lib/server-toast': {
+      serverToast: {
+        warning: (message) => {
+          notice = message;
+        },
+        info: (message) => {
+          notice = message;
+        },
+      },
+    },
+    '~/lib/warehouse/policy': load('lib/warehouse/policy.ts'),
+    '~/lib/warehouse/server': server,
+  });
+
+  const provider = config.providers.find((p) => p.id === payload.provider);
+  const user = await provider.authorize({
+    email: 'shopper@example.invalid',
+    password: 'synthetic',
+    jwt: 'synthetic',
+  });
+  const token = config.callbacks.jwt({ token: {}, user });
+  const session = config.callbacks.session({ session: { user: {} }, token });
+
+  state.sessionCartId = session.user.cartId;
+
+  const contents = state.sessionCartId ? await api(`carts/${state.sessionCartId}`) : null;
+
+  return { cartId: state.sessionCartId, notice, lines: contents?.line_items.physical_items };
+}
+
 async function validate(payload) {
   const req = new NextRequest('http://localhost/api/warehouse/validate', {
     method: 'POST',
@@ -386,6 +511,24 @@ async function dispatch(command, payload = {}) {
       });
 
       return null;
+
+    case 'dropFirstAdd':
+    case 'loginFirstAdd':
+      return runLoginFixture(command, payload);
+
+    case 'loginReservation': {
+      const storage = await persistence.getAtomicWarehousePersistence();
+
+      return {
+        slot: await storage.shopperCart(
+          { storeHash: 'synthetic-store', channelId: 37, customerId: state.customerId },
+          'powell',
+        ),
+        source: state.createdSource,
+        creates: state.creates ?? 0,
+        unexpectedMutations: state.unexpectedMutations ?? 0,
+      };
+    }
 
     case 'reserveFirstAdd':
       state.firstAdd = await server.reserveNewCartWarehouse('powell');

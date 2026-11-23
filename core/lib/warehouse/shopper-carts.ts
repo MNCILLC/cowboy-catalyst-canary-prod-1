@@ -11,10 +11,53 @@ import {
   warehousePersistenceIsAtomic,
 } from './persistence';
 
+export class WarehouseCartSignInRequired extends WarehouseValidationError {
+  constructor() {
+    super(
+      'We could not verify the cart from your earlier add. Your warehouse cart is still reserved. Sign in again to recover it.',
+      409,
+      'CART_CHANGED',
+    );
+  }
+}
+
 interface OwnedCart {
   id: string;
   customer_id: number;
   channel_id: number;
+}
+
+export interface LoginCart {
+  entityId: string;
+  externalSource?: string | null;
+}
+
+export function shopperScope(channelId: number, customerId: number) {
+  const storeHash = process.env.BIGCOMMERCE_STORE_HASH;
+
+  if (!storeHash) throw new Error('Warehouse store is unavailable.');
+
+  return { storeHash, channelId, customerId };
+}
+
+export async function readOwnedCart<Cart extends OwnedCart>(
+  id: string,
+  scope: ReturnType<typeof shopperScope>,
+) {
+  const cart = await warehouseApi<Cart>(`carts/${encodeURIComponent(id)}`);
+
+  if (
+    cart.id !== id ||
+    cart.customer_id !== scope.customerId ||
+    cart.channel_id !== scope.channelId
+  )
+    throw new WarehouseValidationError(
+      'Unable to verify your saved warehouse cart.',
+      409,
+      'INVALID_RECORD',
+    );
+
+  return cart;
 }
 
 export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
@@ -34,11 +77,7 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
       'CART_OWNER_CHANGED',
     );
 
-  const storeHash = process.env.BIGCOMMERCE_STORE_HASH;
-
-  if (!storeHash) throw new Error('Warehouse store is unavailable.');
-
-  const scope = { storeHash, channelId, customerId };
+  const scope = shopperScope(channelId, customerId);
   const storage = await getAtomicWarehousePersistence();
 
   async function resolveCartId(slot: NonNullable<ShopperCartSlot>) {
@@ -50,11 +89,7 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
 
       if (id) return id;
 
-      throw new WarehouseValidationError(
-        'We could not verify the cart from your earlier add. Your warehouse cart is still reserved.',
-        409,
-        'CART_CHANGED',
-      );
+      throw new WarehouseCartSignInRequired();
     }
 
     throw new WarehouseValidationError(
@@ -73,7 +108,7 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
     let cart: Cart;
 
     try {
-      cart = await warehouseApi<Cart>(`carts/${encodeURIComponent(id)}`);
+      cart = await readOwnedCart<Cart>(id, scope);
     } catch (error) {
       if (!(error instanceof WarehouseValidationError && error.status === 404)) throw error;
 
@@ -85,13 +120,6 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
 
       return null;
     }
-
-    if (cart.id !== id || cart.customer_id !== customerId || cart.channel_id !== channelId)
-      throw new WarehouseValidationError(
-        'Unable to verify your saved warehouse cart.',
-        409,
-        'INVALID_RECORD',
-      );
 
     // A previous request may have received the native ID but lost the initialization response.
     if (typeof slot !== 'string') {
@@ -106,7 +134,7 @@ export async function getShopperWarehouseCarts<Cart extends OwnedCart>(
     if (
       record?.warehouseId !== warehouseId ||
       record.cartId !== id ||
-      record.storeHash !== storeHash
+      record.storeHash !== scope.storeHash
     )
       throw new WarehouseValidationError(
         'Unable to verify your saved warehouse cart.',

@@ -14,9 +14,15 @@ import {
   type WarehouseRecord,
   WarehouseValidationError,
 } from './authorization';
-import { warehousePreviewEnabled } from './config';
+import { getWarehouses, warehousePreviewEnabled } from './config';
 import { getEnabledWarehouses } from './locations';
-import { findWarehouseOperation, readWarehouseRecord, saveWarehouseRecord } from './persistence';
+import {
+  findWarehouseOperation,
+  getAtomicWarehousePersistence,
+  readWarehouseRecord,
+  saveWarehouseRecord,
+  warehousePersistenceIsAtomic,
+} from './persistence';
 import { preparePickupOnlyHandoff } from './pickup-handoff';
 import {
   assertStock,
@@ -28,7 +34,12 @@ import {
   WarehouseError,
   warehouseFulfillmentCompatible,
 } from './policy';
-import { getShopperWarehouseCarts } from './shopper-carts';
+import {
+  getShopperWarehouseCarts,
+  type LoginCart,
+  readOwnedCart,
+  shopperScope,
+} from './shopper-carts';
 
 const COOKIE = 'shopping-warehouse';
 
@@ -298,6 +309,70 @@ async function warehouseForCart(cart: Cart) {
   return { record, warehouse };
 }
 
+export async function recoverLoginWarehouseCart(
+  customerId: number,
+  candidate: LoginCart | null | undefined,
+  channelId?: string,
+) {
+  if (!warehousePreviewEnabled() || !warehousePersistenceIsAtomic()) return;
+
+  const scope = shopperScope(
+    Number(channelId ?? getChannelIdFromLocale(await getLocale())),
+    customerId,
+  );
+  const storage = await getAtomicWarehousePersistence();
+  const slots = await Promise.all(
+    getWarehouses().map(async ({ id: warehouseId }) => ({
+      warehouseId,
+      slot: await storage.shopperCart(scope, warehouseId),
+    })),
+  );
+  const pending = slots.flatMap(({ warehouseId, slot }) =>
+    slot && typeof slot === 'object' ? [{ warehouseId, slot }] : [],
+  );
+  const match =
+    candidate &&
+    pending.find(({ slot }) => {
+      if ('created' in slot) return slot.created === candidate.entityId;
+
+      const source = 'creating' in slot ? slot.creating : slot.uncertain;
+
+      return source === candidate.externalSource;
+    });
+
+  // A still-running first add owns its reservation until it completes or reports a lost response.
+  if (match && !('creating' in match.slot)) {
+    const cart = await readOwnedCart<Cart>(candidate.entityId, scope);
+
+    await initializeCreatedCart(cart, match.warehouseId);
+    await storage.shopperCart(scope, match.warehouseId, { expected: match.slot, next: cart.id });
+
+    await setWarehouseCookie(match.warehouseId);
+
+    return { cartId: cart.id };
+  }
+
+  if (!pending.length) return;
+
+  const selected = (await cookies()).get(COOKIE)?.value;
+
+  if (
+    !match &&
+    candidate &&
+    slots.some(({ warehouseId, slot }) => warehouseId === selected && slot === candidate.entityId)
+  )
+    return;
+
+  const unresolved =
+    match ?? pending.find(({ warehouseId }) => warehouseId === selected) ?? pending[0];
+
+  if (unresolved) {
+    await setWarehouseCookie(unresolved.warehouseId);
+
+    return { cartId: null };
+  }
+}
+
 export async function reserveNewCartWarehouse(warehouseId: string) {
   const channelId = Number(getChannelIdFromLocale(await getLocale()));
   const carts = await getShopperWarehouseCarts(channelId, initializeCreatedCart);
@@ -413,6 +488,15 @@ async function switchShopperCart(
   return true;
 }
 
+async function setWarehouseCookie(id: string) {
+  (await cookies()).set(COOKIE, id, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
 export async function selectWarehouse(id: string, expected: SelectionContext) {
   if (!selectionContextSchema.safeParse(expected).success)
     throw new WarehouseValidationError(
@@ -454,12 +538,7 @@ export async function selectWarehouse(id: string, expected: SelectionContext) {
   if (!warehouses.some((w) => w.id === selectedId))
     throw new WarehouseError('Your selected warehouse is no longer available.');
 
-  (await cookies()).set(COOKIE, selectedId, {
-    httpOnly: true,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  await setWarehouseCookie(selectedId);
 
   return cartSwitched;
 }
