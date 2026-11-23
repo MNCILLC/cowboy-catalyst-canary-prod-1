@@ -9,12 +9,13 @@ import { selectWarehouse } from '~/lib/warehouse/server';
 export async function changeWarehouse(
   id: string,
   expected: { cartId: string | null; revision: string | null; operationId: string },
-): Promise<{ error?: string; code?: string; retryable?: boolean }> {
+): Promise<{ error?: string; code?: string; retryable?: boolean; cartSwitched?: boolean }> {
   try {
-    await selectWarehouse(id, expected);
+    const cartSwitched = await selectWarehouse(id, expected);
+
     revalidatePath('/', 'layout');
 
-    return {};
+    return cartSwitched ? { cartSwitched: true } : {};
   } catch (error) {
     if (error instanceof WarehouseValidationError) {
       if (error.code === 'STALE_WAREHOUSE') revalidatePath('/', 'layout');

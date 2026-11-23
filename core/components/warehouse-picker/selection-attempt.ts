@@ -16,12 +16,16 @@ export async function runSelectionAttempt(
   change: (
     id: string,
     expected: SelectionAttempt['expected'],
-  ) => Promise<{ error?: string; retryable?: boolean }>,
+  ) => Promise<{ error?: string; retryable?: boolean; cartSwitched?: boolean }>,
 ) {
   try {
     const result = await change(attempt.warehouseId, attempt.expected);
 
-    return { error: result.error ?? '', retry: result.retryable ? attempt : undefined };
+    return {
+      error: result.error ?? '',
+      retry: result.retryable ? attempt : undefined,
+      cartSwitched: result.cartSwitched,
+    };
   } catch {
     return { error: 'Unable to confirm your warehouse. Retry the same selection.', retry: attempt };
   }

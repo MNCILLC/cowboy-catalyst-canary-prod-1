@@ -77,6 +77,18 @@ async function inventoryAt(locationId, productId) {
   ];
 }
 
+function fixtureCart(endpoint) {
+  const found = [state.cart, ...(state.otherCarts ?? [])].find(
+    (cart) => endpoint === `carts/${cart.id}`,
+  );
+
+  if (found) return structuredClone(found);
+
+  const { WarehouseValidationError } = load('lib/warehouse/authorization.ts');
+
+  throw new WarehouseValidationError('Cart expired', 404, 'CART_NOT_FOUND');
+}
+
 async function api(endpoint, method = 'GET', body = undefined) {
   if (endpoint.includes('metafields')) {
     stats.metafieldCalls += 1;
@@ -98,7 +110,7 @@ async function api(endpoint, method = 'GET', body = undefined) {
         { id: 1, enabled: state.forneyEnabled !== false },
         { id: 102, enabled: state.powellEnabled !== false },
       ];
-    if (endpoint === `carts/${state.cart.id}`) return structuredClone(state.cart);
+    if (/^carts\/[\da-f-]{36}$/.test(endpoint)) return fixtureCart(endpoint);
     if (endpoint === `checkouts/${state.cart.id}`) return structuredClone(state.checkout);
 
     const product = /^catalog\/products\/(9001|9002)\?include=variants$/.exec(endpoint);
@@ -152,6 +164,7 @@ async function api(endpoint, method = 'GET', body = undefined) {
 const files = [
   'lib/map-section/address.ts',
   'lib/warehouse/server.ts',
+  'lib/warehouse/shopper-carts.ts',
   'lib/warehouse/pickup-handoff.ts',
   'lib/warehouse/config.ts',
   'lib/warehouse/configuration.ts',
@@ -168,6 +181,19 @@ const files = [
   'components/warehouse-picker/selection-attempt.ts',
   'app/api/warehouse/validate/route.ts',
 ];
+
+const shopperSession = {
+  '~/client/queries/get-customer': { getSignedInWarehouseCustomerId: async () => state.customerId },
+  '~/lib/cart': {
+    getCartId: async () => state.sessionCartId,
+    setCartId: async (cartId) => {
+      state.sessionCartId = cartId;
+    },
+    clearCartId: async () => {
+      state.sessionCartId = undefined;
+    },
+  },
+};
 
 function load(relative) {
   const file = path.resolve(root, relative);
@@ -201,7 +227,7 @@ function load(relative) {
       };
     if (id === 'next-intl/server') return { getLocale: async () => 'en' };
     if (id === '~/channels.config') return { getChannelIdFromLocale: () => 37 };
-    if (id === '~/lib/cart') return { getCartId: async () => state.sessionCartId };
+    if (Object.hasOwn(shopperSession, id)) return shopperSession[id];
     // These synthetic carts have no previous submission or enabled payment provider.
     if (id === '~/lib/warehouse/recovery') return { readSubmissionRecovery: async () => false };
     if (id === '~/lib/warehouse/check-test-server') return { authorizeCheckTest: async () => ({}) };

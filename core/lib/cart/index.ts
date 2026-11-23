@@ -7,6 +7,7 @@ import { TAGS } from '~/client/tags';
 import { addCartLineItem, AddCartLineItemsInput } from '~/lib/cart/add-cart-line-item';
 import { createCart, CreateCartInput } from '~/lib/cart/create-cart';
 import { validateCartId } from '~/lib/cart/validate-cart';
+import { warehousePreviewEnabled } from '~/lib/warehouse/config';
 
 import { MissingCartError } from './error';
 
@@ -50,7 +51,9 @@ export async function addToOrCreateCart(
   data: CreateCartInput | AddCartLineItemsInput['data'],
 ): Promise<void> {
   const cartId = await getCartId();
-  const cart = await validateCartId(cartId);
+  // An empty warehouse has no native cart until its first item. A query without an ID
+  // can resolve BigCommerce's persistent cart for a different warehouse.
+  const cart = !cartId && warehousePreviewEnabled() ? null : await validateCartId(cartId);
 
   if (cart) {
     const response = await addCartLineItem(cart.entityId, data);

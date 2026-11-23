@@ -96,6 +96,48 @@ export class AtomicWarehousePersistence {
       .parse(options.maxOperations ?? 1024);
   }
 
+  // Read, or conditionally replace, the cart pointer for one shopper and warehouse.
+  async shopperCart(
+    scope: { storeHash: string; channelId: number; customerId: number },
+    warehouseId: string,
+    change?: { expected: string | null; next: string | null },
+  ): Promise<string | null> {
+    const hash = createHash('sha256')
+      .update(JSON.stringify([scope.storeHash, scope.channelId, scope.customerId, warehouseId]))
+      .digest('hex');
+    const key = `${this.namespace}:shopper-cart:${hash}`;
+    let reply: unknown;
+
+    try {
+      reply = await this.redis.eval(
+        `local current = redis.call('GET', KEYS[1]) or ''
+         if #ARGV == 0 then return current end
+         if current ~= ARGV[1] and current ~= ARGV[2] then return 'conflict' end
+         if ARGV[2] == '' then redis.call('DEL', KEYS[1])
+         else redis.call('SET', KEYS[1], ARGV[2]) end
+         return ARGV[2]`,
+        [key],
+        change ? [change.expected ?? '', change.next ?? ''] : [],
+      );
+    } catch {
+      throw storageError();
+    }
+
+    if (reply === 'conflict')
+      throw new WarehouseValidationError(
+        'Your saved cart changed. Reload the cart.',
+        409,
+        'CART_CHANGED',
+      );
+    if (reply === '') return null;
+
+    const id = z.string().uuid().safeParse(reply);
+
+    if (!id.success) throw invalidRecord();
+
+    return id.data;
+  }
+
   async read(input: WarehouseScope): Promise<WarehouseRecord | undefined> {
     const scope = parseInput(scopeSchema, input);
     const reply = await this.execute(READ_WAREHOUSE_SCRIPT, scope);

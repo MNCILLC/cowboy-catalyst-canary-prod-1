@@ -83,7 +83,7 @@ const JwtCredentials = z.object({
 
 const SessionUpdate = z.object({
   user: z.object({
-    cartId: cartIdSchema,
+    cartId: cartIdSchema.nullable(),
   }),
 });
 

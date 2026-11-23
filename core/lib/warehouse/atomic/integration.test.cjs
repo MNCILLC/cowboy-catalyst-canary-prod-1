@@ -237,6 +237,94 @@ test('new shoppers use the enabled shipping origin for browsing and their first 
   assert.equal((await call(a, 'context')).warehouse.id, 'forney');
 });
 
+test('signed-in warehouse switches preserve both carts and their revisions across workers', async () => {
+  const customerId = 42;
+  const fixture = (quantity) => ({
+    id: randomUUID(),
+    customer_id: customerId,
+    channel_id: 37,
+    line_items: {
+      physical_items: [
+        { id: randomUUID(), product_id: 9001, variant_id: 0, name: 'Test item', quantity },
+      ],
+      digital_items: [],
+    },
+  });
+  const forney = fixture(2);
+  const powell = fixture(1);
+
+  await setup(false);
+  await call(a, 'patch', { customerId, cart: forney, sessionCartId: forney.id });
+
+  const original = await call(a, 'initialize');
+
+  const legacyCart = fixture(3);
+
+  await call(b, 'patch', {
+    customerId,
+    cart: legacyCart,
+    sessionCartId: legacyCart.id,
+    otherCarts: [forney],
+  });
+  assert.equal(
+    (await call(b, 'select', selection(legacyCart.id, null, 'forney'))).code,
+    'CART_CHANGED',
+  );
+  assert.equal((await call(b, 'context')).revision, null);
+
+  await call(a, 'patch', { locationStock: { 102: { 9001: 0 } } });
+  assert.deepEqual(await call(a, 'select', selection(forney.id, original.revision, 'powell')), {
+    cartSwitched: true,
+  });
+
+  const empty = await call(a, 'context');
+
+  assert.equal(empty.cartId, null);
+  assert.equal(empty.warehouse.id, 'powell');
+  assert.equal(
+    (await call(a, 'select', selection(forney.id, original.revision, 'forney'))).code,
+    'CART_CHANGED',
+  );
+
+  // First add in Powell creates its own cart. A second server can then restore either ID.
+  await call(a, 'patch', { cart: powell, sessionCartId: powell.id, locationStock: {} });
+
+  const pickup = await call(a, 'initialize', { warehouseId: 'powell' });
+
+  await call(b, 'patch', {
+    customerId,
+    cart: powell,
+    sessionCartId: powell.id,
+    otherCarts: [forney],
+  });
+  assert.deepEqual(await call(b, 'select', selection(powell.id, pickup.revision, 'forney')), {
+    cartSwitched: true,
+  });
+  assert.equal((await call(b, 'context')).cartId, forney.id);
+  assert.equal((await call(b, 'context')).revision, original.revision);
+  assert.deepEqual(await call(b, 'select', selection(forney.id, original.revision, 'powell')), {
+    cartSwitched: true,
+  });
+  assert.equal((await call(b, 'context')).cartId, powell.id);
+  assert.equal((await call(b, 'context')).revision, pickup.revision);
+
+  // A deleted/converted native cart opens empty. Another shopper cannot open a parked cart.
+  await call(b, 'patch', { otherCarts: [{ ...forney, customer_id: 43 }] });
+  assert.equal(
+    (await call(b, 'select', selection(powell.id, pickup.revision, 'forney'))).code,
+    'INVALID_RECORD',
+  );
+  assert.equal((await call(b, 'context')).cartId, powell.id);
+  await call(b, 'patch', { otherCarts: [] });
+  assert.deepEqual(await call(b, 'select', selection(powell.id, pickup.revision, 'forney')), {
+    cartSwitched: true,
+  });
+  assert.equal((await call(b, 'context')).cartId, null);
+  await call(b, 'patch', { customerId: 43 });
+  assert.deepEqual(await call(b, 'select', selection(null, null, 'powell')), {});
+  assert.equal((await call(b, 'context')).cartId, null);
+});
+
 test('two picker actions pass their stock checks then race at CAS: exactly one wins', async () => {
   for (let i = 0; i < 12; i += 1) {
     const { cartId, record } = await setup();

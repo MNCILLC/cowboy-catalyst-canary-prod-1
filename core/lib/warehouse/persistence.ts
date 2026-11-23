@@ -17,7 +17,7 @@ export function warehousePersistenceIsAtomic() {
   );
 }
 
-async function atomic() {
+export async function getAtomicWarehousePersistence() {
   const { createUpstashWarehousePersistence } = await import('./atomic/upstash');
 
   try {
@@ -40,7 +40,8 @@ function scope(cartId: string, channelId: number) {
 }
 
 export async function readWarehouseRecord(cartId: string, channelId: number) {
-  if (warehousePersistenceIsAtomic()) return (await atomic()).read(scope(cartId, channelId));
+  if (warehousePersistenceIsAtomic())
+    return (await getAtomicWarehousePersistence()).read(scope(cartId, channelId));
 
   const legacy = await import('./metafield-persistence');
   const record = await legacy.readWarehouseRecord(cartId);
@@ -60,7 +61,7 @@ export async function findWarehouseOperation(
   if (!warehousePersistenceIsAtomic()) return undefined;
 
   const receipt = await (
-    await atomic()
+    await getAtomicWarehousePersistence()
   ).lookupOperation({
     ...scope(cart.id, cart.channel_id),
     warehouseId,
@@ -79,7 +80,7 @@ export async function saveWarehouseRecord(
 ) {
   if (warehousePersistenceIsAtomic()) {
     const receipt = await (
-      await atomic()
+      await getAtomicWarehousePersistence()
     ).compareAndSet({
       ...scope(cart.id, cart.channel_id),
       warehouseId,

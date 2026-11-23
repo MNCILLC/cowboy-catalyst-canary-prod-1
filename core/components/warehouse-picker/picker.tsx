@@ -3,6 +3,7 @@
 import { ChevronDown, MapPin, Warehouse as WarehouseIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
+import { useRouter } from '~/i18n/routing';
 import type { WarehouseMapAddress } from '~/lib/warehouse/locations';
 import { getShippingOriginWarehouse, Warehouse } from '~/lib/warehouse/policy';
 
@@ -57,6 +58,7 @@ export function Picker({
   mapAddress?: WarehouseMapAddress | null;
   context: { cartId: string | null; revision: string | null };
 }) {
+  const router = useRouter();
   const [error, setError] = useState('');
   const [retry, setRetry] = useState<SelectionAttempt>();
   const [hydrated, setHydrated] = useState(false);
@@ -74,9 +76,11 @@ export function Picker({
 
         setError(result.error);
         setRetry(result.retry);
+        // The action's render can still see the incoming session cookie. Read the new cart.
+        if (result.cartSwitched) router.refresh();
       });
     },
-    [startTransition],
+    [router, startTransition],
   );
   const { cartId, revision } = context;
   const needsRecovery = Boolean(cartId && !revision && !selected);

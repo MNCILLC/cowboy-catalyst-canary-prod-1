@@ -6,18 +6,17 @@ import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 
 import { getChannelIdFromLocale } from '~/channels.config';
-import { getCartId } from '~/lib/cart';
+import { clearCartId, getCartId, setCartId } from '~/lib/cart';
 
 import { warehouseApi as api } from './api';
-import { assertCurrentRecord, WarehouseValidationError } from './authorization';
+import {
+  assertCurrentRecord,
+  type WarehouseRecord,
+  WarehouseValidationError,
+} from './authorization';
 import { warehousePreviewEnabled } from './config';
 import { getEnabledWarehouses } from './locations';
-import {
-  findWarehouseOperation,
-  readWarehouseRecord,
-  saveWarehouseRecord,
-  warehousePersistenceIsAtomic,
-} from './persistence';
+import { findWarehouseOperation, readWarehouseRecord, saveWarehouseRecord } from './persistence';
 import { preparePickupOnlyHandoff } from './pickup-handoff';
 import {
   assertStock,
@@ -28,6 +27,7 @@ import {
   WarehouseError,
   warehouseFulfillmentCompatible,
 } from './policy';
+import { getShopperWarehouseCarts } from './shopper-carts';
 
 const COOKIE = 'shopping-warehouse';
 
@@ -58,6 +58,7 @@ interface Item {
 
 interface Cart {
   id: string;
+  customer_id: number;
   version?: number;
   channel_id: number;
   line_items: { physical_items: Item[]; digital_items: Item[] };
@@ -241,6 +242,13 @@ export async function assertWarehouseItems(items: Input[], cartId?: string, repl
   const persisted = cart ? await warehouseForCart(cart) : undefined;
   const warehouse = persisted?.warehouse ?? (await requireWarehouse());
 
+  if (!cartId) {
+    const channelId = Number(getChannelIdFromLocale(await getLocale()));
+    const carts = await getShopperWarehouseCarts(channelId);
+
+    await carts?.checkSlot(warehouse.id);
+  }
+
   if (
     replaceId &&
     ![...(cart?.line_items.physical_items ?? []), ...(cart?.line_items.digital_items ?? [])].some(
@@ -294,16 +302,97 @@ export async function persistNewCartWarehouse(cartId: string, warehouseId: strin
     cart.channel_id !== Number(getChannelIdFromLocale(await getLocale()))
   )
     throw new WarehouseError('Invalid new cart warehouse.');
+
   // Reserve the cart UUID for initialization so a lost response can be retried safely.
-  if (await findWarehouseOperation(cart, warehouseId, null, cart.id)) return;
-  await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
-  await saveWarehouseRecord(cart, warehouseId, null, cart.id);
+  const carts = await getShopperWarehouseCarts(cart.channel_id, cart);
+  const accepted = await findWarehouseOperation(cart, warehouseId, null, cart.id);
+
+  if (!accepted) {
+    await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+    await saveWarehouseRecord(cart, warehouseId, null, cart.id);
+  }
+
+  await carts?.remember(accepted?.warehouseId ?? warehouseId, cart);
 }
 
-export async function selectWarehouse(
+type SelectionContext = z.infer<typeof selectionContextSchema>;
+
+async function assignWarehouse(cart: Cart, warehouse: Warehouse, expected: SelectionContext) {
+  // Authenticate first, then recover a committed request before stale/stock checks.
+  const accepted = await findWarehouseOperation(
+    cart,
+    warehouse.id,
+    expected.revision,
+    expected.operationId,
+  );
+
+  if (accepted) return accepted.warehouseId;
+
+  const current = await readWarehouseRecord(cart.id, cart.channel_id);
+
+  if ((current?.revision ?? null) !== expected.revision)
+    throw new WarehouseValidationError(
+      'Your cart warehouse changed in another tab. Reload before choosing again.',
+      409,
+      'STALE_WAREHOUSE',
+    );
+  await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
+
+  if (!current) {
+    const latest = await sessionCart(cart.id);
+
+    if (!isDeepStrictEqual(latest?.line_items, cart.line_items))
+      throw new WarehouseValidationError(
+        'Your cart changed while checking stock. Review your cart and choose a warehouse again.',
+        409,
+        'CART_CHANGED',
+      );
+  }
+
+  const record = await saveWarehouseRecord(
+    cart,
+    warehouse.id,
+    expected.revision,
+    expected.operationId,
+  );
+
+  return record.warehouseId;
+}
+
+async function switchShopperCart(
+  carts: NonNullable<Awaited<ReturnType<typeof getShopperWarehouseCarts>>>,
   id: string,
-  expected: { cartId: string | null; revision: string | null; operationId: string },
+  expected: SelectionContext,
+  cart?: Cart,
+  assigned?: WarehouseRecord,
 ) {
+  if (expected.revision !== (assigned?.revision ?? null)) {
+    // An unassigned cart may already have been recovered by this same request.
+    const receipt =
+      cart && (await findWarehouseOperation(cart, id, expected.revision, expected.operationId));
+
+    if (!receipt || receipt.revision !== assigned?.revision || receipt.warehouseId !== id)
+      throw new WarehouseValidationError(
+        'Your cart warehouse changed. Reload before choosing again.',
+        409,
+        'STALE_WAREHOUSE',
+      );
+  }
+
+  // An assigned cart stays with its warehouse. A warehouse with no saved cart
+  // starts empty and gets a native cart ID when its first item is added.
+  if (cart && assigned) await carts.remember(assigned.warehouseId, cart);
+
+  const target = await carts.saved(id);
+
+  if (target === ((await getCartId()) ?? null)) return false;
+  if (target) await setCartId(target);
+  else await clearCartId();
+
+  return true;
+}
+
+export async function selectWarehouse(id: string, expected: SelectionContext) {
   if (!selectionContextSchema.safeParse(expected).success)
     throw new WarehouseValidationError(
       'Invalid warehouse selection request.',
@@ -326,53 +415,19 @@ export async function selectWarehouse(
       'CART_CHANGED',
     );
 
+  const channelId = cart?.channel_id ?? Number(getChannelIdFromLocale(await getLocale()));
+  const carts = await getShopperWarehouseCarts(channelId, cart);
+  const assigned = cart && carts ? await readWarehouseRecord(cart.id, channelId) : undefined;
   let selectedId = warehouse.id;
+  let cartSwitched = false;
 
-  if (cart) {
-    // Authenticate first, then recover a committed request before stale/stock checks.
-    const accepted = await findWarehouseOperation(
-      cart,
-      warehouse.id,
-      expected.revision,
-      expected.operationId,
-    );
-
-    if (accepted) {
-      selectedId = accepted.warehouseId;
-    } else {
-      const current = await readWarehouseRecord(cart.id, cart.channel_id);
-
-      if ((current?.revision ?? null) !== expected.revision)
-        throw new WarehouseValidationError(
-          'Your cart warehouse changed in another tab. Reload before choosing again.',
-          409,
-          'STALE_WAREHOUSE',
-        );
-      await checkWarehouseStock(warehouse, cart.line_items.physical_items.map(input));
-
-      if (!current) {
-        const latest = await sessionCart(cart.id);
-
-        if (!isDeepStrictEqual(latest?.line_items, cart.line_items))
-          throw new WarehouseValidationError(
-            'Your cart changed while checking stock. Review your cart and choose a warehouse again.',
-            409,
-            'CART_CHANGED',
-          );
-      }
-
-      const record = await saveWarehouseRecord(
-        cart,
-        warehouse.id,
-        expected.revision,
-        expected.operationId,
-      );
-
-      selectedId = record.warehouseId;
-    }
-  } else {
-    // Validate the provider even for a pre-cart preference; never hide invalid activation.
-    warehousePersistenceIsAtomic();
+  if (carts && (assigned || !cart)) {
+    cartSwitched = await switchShopperCart(carts, id, expected, cart, assigned);
+  } else if (cart) {
+    // Keep a legacy cart unassigned if the shopper already has a cart at this warehouse.
+    await carts?.checkSlot(id, cart.id);
+    selectedId = await assignWarehouse(cart, warehouse, expected);
+    await carts?.remember(selectedId, cart);
   }
 
   if (!warehouses.some((w) => w.id === selectedId))
@@ -384,6 +439,8 @@ export async function selectWarehouse(
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
+
+  return cartSwitched;
 }
 
 export async function authorizeWarehouseInitialization(cartId: string) {
