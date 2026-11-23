@@ -2,17 +2,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const Module = require('node:module');
 const path = require('node:path');
-const { test } = require('node:test');
+const { beforeEach, test } = require('node:test');
 const ts = require('typescript');
 
 const file = path.join(__dirname, 'local-checkout.ts');
 const compiled = new Module(file, module);
-let mode = 'development';
-let settings = {
+const loopbackSettings = {
   checkout_type: 'custom',
   custom_checkout_script_url: 'http://localhost:8080/auto-loader-dev.js',
 };
-let manifest = {
+const developmentManifest = {
   mode: 'development',
   stores: [
     {
@@ -23,10 +22,32 @@ let manifest = {
   ],
 };
 
+let mode;
+let settings;
+let storeSettings;
+let manifest;
+let reads;
+
+beforeEach(() => {
+  mode = 'development';
+  settings = loopbackSettings;
+  storeSettings = { checkout_type: 'optimized', custom_checkout_script_url: '' };
+  manifest = developmentManifest;
+  reads = [];
+});
+
 compiled.require = (id) => {
   if (id === 'zod') return require('zod');
   if (id === 'server-only') return {};
-  if (id === './api') return { warehouseApi: async () => settings };
+  if (id === './api')
+    return {
+      warehouseApi: async (resource) => {
+        reads.push(resource);
+        if (resource === 'checkouts/settings/channels/37') return settings;
+        if (resource === 'checkouts/settings') return storeSettings;
+        throw new Error('Unexpected API resource');
+      },
+    };
   if (id === './config')
     return {
       getWarehouseConfiguration: () => ({
@@ -57,6 +78,7 @@ test('local redirect requires the activated local loader and correct non-purchas
 
   try {
     await compiled.exports.assertWarehouseCheckoutReady(false);
+    assert.deepEqual(reads, ['checkouts/settings/channels/37']);
     settings = { ...settings, checkout_type: 'optimized' };
     await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
     settings = { ...settings, checkout_type: 'custom' };
@@ -73,6 +95,50 @@ test('local redirect requires the activated local loader and correct non-purchas
   }
 });
 
+test('development checks an inherited or partially overridden HTTPS loader at its own origin', async (t) => {
+  const loader = 'https://checkout-tunnel.example/dev/auto-loader-dev.js';
+  const previous = process.env.WAREHOUSE_DEV_CHECKOUT_LOADER_URL;
+
+  process.env.WAREHOUSE_DEV_CHECKOUT_LOADER_URL = loader;
+  t.after(() => {
+    if (previous === undefined) delete process.env.WAREHOUSE_DEV_CHECKOUT_LOADER_URL;
+    else process.env.WAREHOUSE_DEV_CHECKOUT_LOADER_URL = previous;
+  });
+
+  const fetchManifest = t.mock.method(global, 'fetch', async (url, options) => {
+    assert.equal(url, 'https://checkout-tunnel.example/dev/warehouse-build.json');
+    assert.equal(options.redirect, 'error');
+
+    return { ok: true, json: async () => manifest };
+  });
+
+  const checkChannel = (type, url) => {
+    settings = { checkout_type: type, custom_checkout_script_url: url };
+
+    return compiled.exports.assertWarehouseCheckoutReady(false);
+  };
+
+  storeSettings = { checkout_type: 'custom', custom_checkout_script_url: loader };
+  await checkChannel(null, null);
+  await checkChannel('custom', null);
+  storeSettings = {
+    checkout_type: 'custom',
+    custom_checkout_script_url: 'https://different.example/loader.js',
+  };
+  await checkChannel(null, loader);
+  assert.equal(fetchManifest.mock.callCount(), 3);
+
+  // An explicit channel choice takes precedence even when the store default would pass.
+  storeSettings = { checkout_type: 'custom', custom_checkout_script_url: loader };
+  await assert.rejects(checkChannel('optimized', null));
+  await assert.rejects(checkChannel(null, ''));
+  await assert.rejects(checkChannel('custom', 'https://different.example/dev/auto-loader-dev.js'));
+  assert.equal(fetchManifest.mock.callCount(), 3);
+
+  manifest = { ...developmentManifest, stores: [] };
+  await assert.rejects(checkChannel(null, null), /development checkout build/);
+});
+
 test('staging shopper redirects require a configured custom checkout', async () => {
   mode = 'staging';
   settings = {
@@ -85,6 +151,12 @@ test('staging shopper redirects require a configured custom checkout', async () 
   await compiled.exports.assertWarehouseCheckoutReady(true);
   settings = { checkout_type: 'custom', custom_checkout_script_url: '' };
   await assert.rejects(compiled.exports.assertWarehouseCheckoutReady(false));
+  settings = { checkout_type: null, custom_checkout_script_url: null };
+  storeSettings = {
+    checkout_type: 'custom',
+    custom_checkout_script_url: 'https://assets.invalid/loader.js',
+  };
+  await compiled.exports.assertWarehouseCheckoutReady(false);
 });
 
 test('legacy preview requires its explicit rehearsal transport', async () => {

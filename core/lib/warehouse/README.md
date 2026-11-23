@@ -7,6 +7,13 @@ Catalyst's standard checkout handoff in every environment. The legacy
 `WAREHOUSE_PREVIEW_ENABLED` flag has no effect. BigCommerce's channel settings
 determine which hosted checkout opens.
 
+With `WAREHOUSE_MODE=development`, Catalyst checks the effective BigCommerce
+checkout type and script URL, using store defaults for settings the channel
+inherits. The standard local loader is `http://localhost:8080/auto-loader-dev.js`.
+To use an HTTPS tunnel, set `WAREHOUSE_DEV_CHECKOUT_LOADER_URL` in Catalyst's
+`.env.local` to the full script URL configured in BigCommerce. The tunnel must
+also serve `warehouse-build.json` alongside that script.
+
 Run from `core`: `node scripts/warehouse-dev.cjs`. This loads the existing local
 environment and `.env.warehouse.example`, then starts port 3011 with a separate
 `.next-warehouse-preview` build directory. Set `WAREHOUSE_ENV_FILE` to an absolute
