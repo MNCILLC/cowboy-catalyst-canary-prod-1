@@ -6,7 +6,7 @@ export function getWarehouseConfiguration() {
   return readWarehouseConfiguration(process.env);
 }
 
-// Warehouse development and rehearsals remain non-purchasable.
+// Warehouse routes are also used by carts with an explicit Test-provider policy.
 export function warehousePreviewEnabled() {
   return getWarehouseConfiguration().mode !== 'off';
 }

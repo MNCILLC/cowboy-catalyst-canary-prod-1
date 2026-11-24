@@ -102,7 +102,7 @@ class AuthorizationError extends Error {
   });
 });
 
-test('validate: provider claims retain strict transport and cannot mix with Check', async () => {
+test('validate: provider claims retain strict transport and cannot mix with Check', async (t) => {
   let calls = 0;
   let received;
   const result = { version: 1, warehouse: { id: 'west' } };
@@ -121,7 +121,7 @@ test('validate: provider claims retain strict transport and cannot mix with Chec
       authorizeTestProvider: async (input) => {
         received = input;
 
-        return { testProviderClaimed: true };
+        return input.checkClaim ? { checkTestClaimed: true } : { testProviderClaimed: true };
       },
     },
     '~/lib/warehouse/validation': {
@@ -190,4 +190,20 @@ test('validate: provider claims retain strict transport and cannot mix with Chec
   assert.deepEqual(received.claim, claim);
   assert.equal(received.warehouseId, 'west');
   assert.equal((await response.json()).testProviderClaimed, true);
+
+  const prior = process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+
+  t.after(() => {
+    if (prior === undefined) delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+    else process.env.WAREHOUSE_TEST_PROVIDER_POLICY = prior;
+  });
+  process.env.WAREHOUSE_TEST_PROVIDER_POLICY = JSON.stringify({ allowLocalCheck: true });
+
+  const check = { token: 'synthetic-check', methodId: 'cheque', gatewayId: null };
+  const local = await invoke({ cartId: body.cartId, revision: body.revision, checkTest: check });
+
+  assert.equal(local.status, 200);
+  assert.deepEqual(received.checkClaim, check);
+  assert.equal(received.claim, undefined);
+  assert.equal((await local.json()).checkTestClaimed, true);
 });

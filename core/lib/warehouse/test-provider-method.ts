@@ -6,7 +6,7 @@ import { testProviderDenied } from './test-provider';
 
 // Read-only provider check. V2 can omit providers; absence is a denial, never permission.
 // The exact internal test provider is the only accepted identity, not a display label.
-export async function assertTestProviderEnabled(storeHash: string) {
+export async function readTestPaymentMethods(storeHash: string) {
   const token = process.env.BIGCOMMERCE_ACCESS_TOKEN;
 
   if (!token || process.env.BIGCOMMERCE_STORE_HASH !== storeHash)
@@ -30,8 +30,16 @@ export async function assertTestProviderEnabled(storeHash: string) {
       .parse(await response.json());
     const matches = methods.filter((method) => method.code === 'bigpaypay');
 
-    if (matches.length !== 1 || matches[0]?.test_mode !== true) throw testProviderDenied();
+    return {
+      testProvider: matches.length === 1 && matches[0]?.test_mode === true,
+      check: methods.filter((method) => method.code === 'cheque').length === 1,
+    };
   } catch {
     throw testProviderDenied('The Test payment provider could not be verified in test mode.');
   }
+}
+
+export async function assertTestProviderEnabled(storeHash: string) {
+  if (!(await readTestPaymentMethods(storeHash)).testProvider)
+    throw testProviderDenied('The Test payment provider could not be verified in test mode.');
 }

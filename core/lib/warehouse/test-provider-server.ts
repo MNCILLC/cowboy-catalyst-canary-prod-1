@@ -3,6 +3,7 @@ import 'server-only';
 import { Redis } from '@upstash/redis';
 
 import { warehouseApi } from './api';
+import type { CheckTestClaim } from './check-test';
 import { getWarehouseConfiguration } from './config';
 import { type SubmissionCheckout, type SubmissionSnapshot, submissionSnapshot } from './submission';
 import {
@@ -74,11 +75,14 @@ export interface TestProviderInput {
   warehouseId: string;
   submission?: SubmissionSnapshot;
   claim?: TestProviderClaim;
+  checkClaim?: CheckTestClaim;
 }
 
 export async function authorizeTestProvider(input: TestProviderInput) {
   if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined)
     return authorizeNormalTestProvider(input);
+
+  if (input.checkClaim) throw testProviderDenied();
 
   return authorizeCartTestProvider(input);
 }

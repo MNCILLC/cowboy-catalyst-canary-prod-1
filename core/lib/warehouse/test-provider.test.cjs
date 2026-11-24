@@ -35,6 +35,7 @@ let attempts;
 let mutate;
 let validationError;
 let redisError;
+let offlineCheckEnabled;
 let providerMode;
 let providerReads;
 let deploymentMode;
@@ -133,6 +134,7 @@ beforeEach(() => {
   providerMutate = undefined;
   attemptClient = undefined;
   deploymentMode = 'staging';
+  offlineCheckEnabled = false;
   providerMode = 'test';
   providerReads = 0;
   process.env.BIGCOMMERCE_STORE_HASH = '3olkgrdpfq';
@@ -152,7 +154,10 @@ beforeEach(() => {
         if (providerMode === 'malformed') return {};
         if (providerMode === 'missing') return [];
 
-        return [{ code: 'bigpaypay', test_mode: providerMode === 'test' }];
+        return [
+          { code: 'bigpaypay', test_mode: providerMode === 'test' },
+          ...(offlineCheckEnabled ? [{ code: 'cheque', test_mode: false }] : []),
+        ];
       },
     };
   };
@@ -600,6 +605,78 @@ test('normal multi-item pickup grant is read-only and permits exactly one simula
   assert.equal(attempts, 0);
   assert.equal((await authorizeTestProvider(request)).testProviderClaimed, true);
   await assert.rejects(authorizeTestProvider(request), /already/);
+});
+
+test('development requires an explicit normal policy and a test-mode provider', async () => {
+  deploymentMode = 'development';
+  delete process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION;
+  assert.deepEqual(await authorizeTestProvider(input()), {});
+  setupNormal();
+  providerMode = 'live';
+  await assert.rejects(authorizeTestProvider(input()), /test mode/);
+  providerMode = 'test';
+
+  const request = await normalClaimInput();
+
+  assert.equal(attempts, 0);
+  assert.equal((await authorizeTestProvider(request)).testProviderClaimed, true);
+  await assert.rejects(authorizeTestProvider(request), /already/);
+});
+
+test('local Check and card grants are method-bound and share one attempt per cart', async () => {
+  deploymentMode = 'development';
+  offlineCheckEnabled = true;
+  setupNormal({ allowLocalCheck: true });
+
+  const offer = await authorizeTestProvider(input());
+  const card = await normalClaimInput();
+  const check = {
+    ...input(),
+    submission: submissionSnapshot(current),
+    checkClaim: { token: offer.checkTestAuthorization.token, methodId: 'cheque', gatewayId: null },
+  };
+
+  assert.notEqual(offer.testProviderAuthorization.token, check.checkClaim.token);
+  await assert.rejects(
+    authorizeTestProvider({ ...card, claim: { ...card.claim, token: check.checkClaim.token } }),
+  );
+  await assert.rejects(
+    authorizeTestProvider({
+      ...check,
+      checkClaim: { ...check.checkClaim, token: card.claim.token },
+    }),
+  );
+  await assert.rejects(
+    authorizeTestProvider({ ...check, checkClaim: { ...check.checkClaim, methodId: 'other' } }),
+  );
+  offlineCheckEnabled = false;
+  assert.equal((await authorizeTestProvider(input())).checkTestAuthorization, undefined);
+  await assert.rejects(authorizeTestProvider(check));
+  offlineCheckEnabled = true;
+  deploymentMode = 'staging';
+  await assert.rejects(authorizeTestProvider(check));
+  deploymentMode = 'development';
+  assert.equal(attempts, 0);
+
+  const records = new Map();
+
+  attemptClient = {
+    eval: async (_script, [key], [value]) => {
+      if (records.has(key)) return 0;
+      records.set(key, JSON.parse(value));
+
+      return 1;
+    },
+  };
+
+  const result = await authorizeTestProvider(check);
+
+  assert.equal(result.checkTestClaimed, true);
+  assert.equal(result.checkTestAuthorization.token, check.checkClaim.token);
+  assert.equal(result.testProviderClaimed, undefined);
+  await assert.rejects(authorizeTestProvider(card), /already/);
+  assert.equal(records.size, 1);
+  assert.equal(JSON.parse([...records.values()][0].fingerprint).methodId, 'cheque');
 });
 
 test('Forney shipping and pickup qualify; Powell shipping does not', async () => {

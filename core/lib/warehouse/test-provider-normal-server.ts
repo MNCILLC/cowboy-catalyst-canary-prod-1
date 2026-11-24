@@ -7,8 +7,9 @@ import { getWarehouseConfiguration } from './config';
 import type { Warehouse } from './policy';
 import { submissionReady, submissionSnapshot } from './submission';
 import { claimTestProviderAttempt, testProviderDenied } from './test-provider';
-import { assertTestProviderEnabled } from './test-provider-method';
+import { readTestPaymentMethods } from './test-provider-method';
 import {
+  normalCheckAuthorization,
   normalTestProviderAuthorization,
   type NormalTestProviderPolicy,
   readNormalTestProviderPolicy,
@@ -55,7 +56,8 @@ function normalWarehouse(
   const warehouse = configuration.warehouses.find((entry) => entry.id === input.warehouseId);
 
   if (
-    configuration.mode !== 'staging' ||
+    (configuration.mode !== 'staging' && configuration.mode !== 'development') ||
+    (policy.allowLocalCheck && configuration.mode !== 'development') ||
     policy.storeHash !== configuration.storeHash ||
     policy.channelId !== configuration.channelId ||
     !policy.origins.includes(input.origin) ||
@@ -68,19 +70,77 @@ function normalWarehouse(
   return warehouse;
 }
 
+async function enabledMethods(policy: NormalTestProviderPolicy, input: TestProviderInput) {
+  const methods = await readTestPaymentMethods(policy.storeHash);
+  const checkEnabled = policy.allowLocalCheck && methods.check;
+
+  if (input.checkClaim && !checkEnabled) throw testProviderDenied('Check is unavailable.');
+  if (!methods.testProvider && (input.claim || !checkEnabled))
+    throw testProviderDenied('The Test payment provider could not be verified in test mode.');
+
+  return { card: methods.testProvider, check: checkEnabled };
+}
+
+function assertPolicyCurrent(
+  policy: NormalTestProviderPolicy,
+  configuration: ReturnType<typeof getWarehouseConfiguration>,
+) {
+  // Recheck policy and deployment scope after all async reads. Disabling or rotating revokes grants.
+  if (
+    JSON.stringify(readNormalTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_POLICY)) !==
+      JSON.stringify(policy) ||
+    process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION ||
+    process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION ||
+    JSON.stringify(getWarehouseConfiguration()) !== JSON.stringify(configuration)
+  )
+    throw testProviderDenied();
+}
+
+async function recordAttempt(
+  policy: NormalTestProviderPolicy,
+  cartId: string,
+  fingerprint: string,
+) {
+  const redis = new Redis({
+    url: process.env.WAREHOUSE_REDIS_URL ?? '',
+    token: process.env.WAREHOUSE_REDIS_TOKEN ?? '',
+    retry: false,
+    enableAutoPipelining: false,
+    automaticDeserialization: false,
+    enableTelemetry: false,
+    cache: 'no-store',
+    signal: AbortSignal.timeout(5000),
+  });
+
+  await claimTestProviderAttempt(
+    redis,
+    process.env.WAREHOUSE_REDIS_NAMESPACE ?? '',
+    {
+      id: policy.id,
+      storeHash: policy.storeHash,
+      channelId: policy.channelId,
+      cartId,
+    },
+    fingerprint,
+  );
+}
+
 // The route authenticates the cart capability and checks recovery before entering here.
 // Offers never consume a claim. Native SDK submission remains outside this backend.
 export async function authorizeNormalTestProvider(input: TestProviderInput) {
   const policy = readNormalTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_POLICY);
 
+  const claim = input.checkClaim ?? input.claim;
+
   if (!policy) {
-    if (input.claim) throw testProviderDenied();
+    if (claim) throw testProviderDenied();
 
     return {};
   }
 
   // Never silently combine the normal policy with a one-cart rehearsal policy.
   if (
+    (input.checkClaim && (!policy.allowLocalCheck || input.claim)) ||
     process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION ||
     process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION
   )
@@ -94,7 +154,7 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   );
 
   if (!normalCheckoutEligible(checkout, policy, input, warehouse)) {
-    if (input.claim) throw testProviderDenied();
+    if (claim) throw testProviderDenied();
 
     return {};
   }
@@ -112,12 +172,14 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   };
   const secret = () => process.env.WAREHOUSE_VALIDATION_SECRET ?? '';
   const verifyClaim = () => {
+    if (input.checkClaim)
+      return normalCheckAuthorization(policy, binding, secret(), input.checkClaim);
     if (!input.claim) throw testProviderDenied();
 
     return verifyNormalTestProviderClaim(policy, binding, secret(), input.claim);
   };
 
-  if (input.claim) {
+  if (claim) {
     if (!input.submission || JSON.stringify(input.submission) !== JSON.stringify(snapshot))
       throw testProviderDenied();
     verifyClaim();
@@ -138,45 +200,29 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   if (JSON.stringify(latest) !== JSON.stringify(checkout))
     throw testProviderDenied('Checkout changed during test authorization.');
 
-  await assertTestProviderEnabled(policy.storeHash);
-  // Recheck policy and deployment scope after all async reads. Disabling or rotating revokes grants.
-  if (
-    JSON.stringify(readNormalTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_POLICY)) !==
-      JSON.stringify(policy) ||
-    process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION ||
-    process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION ||
-    JSON.stringify(getWarehouseConfiguration()) !== JSON.stringify(configuration)
-  )
-    throw testProviderDenied();
+  const methods = await enabledMethods(policy, input);
 
-  if (!input.claim)
+  assertPolicyCurrent(policy, configuration);
+
+  if (!claim)
     return {
-      testProviderAuthorization: normalTestProviderAuthorization(policy, binding, secret()),
+      ...(methods.card && {
+        testProviderAuthorization: normalTestProviderAuthorization(policy, binding, secret()),
+      }),
+      ...(methods.check && {
+        checkTestAuthorization: normalCheckAuthorization(policy, binding, secret()),
+      }),
     };
 
   const authorization = verifyClaim();
-  const redis = new Redis({
-    url: process.env.WAREHOUSE_REDIS_URL ?? '',
-    token: process.env.WAREHOUSE_REDIS_TOKEN ?? '',
-    retry: false,
-    enableAutoPipelining: false,
-    automaticDeserialization: false,
-    enableTelemetry: false,
-    cache: 'no-store',
-    signal: AbortSignal.timeout(5000),
-  });
 
-  await claimTestProviderAttempt(
-    redis,
-    process.env.WAREHOUSE_REDIS_NAMESPACE ?? '',
-    {
-      id: policy.id,
-      storeHash: policy.storeHash,
-      channelId: policy.channelId,
-      cartId: input.cartId,
-    },
-    JSON.stringify({ submission: snapshot, methodId: input.claim.methodId }),
+  await recordAttempt(
+    policy,
+    input.cartId,
+    JSON.stringify({ submission: snapshot, methodId: authorization.methodId }),
   );
 
-  return { testProviderAuthorization: authorization, testProviderClaimed: true };
+  return authorization.methodId === 'cheque'
+    ? { checkTestAuthorization: authorization, checkTestClaimed: true }
+    : { testProviderAuthorization: authorization, testProviderClaimed: true };
 }

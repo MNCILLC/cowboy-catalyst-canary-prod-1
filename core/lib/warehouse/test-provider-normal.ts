@@ -3,6 +3,7 @@ import 'server-only';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
+import type { CheckTestAuthorization, CheckTestClaim } from './check-test';
 import {
   type TestProviderAuthorization,
   type TestProviderClaim,
@@ -23,6 +24,7 @@ const policySchema = z.object({
   id: z.string().uuid(),
   methodId: z.literal('bigpaypay'),
   testMode: z.literal(true),
+  allowLocalCheck: z.boolean().optional(),
   storeHash: z.string().min(1),
   channelId: z.number().int().positive(),
   origins: z.array(originSchema).min(1),
@@ -77,9 +79,10 @@ export function testProviderHash(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-const purpose = 'warehouse-normal-test-provider-v1';
+const cardPurpose = 'warehouse-normal-test-provider-v1';
+const checkPurpose = 'warehouse-local-check-v1';
 
-function signedToken(payload: string, secret: string) {
+function signedToken(payload: string, secret: string, purpose: string) {
   if (secret.length < 32) throw testProviderDenied();
 
   return `${payload}.${createHmac('sha256', `${purpose}:${secret}`).update(payload).digest('base64url')}`;
@@ -91,6 +94,40 @@ export function normalTestProviderAuthorization(
   secret: string,
   now = Date.now(),
 ): TestProviderAuthorization {
+  return {
+    version: 1,
+    methodId: 'bigpaypay',
+    testMode: true,
+    ...issueToken(policy, binding, secret, cardPurpose, now),
+  };
+}
+
+export function normalCheckAuthorization(
+  policy: NormalTestProviderPolicy,
+  binding: NormalTestProviderBinding,
+  secret: string,
+  claim?: CheckTestClaim,
+): CheckTestAuthorization {
+  if (
+    !policy.allowLocalCheck ||
+    (claim && (claim.methodId !== 'cheque' || claim.gatewayId !== null))
+  )
+    throw testProviderDenied();
+
+  const grant = claim
+    ? verifyToken(policy, binding, secret, checkPurpose, claim.token, Date.now())
+    : issueToken(policy, binding, secret, checkPurpose, Date.now());
+
+  return { version: 1, methodId: 'cheque', ...grant };
+}
+
+function issueToken(
+  policy: NormalTestProviderPolicy,
+  binding: NormalTestProviderBinding,
+  secret: string,
+  purpose: string,
+  now: number,
+) {
   const issuedAt = Math.floor(now / 1000);
   const expiresAt = issuedAt + policy.grantTtlSeconds;
   const payload = Buffer.from(
@@ -104,10 +141,7 @@ export function normalTestProviderAuthorization(
   ).toString('base64url');
 
   return {
-    version: 1,
-    methodId: 'bigpaypay',
-    testMode: true,
-    token: signedToken(payload, secret),
+    token: signedToken(payload, secret, purpose),
     expiresAt,
   };
 }
@@ -123,18 +157,35 @@ export function verifyNormalTestProviderClaim(
     claim.methodId !== 'bigpaypay' ||
     claim.gatewayId !== null ||
     claim.usesStoredInstrument ||
-    claim.shouldSaveInstrument ||
-    claim.token.length > 4096
+    claim.shouldSaveInstrument
   )
     throw testProviderDenied();
 
+  return {
+    version: 1,
+    methodId: 'bigpaypay',
+    testMode: true,
+    ...verifyToken(policy, binding, secret, cardPurpose, claim.token, now),
+  };
+}
+
+function verifyToken(
+  policy: NormalTestProviderPolicy,
+  binding: NormalTestProviderBinding,
+  secret: string,
+  purpose: string,
+  token: string,
+  now: number,
+) {
+  if (token.length > 4096) throw testProviderDenied();
+
   try {
-    const payload = claim.token.split('.')[0];
+    const payload = token.split('.')[0];
 
     if (!payload) throw testProviderDenied();
 
-    const expected = Buffer.from(signedToken(payload, secret));
-    const actual = Buffer.from(claim.token);
+    const expected = Buffer.from(signedToken(payload, secret, purpose));
+    const actual = Buffer.from(token);
 
     if (expected.length !== actual.length || !timingSafeEqual(actual, expected))
       throw testProviderDenied();
@@ -160,10 +211,7 @@ export function verifyNormalTestProviderClaim(
       throw testProviderDenied();
 
     return {
-      version: 1,
-      methodId: 'bigpaypay',
-      testMode: true,
-      token: claim.token,
+      token,
       expiresAt: data.expiresAt,
     };
   } catch {

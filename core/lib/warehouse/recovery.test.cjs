@@ -149,14 +149,27 @@ test('wrong signature, origin, store, channel, cart, expiry and revision are den
     await assert.rejects(read(...args));
   assert.equal(reads.length, 0);
 });
-test('Redis failure or missing configuration fails closed; development does not issue test claims', async () => {
+test('Redis failure or missing configuration fails closed; local preview skips recovery without a policy', async () => {
   broken = true;
   await assert.rejects(read(), (error) => error.code === 'RECOVERY_UNAVAILABLE');
   broken = false;
   delete process.env.WAREHOUSE_REDIS_TOKEN;
   await assert.rejects(read(), (error) => error.status === 503);
   mode = 'development';
+  delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
   assert.equal(await read(), false);
+});
+test('local Test-provider checkout checks existing attempts and fails closed when recovery is unavailable', async () => {
+  mode = 'development';
+  process.env.WAREHOUSE_TEST_PROVIDER_POLICY = '{"enabled":false}';
+  try {
+    value = 'claimed';
+    assert.equal(await read(), true);
+    broken = true;
+    await assert.rejects(read(), (error) => error.code === 'RECOVERY_UNAVAILABLE');
+  } finally {
+    delete process.env.WAREHOUSE_TEST_PROVIDER_POLICY;
+  }
 });
 test('route returns bounded recovery before converted-cart lookup and before grants for ordinary and claim requests', async () => {
   value = 'claimed';

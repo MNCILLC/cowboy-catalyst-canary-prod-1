@@ -148,25 +148,27 @@ export async function POST(req: NextRequest) {
       input.submission,
     );
 
-    const checkTest = await authorizeCheckTest({
+    const scope = {
       token: authorization.slice(7),
       origin,
       cartId: input.cartId,
       revision: input.revision,
       warehouseId: result.warehouse.id,
       submission: input.submission,
-      claim: input.checkTest,
-    });
+    };
 
-    const testProvider = await authorizeTestProvider({
-      token: authorization.slice(7),
-      origin,
-      cartId: input.cartId,
-      revision: input.revision,
-      warehouseId: result.warehouse.id,
-      submission: input.submission,
-      claim: input.testProvider,
-    });
+    if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined) {
+      const payment = await authorizeTestProvider({
+        ...scope,
+        claim: input.testProvider,
+        checkClaim: input.checkTest,
+      });
+
+      return NextResponse.json({ ...result, ...payment }, { headers });
+    }
+
+    const checkTest = await authorizeCheckTest({ ...scope, claim: input.checkTest });
+    const testProvider = await authorizeTestProvider({ ...scope, claim: input.testProvider });
 
     return NextResponse.json({ ...result, ...checkTest, ...testProvider }, { headers });
   } catch (error) {

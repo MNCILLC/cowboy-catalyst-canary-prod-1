@@ -17,7 +17,13 @@ export async function readSubmissionRecovery(
 ): Promise<boolean> {
   const claims = authenticateWarehouseAccess(token, origin, cartId, revision);
 
-  if (getWarehouseConfiguration().mode !== 'staging') return false;
+  const { mode } = getWarehouseConfiguration();
+
+  if (
+    mode !== 'staging' &&
+    !(mode === 'development' && process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined)
+  )
+    return false;
 
   try {
     if (!process.env.WAREHOUSE_REDIS_URL || !process.env.WAREHOUSE_REDIS_TOKEN)

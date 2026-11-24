@@ -511,7 +511,13 @@ Existing policies may still contain `maxLineItems`, `maxQuantity`, and
 For this project, any later activation is limited to Sandbox Cowboy
 `3olkgrdpfq`, channel `1912525`, using only its Test payment provider. Configured
 store/channel and checkout origins must also match the warehouse backend's
-staging configuration. Other stores are not part of this milestone; the standalone
+staging or local development configuration. For local submission, set the normal
+policy in Catalyst’s `.env.local` and enable `allowTestProvider` in the local
+checkout’s matching store entry. For local offline Check, set `allowLocalCheck: true` in that policy
+and `allowCheckTest: true` on the local checkout store. The validator verifies BigCommerce lists
+`cheque`, signs a separate Check grant, and records the selected method against the same
+one-attempt-per-cart key. Hosted configuration rejects this local option. Local grants and claims use the same warehouse,
+test-mode payment provider, and Redis recovery checks as staging. Other stores are not part of this milestone; the standalone
 checkout contract remains store-configurable.
 
 The backend accepts ready physical-product carts with multiple lines/quantities,
