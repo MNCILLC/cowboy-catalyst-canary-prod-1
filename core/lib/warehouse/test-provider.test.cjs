@@ -329,7 +329,8 @@ test('uncertain claim cannot be retried as a new successful execution', async ()
   redisError = undefined;
   await assert.rejects(authorizeTestProvider(claim()), /already has an attempt/);
 });
-test('real private Redis atomically admits one contender and never replays a claim', async () => {
+
+async function withPrivateRedis(verify) {
   const binary = process.env.ATOMIC_TEST_REDIS_SERVER;
   const cli = process.env.ATOMIC_TEST_REDIS_CLI;
 
@@ -370,6 +371,19 @@ test('real private Redis atomically admits one contender and never replays a cla
       await delay(20);
     }
 
+    assert.equal(await client.command('PING'), 'PONG');
+    await verify(client, cli, socket);
+  } finally {
+    const exit = once(child, 'exit');
+
+    child.kill('SIGTERM');
+    await exit;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('real private Redis atomically admits one contender and never replays a claim', async () => {
+  await withPrivateRedis(async (client, cli, socket) => {
     const outcomes = await Promise.allSettled(
       Array.from({ length: 12 }, (_, i) =>
         (i % 2 ? load('check-test').claimCheckTestAttempt : pure.claimTestProviderAttempt)(
@@ -435,13 +449,7 @@ test('real private Redis atomically admits one contender and never replays a cla
       pure.claimTestProviderAttempt(client, 'isolated', other, 'snapshot'),
       /already/,
     );
-  } finally {
-    const exit = once(child, 'exit');
-
-    child.kill('SIGTERM');
-    await exit;
-    fs.rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test('provider must be present and verified in test mode, including at claim time', async () => {
@@ -677,6 +685,95 @@ test('local Check and card grants are method-bound and share one attempt per car
   await assert.rejects(authorizeTestProvider(card), /already/);
   assert.equal(records.size, 1);
   assert.equal(JSON.parse([...records.values()][0].fingerprint).methodId, 'cheque');
+});
+
+test('real private Redis permits one of two different local payment methods even if the winning reply is lost', async () => {
+  deploymentMode = 'development';
+  offlineCheckEnabled = true;
+  setupNormal({ allowLocalCheck: true });
+
+  const offer = await authorizeTestProvider(input());
+  const card = await normalClaimInput();
+  const check = {
+    ...input(),
+    submission: card.submission,
+    checkClaim: {
+      token: offer.checkTestAuthorization.token,
+      methodId: 'cheque',
+      gatewayId: null,
+    },
+  };
+
+  await withPrivateRedis(async (client) => {
+    const bothArrived = Promise.withResolvers();
+    const timeout = setTimeout(
+      () => bothArrived.reject(new Error('Both claims did not arrive')),
+      5000,
+    );
+
+    timeout.unref();
+
+    let arrivals = 0;
+    let committedMethod;
+    let writes = 0;
+
+    attemptClient = {
+      eval: async (script, keys, values) => {
+        arrivals += 1;
+
+        if (arrivals === 2) {
+          clearTimeout(timeout);
+          bothArrived.resolve();
+        }
+
+        await bothArrived.promise;
+
+        const result = await client.eval(script, keys, values);
+
+        if (result === 1) {
+          writes += 1;
+          committedMethod = JSON.parse(JSON.parse(values[0]).fingerprint).methodId;
+          throw new Error('Lost Redis reply after recording the attempt');
+        }
+
+        return result;
+      },
+    };
+
+    const outcomes = await Promise.allSettled([
+      authorizeTestProvider(check),
+      authorizeTestProvider(card),
+    ]);
+
+    assert.equal(arrivals, 2);
+    assert.equal(writes, 1);
+    assert.equal(await client.command('DBSIZE'), 1);
+
+    const key = load('check-test').testPaymentAttemptKey(
+      process.env.WAREHOUSE_REDIS_NAMESPACE,
+      policy,
+    );
+    const record = await client.command('GET', key);
+    const methods = ['cheque', 'bigpaypay'];
+
+    for (const [index, outcome] of outcomes.entries()) {
+      assert.equal(outcome.status, 'rejected');
+      assert.match(
+        outcome.reason.message,
+        methods[index] === committedMethod ? /uncertain/ : /already/,
+      );
+    }
+
+    assert.ok(methods.includes(committedMethod));
+    assert.equal(JSON.parse(JSON.parse(record).fingerprint).methodId, committedMethod);
+    assert.equal(await client.command('PTTL', key), -1);
+    attemptClient = client;
+    await assert.rejects(
+      authorizeTestProvider(committedMethod === 'cheque' ? card : check),
+      /already/,
+    );
+    assert.equal(await client.command('GET', key), record);
+  });
 });
 
 test('Forney shipping and pickup qualify; Powell shipping does not', async () => {

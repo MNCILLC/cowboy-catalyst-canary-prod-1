@@ -79,8 +79,15 @@ export interface TestProviderInput {
 }
 
 export async function authorizeTestProvider(input: TestProviderInput) {
-  if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined)
-    return authorizeNormalTestProvider(input);
+  if (process.env.WAREHOUSE_TEST_PROVIDER_POLICY !== undefined) {
+    const { checkClaim, claim, ...scope } = input;
+
+    if (checkClaim && claim) throw testProviderDenied();
+
+    if (checkClaim) return authorizeNormalTestProvider(scope, { checkTest: checkClaim });
+
+    return authorizeNormalTestProvider(scope, claim && { testProvider: claim });
+  }
 
   if (input.checkClaim) throw testProviderDenied();
 

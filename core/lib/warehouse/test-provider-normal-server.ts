@@ -3,10 +3,15 @@ import 'server-only';
 import { Redis } from '@upstash/redis';
 
 import { warehouseApi } from './api';
+import type { CheckTestClaim } from './check-test';
 import { getWarehouseConfiguration } from './config';
 import type { Warehouse } from './policy';
 import { submissionReady, submissionSnapshot } from './submission';
-import { claimTestProviderAttempt, testProviderDenied } from './test-provider';
+import {
+  claimTestProviderAttempt,
+  type TestProviderClaim,
+  testProviderDenied,
+} from './test-provider';
 import { readTestPaymentMethods } from './test-provider-method';
 import {
   normalCheckAuthorization,
@@ -19,10 +24,15 @@ import {
 import type { TestCheckout, TestProviderInput } from './test-provider-server';
 import { validateWarehouseCheckout } from './validation';
 
+type SubmissionScope = Omit<TestProviderInput, 'claim' | 'checkClaim'>;
+type PaymentAttempt =
+  | { checkTest: CheckTestClaim; testProvider?: never }
+  | { testProvider: TestProviderClaim; checkTest?: never };
+
 function normalCheckoutEligible(
   checkout: TestCheckout,
   policy: NormalTestProviderPolicy,
-  input: TestProviderInput,
+  input: SubmissionScope,
   warehouse: Warehouse,
 ) {
   const items = checkout.cart.line_items;
@@ -50,7 +60,7 @@ function normalCheckoutEligible(
 
 function normalWarehouse(
   policy: NormalTestProviderPolicy,
-  input: TestProviderInput,
+  input: SubmissionScope,
   configuration: ReturnType<typeof getWarehouseConfiguration>,
 ) {
   const warehouse = configuration.warehouses.find((entry) => entry.id === input.warehouseId);
@@ -70,12 +80,12 @@ function normalWarehouse(
   return warehouse;
 }
 
-async function enabledMethods(policy: NormalTestProviderPolicy, input: TestProviderInput) {
+async function enabledMethods(policy: NormalTestProviderPolicy, attempt?: PaymentAttempt) {
   const methods = await readTestPaymentMethods(policy.storeHash);
   const checkEnabled = policy.allowLocalCheck && methods.check;
 
-  if (input.checkClaim && !checkEnabled) throw testProviderDenied('Check is unavailable.');
-  if (!methods.testProvider && (input.claim || !checkEnabled))
+  if (attempt?.checkTest && !checkEnabled) throw testProviderDenied('Check is unavailable.');
+  if (!methods.testProvider && (attempt?.testProvider || !checkEnabled))
     throw testProviderDenied('The Test payment provider could not be verified in test mode.');
 
   return { card: methods.testProvider, check: checkEnabled };
@@ -127,20 +137,21 @@ async function recordAttempt(
 
 // The route authenticates the cart capability and checks recovery before entering here.
 // Offers never consume a claim. Native SDK submission remains outside this backend.
-export async function authorizeNormalTestProvider(input: TestProviderInput) {
+export async function authorizeNormalTestProvider(
+  input: SubmissionScope,
+  attempt?: PaymentAttempt,
+) {
   const policy = readNormalTestProviderPolicy(process.env.WAREHOUSE_TEST_PROVIDER_POLICY);
 
-  const claim = input.checkClaim ?? input.claim;
-
   if (!policy) {
-    if (claim) throw testProviderDenied();
+    if (attempt) throw testProviderDenied();
 
     return {};
   }
 
   // Never silently combine the normal policy with a one-cart rehearsal policy.
   if (
-    (input.checkClaim && (!policy.allowLocalCheck || input.claim)) ||
+    (attempt?.checkTest && !policy.allowLocalCheck) ||
     process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION ||
     process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION
   )
@@ -154,7 +165,7 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   );
 
   if (!normalCheckoutEligible(checkout, policy, input, warehouse)) {
-    if (claim) throw testProviderDenied();
+    if (attempt) throw testProviderDenied();
 
     return {};
   }
@@ -171,18 +182,15 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
     snapshotHash: testProviderHash(snapshot),
   };
   const secret = () => process.env.WAREHOUSE_VALIDATION_SECRET ?? '';
-  const verifyClaim = () => {
-    if (input.checkClaim)
-      return normalCheckAuthorization(policy, binding, secret(), input.checkClaim);
-    if (!input.claim) throw testProviderDenied();
+  const verifyClaim = (choice: PaymentAttempt) =>
+    choice.checkTest
+      ? normalCheckAuthorization(policy, binding, secret(), choice.checkTest)
+      : verifyNormalTestProviderClaim(policy, binding, secret(), choice.testProvider);
 
-    return verifyNormalTestProviderClaim(policy, binding, secret(), input.claim);
-  };
-
-  if (claim) {
+  if (attempt) {
     if (!input.submission || JSON.stringify(input.submission) !== JSON.stringify(snapshot))
       throw testProviderDenied();
-    verifyClaim();
+    verifyClaim(attempt);
   }
 
   // Includes current warehouse revision, location stock and completed fulfillment.
@@ -200,11 +208,11 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
   if (JSON.stringify(latest) !== JSON.stringify(checkout))
     throw testProviderDenied('Checkout changed during test authorization.');
 
-  const methods = await enabledMethods(policy, input);
+  const methods = await enabledMethods(policy, attempt);
 
   assertPolicyCurrent(policy, configuration);
 
-  if (!claim)
+  if (!attempt)
     return {
       ...(methods.card && {
         testProviderAuthorization: normalTestProviderAuthorization(policy, binding, secret()),
@@ -214,7 +222,7 @@ export async function authorizeNormalTestProvider(input: TestProviderInput) {
       }),
     };
 
-  const authorization = verifyClaim();
+  const authorization = verifyClaim(attempt);
 
   await recordAttempt(
     policy,
