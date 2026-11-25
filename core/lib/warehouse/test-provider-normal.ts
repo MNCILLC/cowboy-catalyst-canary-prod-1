@@ -25,6 +25,7 @@ const policySchema = z.object({
   methodId: z.literal('bigpaypay'),
   testMode: z.literal(true),
   allowLocalCheck: z.boolean().optional(),
+  allowHostedSandboxCheck: z.boolean().optional(),
   storeHash: z.string().min(1),
   channelId: z.number().int().positive(),
   origins: z.array(originSchema).min(1),
@@ -80,7 +81,6 @@ export function testProviderHash(value: unknown) {
 }
 
 const cardPurpose = 'warehouse-normal-test-provider-v1';
-const checkPurpose = 'warehouse-local-check-v1';
 
 function signedToken(payload: string, secret: string, purpose: string) {
   if (secret.length < 32) throw testProviderDenied();
@@ -109,11 +109,14 @@ export function normalCheckAuthorization(
   claim?: CheckTestClaim,
 ): CheckTestAuthorization {
   if (
-    !policy.allowLocalCheck ||
+    !(policy.allowLocalCheck || policy.allowHostedSandboxCheck) ||
     (claim && (claim.methodId !== 'cheque' || claim.gatewayId !== null))
   )
     throw testProviderDenied();
 
+  const checkPurpose = policy.allowHostedSandboxCheck
+    ? 'warehouse-hosted-sandbox-check-v1'
+    : 'warehouse-local-check-v1';
   const grant = claim
     ? verifyToken(policy, binding, secret, checkPurpose, claim.token, Date.now())
     : issueToken(policy, binding, secret, checkPurpose, Date.now());

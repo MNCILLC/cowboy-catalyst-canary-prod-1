@@ -484,7 +484,7 @@ The authenticated validator offers `testProviderAuthorization: {version:1, metho
 
 A claim includes the normal capability and strict submission snapshot plus `testProvider: {token, methodId:"bigpaypay", gatewayId:null, usesStoredInstrument:false, shouldSaveInstrument:false}`. Card numbers, security codes, hosted-field values, and payment tokens must never be sent to this endpoint. Requests containing both test claim types are rejected. The provider token uses a separate HMAC purpose from Check. Both methods deliberately share the existing `check-test:v1` cart tombstone: changing method, grant ID, tab, or backend instance cannot authorize another attempt. Never delete or reset a consumed claim, even after an ambiguous SDK response.
 
-The standalone checkout independently requires `allowTestProvider:true` for its matching staging store entry. Its default remains blocked; enabling both Check and Test provider opt-ins is invalid. The native SDK card form remains responsible for payment; no backend payment processing was added. Production gateways, custom submit callbacks, stored instruments, and saving instruments are excluded from this test permission. The native SDK submission-enforcement limitation and post-validation race boundary still apply.
+The standalone checkout independently requires `allowTestProvider:true` for its matching staging store entry. Cart-scoped rehearsals use a single payment opt-in. The separate normal-cart policy below supports an explicitly scoped shared path. The native SDK card form remains responsible for payment; no backend payment processing was added. Production gateways, custom submit callbacks, stored instruments, and saving instruments are excluded from this test permission. The native SDK submission-enforcement limitation and post-validation race boundary still apply.
 
 Before a hosted test: run the isolated tests, prepare a fresh dedicated cart, verify the channel exposes the test provider, authorize exactly one amount and item, and use only synthetic test card details. After the one attempt (successful or ambiguous), restore the original loader, remove the temporary policy and checkout opt-in, redeploy and verify both blocks, and reconcile order/transaction/inventory records without retrying. Order cancellation or inventory restoration is a separate action.
 
@@ -509,7 +509,7 @@ Existing policies may still contain `maxLineItems`, `maxQuantity`, and
 `maxGrandTotal`. The backend ignores these fields when authorizing a cart.
 
 For this project, any later activation is limited to Sandbox Cowboy
-`3olkgrdpfq`, channel `1912525`, using only its Test payment provider. Configured
+`3olkgrdpfq`, channel `1912525`, using the Test payment provider and optionally offline Check. Configured
 store/channel and checkout origins must also match the warehouse backend's
 staging or local development configuration. For local submission, set the normal
 policy in Catalyst’s `.env.local` and enable `allowTestProvider` in the local
@@ -519,6 +519,8 @@ and `allowCheckTest: true` on the local checkout store. The validator verifies B
 one-attempt-per-cart key. Hosted configuration rejects this local option. Local grants and claims use the same warehouse,
 test-mode payment provider, and Redis recovery checks as staging. Other stores are not part of this milestone; the standalone
 checkout contract remains store-configurable.
+
+For hosted Sandbox Cowboy, set `allowHostedSandboxCheck: true` on the normal policy and on the matching standalone checkout store entry. The checkout entry also needs `allowCheckTest: true` and `allowTestProvider: true`. Leave `allowLocalCheck` unset in hosted Catalyst. The hosted option defaults to off and is restricted to store `3olkgrdpfq`, channel `1912525`, and checkout origin `https://sandboxcatalystcheckout.mncillc.com`. The backend verifies the Test provider is in test mode before offering either method and checks that BigCommerce lists `cheque` before offering Check. Both methods use the same permanent cart attempt record. To return to card-only checkout, remove the hosted option on both sides and the standalone `allowCheckTest` opt-in.
 
 The backend accepts ready physical-product carts with multiple lines/quantities,
 Forney shipping or pickup, and Powell pickup according to configured warehouse

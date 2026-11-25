@@ -26,6 +26,7 @@ after(() => {
 });
 
 const origin = 'https://checkout.example';
+const sandboxOrigin = 'https://sandboxcatalystcheckout.mncillc.com';
 
 let current;
 let policy;
@@ -69,7 +70,7 @@ function load(name) {
           mode: deploymentMode,
           storeHash: '3olkgrdpfq',
           channelId: 1912525,
-          checkoutOrigins: [origin],
+          checkoutOrigins: [origin, sandboxOrigin],
           warehouses: [
             { id: 'powell', pickupMethodId: 83, allowShipping: false },
             { id: 'forney', pickupMethodId: 84, allowShipping: true },
@@ -629,6 +630,56 @@ test('development requires an explicit normal policy and a test-mode provider', 
   assert.equal(attempts, 0);
   assert.equal((await authorizeTestProvider(request)).testProviderClaimed, true);
   await assert.rejects(authorizeTestProvider(request), /already/);
+});
+
+test('hosted Sandbox Cowboy grants require explicit scope, test mode and a validated Powell cart', async () => {
+  const request = { ...input(), origin: sandboxOrigin };
+  const scope = { origins: [origin, sandboxOrigin] };
+
+  offlineCheckEnabled = true;
+  setupNormal(scope);
+
+  const off = await authorizeTestProvider(request);
+
+  assert.equal(off.testProviderAuthorization.methodId, 'bigpaypay');
+  assert.equal(off.checkTestAuthorization, undefined);
+
+  setupNormal({ ...scope, allowHostedSandboxCheck: true });
+
+  const on = await authorizeTestProvider(request);
+
+  assert.equal(on.checkTestAuthorization.methodId, 'cheque');
+  assert.equal(on.testProviderAuthorization.methodId, 'bigpaypay');
+
+  const check = {
+    ...request,
+    submission: submissionSnapshot(current),
+    checkClaim: { methodId: 'cheque', gatewayId: null, token: on.checkTestAuthorization.token },
+  };
+
+  await assert.rejects(authorizeTestProvider({ ...check, origin }));
+  await assert.rejects(
+    authorizeTestProvider({
+      ...check,
+      checkClaim: { ...check.checkClaim, token: on.testProviderAuthorization.token },
+    }),
+  );
+  validationError = new Error('Powell stock changed');
+  await assert.rejects(authorizeTestProvider(check), /Powell stock changed/);
+  validationError = undefined;
+  providerMode = 'live';
+  await assert.rejects(authorizeTestProvider(check), /test mode/);
+  providerMode = 'test';
+  offlineCheckEnabled = false;
+  assert.equal((await authorizeTestProvider(request)).checkTestAuthorization, undefined);
+  await assert.rejects(authorizeTestProvider(check), /Check is unavailable/);
+  offlineCheckEnabled = true;
+  deploymentMode = 'development';
+  await assert.rejects(authorizeTestProvider(request));
+  deploymentMode = 'staging';
+  setupNormal({ ...scope, allowHostedSandboxCheck: false });
+  await assert.rejects(authorizeTestProvider(check));
+  assert.equal(attempts, 0);
 });
 
 test('local Check and card grants are method-bound and share one attempt per cart', async () => {

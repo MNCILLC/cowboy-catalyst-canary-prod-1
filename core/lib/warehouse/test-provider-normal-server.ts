@@ -68,6 +68,11 @@ function normalWarehouse(
   if (
     (configuration.mode !== 'staging' && configuration.mode !== 'development') ||
     (policy.allowLocalCheck && configuration.mode !== 'development') ||
+    (policy.allowHostedSandboxCheck &&
+      (configuration.mode !== 'staging' ||
+        configuration.storeHash !== '3olkgrdpfq' ||
+        configuration.channelId !== 1912525 ||
+        input.origin !== 'https://sandboxcatalystcheckout.mncillc.com')) ||
     policy.storeHash !== configuration.storeHash ||
     policy.channelId !== configuration.channelId ||
     !policy.origins.includes(input.origin) ||
@@ -82,10 +87,13 @@ function normalWarehouse(
 
 async function enabledMethods(policy: NormalTestProviderPolicy, attempt?: PaymentAttempt) {
   const methods = await readTestPaymentMethods(policy.storeHash);
-  const checkEnabled = policy.allowLocalCheck && methods.check;
+  const checkEnabled = (policy.allowLocalCheck || policy.allowHostedSandboxCheck) && methods.check;
 
   if (attempt?.checkTest && !checkEnabled) throw testProviderDenied('Check is unavailable.');
-  if (!methods.testProvider && (attempt?.testProvider || !checkEnabled))
+  if (
+    !methods.testProvider &&
+    (policy.allowHostedSandboxCheck || attempt?.testProvider || !checkEnabled)
+  )
     throw testProviderDenied('The Test payment provider could not be verified in test mode.');
 
   return { card: methods.testProvider, check: checkEnabled };
@@ -151,7 +159,7 @@ export async function authorizeNormalTestProvider(
 
   // Never silently combine the normal policy with a one-cart rehearsal policy.
   if (
-    (attempt?.checkTest && !policy.allowLocalCheck) ||
+    (attempt?.checkTest && !(policy.allowLocalCheck || policy.allowHostedSandboxCheck)) ||
     process.env.WAREHOUSE_TEST_PROVIDER_AUTHORIZATION ||
     process.env.WAREHOUSE_CHECK_TEST_AUTHORIZATION
   )
